@@ -1,0 +1,7 @@
+replicaCount: 1
+image:
+  repository: mathtrail-mentor
+  tag: latest
+service:
+  port: 8080
+daprAppId: mathtrail-mentor
