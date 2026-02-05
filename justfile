@@ -6,4 +6,7 @@ deploy:
     kubectl get svc
     kubectl get pods
 
-test: minikube service mathtrail-mentor --url | xargs -I{} curl {}/hello
+test:
+    kubectl port-forward svc/mathtrail-mentor 8080:80 &
+    sleep 2
+    curl http://localhost:8080/hello
