@@ -26,7 +26,8 @@
                 "ms-kubernetes-tools.vscode-kubernetes-tools",
                 "ms-kubernetes.helm",
                 "redhat.vscode-yaml",
-                "eamodio.gitlens"
+                "eamodio.gitlens",
+                "anthropic.claude-code"
             ]
         }
     },
