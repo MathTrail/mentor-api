@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod:*)",
+      "Bash(kubectl version:*)",
+      "Bash(docker version:*)",
+      "Bash(bash:*)",
+      "Bash(echo:*)",
+      "Bash(sudo ls:*)",
+      "Bash(sudo cp:*)",
+      "Bash(sudo chown:*)",
+      "Bash(kubectl cluster-info:*)",
+      "Bash(just deploy:*)"
+    ]
+  }
+}

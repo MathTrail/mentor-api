@@ -1,8 +1,8 @@
 apiVersion: v2
 name: mathtrail-mentor
 version: 0.1.0
+description: MathTrail Mentor Service chart
 dependencies:
-  - name: base-chart
-    version: 0.1.0
-    repository: "file://../../../../mathtrail-infrastructure/helm/base-chart"
-description: MathTrail Mentor microservice chart
+  - name: mathtrail-service-lib
+    version: "0.1.0"
+    repository: "https://RyazanovAlexander.github.io/mathtrail-charts/charts"
