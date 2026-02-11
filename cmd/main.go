@@ -8,7 +8,10 @@ import (
 
 func helloHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "Hello, MathTrail!"})
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Hello from LOCAL development via Telepresence2!",
+		"version": "local-dev",
+	})
 }
 
 func healthStartup(w http.ResponseWriter, r *http.Request) {
