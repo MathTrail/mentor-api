@@ -31,6 +31,24 @@ status:
     kubectl get pods -n {{ NAMESPACE }} -l app.kubernetes.io/name={{ SERVICE }}
     kubectl get svc -n {{ NAMESPACE }}
 
+# Connect to cluster and intercept the service for local development
+tp-intercept: deploy
+    #!/bin/bash
+    set -e
+    telepresence connect
+    telepresence intercept {{ SERVICE }} --namespace {{ NAMESPACE }} --port 8080:8080
+    echo "Intercepting {{ SERVICE }}. Run your service locally: go run ."
+
+# Stop intercept and disconnect
+tp-stop:
+    telepresence leave {{ SERVICE }}-{{ NAMESPACE }} 2>/dev/null || true
+    telepresence quit
+
+# Show Telepresence status
+tp-status:
+    telepresence status
+    telepresence list --namespace {{ NAMESPACE }}
+
 # Test endpoints via port-forward
 test:
     #!/bin/bash
