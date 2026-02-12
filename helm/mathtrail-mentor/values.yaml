@@ -1,97 +1,13 @@
-replicaCount: 1
-
 image:
   repository: mathtrail-mentor
-  pullPolicy: IfNotPresent
   tag: latest
-
-imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
-
-serviceAccount:
-  create: true
-  automount: true
-  annotations: {}
-  name: ""
-
-podAnnotations: {}
-podLabels: {}
-
-podSecurityContext:
-  runAsNonRoot: true
-
-securityContext:
-  allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: true
-  runAsNonRoot: true
-
-service:
-  type: ClusterIP
-  port: 8080
-  annotations: {}
 
 dapr:
   enabled: true
   appId: "mathtrail-mentor"
-
-probes:
-  startup:
-    path: /health/startup
-    initialDelaySeconds: 0
-    periodSeconds: 5
-    failureThreshold: 30
-    timeoutSeconds: 3
-  liveness:
-    path: /health/liveness
-    initialDelaySeconds: 0
-    periodSeconds: 10
-    failureThreshold: 3
-    timeoutSeconds: 3
-  readiness:
-    path: /health/ready
-    initialDelaySeconds: 0
-    periodSeconds: 10
-    failureThreshold: 3
-    timeoutSeconds: 3
-
-resources:
-  requests:
-    cpu: "100m"
-    memory: "128Mi"
-  limits:
-    cpu: "500m"
-    memory: "512Mi"
-
-migration:
-  enabled: false
-
-configMap:
-  enabled: false
 
 env:
   - name: SERVER_PORT
     value: "8080"
   - name: LOG_LEVEL
     value: "info"
-
-envFrom: []
-
-preStopDelaySec: 5
-terminationGracePeriodSeconds: 30
-
-defaultAntiAffinity:
-  enabled: true
-
-affinity: {}
-nodeSelector: {}
-tolerations: []
-
-volumes: []
-volumeMounts: []
-
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 80
