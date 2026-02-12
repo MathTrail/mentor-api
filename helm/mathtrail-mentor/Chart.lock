@@ -1,6 +1,6 @@
 dependencies:
 - name: mathtrail-service-lib
   repository: https://RyazanovAlexander.github.io/mathtrail-charts/charts
-  version: 0.1.0
-digest: sha256:76b1ffd48b9c4ec797538754ca60d2732724fa211d9d01a4e142c5611c048567
-generated: "2026-02-10T01:21:55.627745501Z"
+  version: 0.1.1
+digest: sha256:84c26fc08096fb651ad27207ca8ed34de499a4a5ae736bad0710e4e0f061efb2
+generated: "2026-02-12T05:26:32.671106273Z"
