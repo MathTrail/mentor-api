@@ -35,19 +35,19 @@ status:
 tp-intercept: deploy
     #!/bin/bash
     set -e
-    telepresence connect
-    telepresence intercept {{ SERVICE }} --namespace {{ NAMESPACE }} --port 8080:8080
-    echo "Intercepting {{ SERVICE }}. Run your service locally: go run ."
+    telepresence connect -n {{ NAMESPACE }}
+    telepresence intercept {{ SERVICE }} --port 8080:8080
+    echo "Intercepting {{ SERVICE }}. Run your service locally: go run ./cmd/main.go"
 
 # Stop intercept and disconnect
 tp-stop:
-    telepresence leave {{ SERVICE }}-{{ NAMESPACE }} 2>/dev/null || true
+    telepresence leave {{ SERVICE }} 2>/dev/null || true
     telepresence quit
 
 # Show Telepresence status
 tp-status:
     telepresence status
-    telepresence list --namespace {{ NAMESPACE }}
+    telepresence list
 
 # Test endpoints via port-forward
 test:
