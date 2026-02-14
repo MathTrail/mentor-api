@@ -1,4 +1,4 @@
-# MathTrail Mentor Service
+﻿# MathTrail Mentor Service
 
 ## Overview
 
@@ -24,7 +24,7 @@ Intelligent learning service for MathTrail platform — an AI mentor that delive
 
 ## Architecture
 
-- Helm chart uses `mathtrail-service-lib` library chart from `https://RyazanovAlexander.github.io/mathtrail-charts/charts`
+- Helm chart uses `mathtrail-service-lib` library chart from `https://MathTrail.github.io/mathtrail-charts/charts`
 - The service-lib provides: ServiceAccount, RBAC, ConfigMap, Migration Job, Deployment, Service, HPA
 - Dapr sidecar integration enabled
 

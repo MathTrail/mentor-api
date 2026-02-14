@@ -29,28 +29,3 @@ if kubectl cluster-info 2>/dev/null; then
 else
     echo "Cluster not accessible"
 fi
-
-# Install kubelogin for Telepresence GUI extension
-if ! command -v kubelogin &> /dev/null; then
-    echo "Installing kubelogin..."
-    KUBELOGIN_VERSION=$(curl -s https://api.github.com/repos/Azure/kubelogin/releases/latest | grep '"tag_name"' | sed -E 's/.*"v([^"]+)".*/\1/')
-    wget -q "https://github.com/Azure/kubelogin/releases/download/v${KUBELOGIN_VERSION}/kubelogin-linux-amd64.zip" -O /tmp/kubelogin.zip
-    unzip -q /tmp/kubelogin.zip -d /tmp
-    sudo mv /tmp/bin/linux_amd64/kubelogin /usr/local/bin/
-    sudo chmod +x /usr/local/bin/kubelogin
-    rm -rf /tmp/kubelogin.zip /tmp/bin
-    echo "Kubelogin $(kubelogin --version) installed"
-else
-    echo "Kubelogin already installed: $(kubelogin --version)"
-fi
-
-# Install Telepresence traffic manager in cluster with non-root security context
-if ! kubectl get deployment traffic-manager -n ambassador &> /dev/null; then
-    echo "Installing Telepresence traffic manager..."
-    telepresence helm install --set agent.securityContext.runAsUser=65534,agent.securityContext.runAsNonRoot=true
-    echo "Waiting for traffic manager to be ready..."
-    kubectl wait --for=condition=available --timeout=60s deployment/traffic-manager -n ambassador
-    echo "Telepresence traffic manager installed"
-else
-    echo "Telepresence traffic manager already installed"
-fi

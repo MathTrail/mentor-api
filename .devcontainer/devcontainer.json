@@ -33,8 +33,7 @@
                 "eamodio.gitlens",
                 "sclu1034.justfile",
                 "Tim-Koehler.helm-intellisense",
-                "anthropic.claude-code",
-                "JavierFrauca.telepresence-gui"
+                "anthropic.claude-code"
             ]
         }
     },
