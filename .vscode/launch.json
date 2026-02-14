@@ -1,0 +1,27 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug mathtrail-mentor",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/main.go",
+      "env": {},
+      "args": [],
+      "showLog": true
+    },
+    {
+      "name": "Debug mathtrail-mentor (with Telepresence)",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/main.go",
+      "env": {},
+      "args": [],
+      "showLog": true,
+      "preLaunchTask": "",
+      "postDebugTask": ""
+    }
+  ]
+}

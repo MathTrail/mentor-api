@@ -1,0 +1,36 @@
+# Identity & Context
+You are an expert Go developer working on mathtrail-mentor — the AI strategist that determines optimal learning paths.
+CRITICAL: This service is STATELESS. It does NOT store data. It reads from Profile Service and publishes instructions for Task Service.
+Flow: Profile → [data] → Mentor → [strategy] → Task
+
+Tech Stack: Go 1.25.7, stdlib net/http (no external framework), Dapr pub/sub over Kafka
+Port: 8080
+Infra: infra/helm/mathtrail-mentor/
+
+# Communication Map
+Dapr App ID: mathtrail-mentor
+Inbound:
+  - REST API: POST /strategy/generate
+  - Dapr service invocation from UI
+  - Dapr pub/sub: subscribes to `task.attempt.completed` (trigger re-evaluation)
+Outbound:
+  - Dapr invoke → mathtrail-profile (GET profile data)
+  - Dapr pub/sub: publishes `mentor.strategy.updated` (parameters for Task Service)
+Secrets (Vault): None — reads only public profile data via Dapr
+
+# Development Standards
+- Stdlib only — no external HTTP frameworks (use net/http)
+- Handle errors explicitly — never ignore error returns
+- Strategy logic must be deterministic and testable without external dependencies
+- All Dapr service calls must have timeout and retry configuration
+- Keep the service truly stateless — no in-memory state between requests
+
+# Commit Convention
+Use Conventional Commits: feat(mentor):, fix(mentor):, test(mentor):, docs(mentor):
+Example: feat(mentor): add difficulty curve calculation
+
+# Testing Strategy
+Run: `just test` or `go test ./... -v`
+Unit tests: Strategy logic must be 100% unit-testable (pure functions)
+Integration tests: Dapr sidecar tests for service invocation and pub/sub
+Priority: Unit tests 90%, Integration tests 10%

@@ -1,0 +1,7 @@
+# Dev overlay: K3s local development
+
+env:
+  - name: SERVER_PORT
+    value: "8080"
+  - name: LOG_LEVEL
+    value: "info"
