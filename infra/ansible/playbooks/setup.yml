@@ -1,0 +1,79 @@
+---
+- name: Prepare Ubuntu node for MathTrail on-prem
+  hosts: all
+  become: true
+  vars:
+    k8s_version: "1.31"
+    containerd_version: "1.7"
+
+  tasks:
+    - name: Update system packages
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Install container runtime dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: Install containerd
+      apt:
+        name: "containerd.io={{ containerd_version }}*"
+        state: present
+
+    - name: Configure containerd for systemd cgroup
+      copy:
+        dest: /etc/containerd/config.toml
+        content: |
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+            SystemdCgroup = true
+      notify: restart containerd
+
+    - name: Install kubeadm, kubelet, kubectl
+      apt:
+        name:
+          - kubeadm
+          - "kubelet={{ k8s_version }}*"
+          - "kubectl={{ k8s_version }}*"
+        state: present
+
+    - name: Create data directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /data/mathtrail
+        - /data/mathtrail/postgres
+        - /data/mathtrail/redis
+
+    - name: Disable swap (required by K8s)
+      command: swapoff -a
+
+    - name: Load kernel modules
+      modprobe:
+        name: "{{ item }}"
+        state: present
+      loop: [overlay, br_netfilter]
+
+    - name: Set sysctl params for K8s
+      sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        sysctl_set: yes
+      loop:
+        - { key: net.bridge.bridge-nf-call-iptables, value: "1" }
+        - { key: net.bridge.bridge-nf-call-ip6tables, value: "1" }
+        - { key: net.ipv4.ip_forward, value: "1" }
+
+  handlers:
+    - name: restart containerd
+      service:
+        name: containerd
+        state: restarted

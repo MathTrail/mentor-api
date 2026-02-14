@@ -17,10 +17,13 @@ deploy:
   helm:
     releases:
       - name: mathtrail-mentor
-        chartPath: helm/mathtrail-mentor
+        chartPath: infra/helm/mathtrail-mentor
         namespace: mathtrail
         createNamespace: true
         wait: true
+        valuesFiles:
+          - infra/helm/mathtrail-mentor/values.yaml
+          - infra/helm/values-dev.yaml
         setValueTemplates:
           image.repository: "{{.IMAGE_REPO_mathtrail_mentor}}"
           image.tag: "{{.IMAGE_TAG_mathtrail_mentor}}"

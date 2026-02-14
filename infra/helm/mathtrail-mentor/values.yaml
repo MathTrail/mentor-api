@@ -1,0 +1,29 @@
+image:
+  repository: mathtrail-mentor
+  tag: latest
+
+service:
+  port: 8080
+
+dapr:
+  enabled: true
+  appId: "mathtrail-mentor"
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+externalSecrets:
+  enabled: false
+  vaultPath: ""
+  keys: []
+
+rollout:
+  enabled: false
+  strategy: ""
+  steps: []
+  autoPromotionEnabled: true
