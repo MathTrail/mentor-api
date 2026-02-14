@@ -21,7 +21,7 @@ jobs:
       - name: Push to mathtrail-charts
         uses: actions/checkout@v4
         with:
-          repository: MathTrail/mathtrail-charts
+          repository: MathTrail/charts
           token: ${{ secrets.CHARTS_REPO_TOKEN }}
           path: mathtrail-charts
 
@@ -30,7 +30,7 @@ jobs:
           cp /tmp/charts/*.tgz mathtrail-charts/charts/
           cd mathtrail-charts
           helm repo index ./charts \
-            --url https://MathTrail.github.io/mathtrail-charts/charts
+            --url https://MathTrail.github.io/charts/charts
           git add charts/
           git commit -m "chore: update mathtrail-mentor chart"
           git push

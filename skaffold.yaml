@@ -9,7 +9,7 @@ build:
   insecureRegistries:
     - k3d-mathtrail-registry.localhost:5050
   artifacts:
-    - image: mathtrail-mentor
+    - image: mentor-api
       docker:
         dockerfile: Dockerfile
 
