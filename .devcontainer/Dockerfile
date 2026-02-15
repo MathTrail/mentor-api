@@ -14,5 +14,6 @@ RUN curl -fL https://app.getambassador.io/download/tel2oss/releases/download/v2.
     && rm -f /tmp/telepresence
 
 # Pre-configure Docker daemon to trust the k3d registry
-RUN mkdir -p /etc/docker \
-    && echo '{"insecure-registries": ["k3d-mathtrail-registry.localhost:5050"]}' > /etc/docker/daemon.json
+RUN mkdir -p /etc/containers && \
+    printf '[registry]\nlocation = "k3d-mathtrail-registry.localhost:5050"\ninsecure = true\n' \
+    > /etc/containers/registries.conf.d/k3d.conf

@@ -5,13 +5,20 @@ metadata:
 
 build:
   local:
-    push: true
+    push: false
+    tryImportMissing: false
   insecureRegistries:
     - k3d-mathtrail-registry.localhost:5050
   artifacts:
     - image: mentor-api
-      docker:
-        dockerfile: Dockerfile
+      custom:
+        buildCommand: buildah bud --tag $IMAGE . && buildah push --tls-verify=false $IMAGE
+        dependencies:
+          paths:
+            - "**/*.go"
+            - go.mod
+            - go.sum
+            - Dockerfile
 
 deploy:
   helm:

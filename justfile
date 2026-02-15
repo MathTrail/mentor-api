@@ -6,6 +6,30 @@ NAMESPACE := "mathtrail"
 SERVICE := "mentor-api"
 CHART_NAME := "mentor-api"
 
+# -- Portable Image Build (buildctl → buildah) --------------------------------
+
+# Build and push a container image using the best available builder
+# CI (K3s runner): buildctl talks to buildkitd sidecar
+# Local dev: buildah builds rootlessly
+[private]
+build-image tag:
+    #!/bin/bash
+    set -e
+    if command -v buildctl &>/dev/null; then
+        echo "🔨 Building with BuildKit..."
+        buildctl build \
+            --frontend=dockerfile.v0 \
+            --local context=. \
+            --local dockerfile=. \
+            --output type=image,name={{tag}},push=true,registry.insecure=true \
+            --export-cache type=inline \
+            --import-cache type=registry,ref={{tag}}
+    else
+        echo "🔨 Building with Buildah..."
+        buildah bud -t {{tag}} .
+        buildah push {{tag}}
+    fi
+
 # -- Development ---------------------------------------------------------------
 
 # One-time setup: add Helm repo for service-lib dependency
