@@ -17,7 +17,7 @@ Intelligent learning service for MathTrail platform — an AI mentor that delive
 | `Dockerfile` | Multi-stage Docker build |
 | `helm/mentor-api/Chart.yaml` | Helm chart metadata, depends on `mathtrail-service-lib` |
 | `helm/mentor-api/values.yaml` | Deployment configuration |
-| `helm/mentor-api/templates/all.yaml` | Includes all service-lib templates |
+| `helm/mentor-api/templates/main.yaml` | Includes all service-lib templates |
 | `skaffold.yaml` | Skaffold pipeline config (build + Helm deploy) |
 | `justfile` | Build, deploy, test automation (wraps Skaffold) |
 | `.devcontainer/devcontainer.json` | VS Code devcontainer config |
