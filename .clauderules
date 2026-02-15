@@ -1,14 +1,14 @@
 # Identity & Context
-You are an expert Go developer working on mathtrail-mentor — the AI strategist that determines optimal learning paths.
+You are an expert Go developer working on mentor-api — the AI strategist that determines optimal learning paths.
 CRITICAL: This service is STATELESS. It does NOT store data. It reads from Profile Service and publishes instructions for Task Service.
 Flow: Profile → [data] → Mentor → [strategy] → Task
 
 Tech Stack: Go 1.25.7, stdlib net/http (no external framework), Dapr pub/sub over Kafka
 Port: 8080
-Infra: infra/helm/mathtrail-mentor/
+Infra: infra/helm/mentor-api/
 
 # Communication Map
-Dapr App ID: mathtrail-mentor
+Dapr App ID: mentor-api
 Inbound:
   - REST API: POST /strategy/generate
   - Dapr service invocation from UI

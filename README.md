@@ -1,4 +1,4 @@
-# mathtrail-mentor
+# mentor-api
 AI strategist that analyzes student profiles and determines optimal learning paths — a stateless analyst that instructs other services.
 
 ## Mission & Responsibilities

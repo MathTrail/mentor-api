@@ -1,36 +1,40 @@
 apiVersion: skaffold/v4beta12
 kind: Config
 metadata:
-  name: mathtrail-mentor
+  name: mentor-api
 
 build:
   local:
     push: true
+    tryImportMissing: false
   insecureRegistries:
     - k3d-mathtrail-registry.localhost:5050
   artifacts:
     - image: mentor-api
-      docker:
-        dockerfile: Dockerfile
+      custom:
+        buildCommand: just build-push-image
+        dependencies:
+          dockerfile:
+            path: Dockerfile
 
 deploy:
   helm:
     releases:
-      - name: mathtrail-mentor
-        chartPath: infra/helm/mathtrail-mentor
+      - name: mentor-api
+        chartPath: infra/helm/mentor-api
         namespace: mathtrail
         createNamespace: true
         wait: true
         valuesFiles:
-          - infra/helm/mathtrail-mentor/values.yaml
+          - infra/helm/mentor-api/values.yaml
           - infra/helm/values-dev.yaml
         setValueTemplates:
-          image.repository: "{{.IMAGE_REPO_mathtrail_mentor}}"
-          image.tag: "{{.IMAGE_TAG_mathtrail_mentor}}"
+          image.repository: "{{.IMAGE_REPO_mentor_api}}"
+          image.tag: "{{.IMAGE_TAG_mentor_api}}"
 
 portForward:
   - resourceType: service
-    resourceName: mathtrail-mentor
+    resourceName: mentor-api
     namespace: mathtrail
     port: 8080
     localPort: 8080

@@ -3,8 +3,38 @@
 set shell := ["bash", "-c"]
 
 NAMESPACE := "mathtrail"
-SERVICE := "mathtrail-mentor"
-CHART_NAME := "mathtrail-mentor"
+SERVICE := "mentor-api"
+CHART_NAME := "mentor-api"
+
+# -- Portable Image Build (buildctl → buildah) --------------------------------
+
+# Build and push a container image.
+# Called by Skaffold via: just build-push-image
+# Uses $IMAGE env var set by Skaffold, or accepts a tag argument.
+# CI (buildctl available): uses BuildKit
+# Local dev:               uses buildah
+build-push-image tag=env("IMAGE", ""):
+    #!/bin/bash
+    set -euo pipefail
+    TAG="{{tag}}"
+    if [ -z "$TAG" ]; then
+        echo "Error: no image tag provided (set \$IMAGE or pass as argument)" >&2
+        exit 1
+    fi
+    if [ "${CI:-}" = "true" ] || command -v buildctl &>/dev/null; then
+        echo "🔨 Building with BuildKit..."
+        buildctl build \
+            --frontend=dockerfile.v0 \
+            --local context=. \
+            --local dockerfile=. \
+            --output type=image,name="$TAG",push=true,registry.insecure=true \
+            --export-cache type=inline \
+            --import-cache type=registry,ref="$TAG"
+    else
+        echo "🔨 Building with Buildah..."
+        buildah bud --tag "$TAG" .
+        buildah push --tls-verify=false "$TAG"
+    fi
 
 # -- Development ---------------------------------------------------------------
 
@@ -41,6 +71,58 @@ logs:
 status:
     kubectl get pods -n {{ NAMESPACE }} -l app.kubernetes.io/name={{ SERVICE }}
     kubectl get svc -n {{ NAMESPACE }}
+
+# -- CI/CD Contract (called by self-hosted runner) ----------------------------
+
+# Lint the codebase
+ci-lint:
+    golangci-lint run ./...
+
+# Run tests
+ci-test ns="":
+    #!/bin/bash
+    set -e
+    if [ -n "{{ns}}" ]; then
+        NAMESPACE={{ns}} go test ./... -v -count=1
+    else
+        go test ./... -v -count=1
+    fi
+
+# Fast binary build for PR verification
+ci-build:
+    go build -o bin/server ./cmd/main.go
+
+# Create an ephemeral namespace for a PR
+ci-prepare ns:
+    #!/bin/bash
+    set -e
+    kubectl create namespace {{ns}} 2>/dev/null || true
+    kubectl label namespace {{ns}} app.kubernetes.io/managed-by=ci --overwrite
+
+# Delete an ephemeral namespace
+ci-cleanup ns:
+    kubectl delete namespace {{ns}} --wait=false 2>/dev/null || true
+
+# -- Chart Release (OCI Version) ----------------------------------------------
+
+# Package and publish chart to OCI registry
+# Usage: just release-chart-oci oci://my-registry.com/charts
+release-chart-oci registry_url="oci://k3d-mathtrail-registry.localhost:5050/charts":
+    #!/bin/bash
+    set -e
+    CHART_DIR="infra/helm/{{ CHART_NAME }}"
+    
+    # Automatically extract version from Chart.yaml
+    VERSION=$(grep '^version:' "$CHART_DIR/Chart.yaml" | awk '{print $2}')
+    
+    echo "📦 Packaging {{ CHART_NAME }} v${VERSION}..."
+    helm package "$CHART_DIR" --destination /tmp/charts
+    
+    echo "🚀 Pushing to OCI registry: {{ registry_url }}..."
+    # Helm OCI uses the repository path rather than the specific file name in the URL
+    helm push "/tmp/charts/{{ CHART_NAME }}-${VERSION}.tgz" "{{ registry_url }}"
+    
+    echo "✅ Published {{ CHART_NAME }} v${VERSION} to OCI"
 
 # -- Telepresence --------------------------------------------------------------
 
