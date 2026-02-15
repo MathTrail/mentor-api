@@ -42,6 +42,37 @@ status:
     kubectl get pods -n {{ NAMESPACE }} -l app.kubernetes.io/name={{ SERVICE }}
     kubectl get svc -n {{ NAMESPACE }}
 
+# -- CI/CD Contract (called by self-hosted runner) ----------------------------
+
+# Lint the codebase
+ci-lint:
+    golangci-lint run ./...
+
+# Run tests
+ci-test ns="":
+    #!/bin/bash
+    set -e
+    if [ -n "{{ns}}" ]; then
+        NAMESPACE={{ns}} go test ./... -v -count=1
+    else
+        go test ./... -v -count=1
+    fi
+
+# Build the Go binary
+ci-build ns="":
+    go build -o bin/server ./cmd/server
+
+# Create an ephemeral namespace for a PR
+ci-prepare ns:
+    #!/bin/bash
+    set -e
+    kubectl create namespace {{ns}} 2>/dev/null || true
+    kubectl label namespace {{ns}} app.kubernetes.io/managed-by=ci --overwrite
+
+# Delete an ephemeral namespace
+ci-cleanup ns:
+    kubectl delete namespace {{ns}} --wait=false 2>/dev/null || true
+
 # -- Telepresence --------------------------------------------------------------
 
 # Connect to cluster and intercept the service for local development
