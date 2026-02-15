@@ -12,7 +12,7 @@ build:
   artifacts:
     - image: mentor-api
       custom:
-        buildCommand: buildah bud --tag $IMAGE . && buildah push --tls-verify=false $IMAGE
+        buildCommand: just build-push-image
         dependencies:
           dockerfile:
             path: Dockerfile

@@ -8,26 +8,32 @@ CHART_NAME := "mentor-api"
 
 # -- Portable Image Build (buildctl → buildah) --------------------------------
 
-# Build and push a container image using the best available builder
-# CI (K3s runner): buildctl talks to buildkitd sidecar
-# Local dev: buildah builds rootlessly
-[private]
-build-image tag:
+# Build and push a container image.
+# Called by Skaffold via: just build-push-image
+# Uses $IMAGE env var set by Skaffold, or accepts a tag argument.
+# CI (buildctl available): uses BuildKit
+# Local dev:               uses buildah
+build-push-image tag=env("IMAGE", ""):
     #!/bin/bash
-    set -e
-    if command -v buildctl &>/dev/null; then
+    set -euo pipefail
+    TAG="{{tag}}"
+    if [ -z "$TAG" ]; then
+        echo "Error: no image tag provided (set \$IMAGE or pass as argument)" >&2
+        exit 1
+    fi
+    if [ "${CI:-}" = "true" ] || command -v buildctl &>/dev/null; then
         echo "🔨 Building with BuildKit..."
         buildctl build \
             --frontend=dockerfile.v0 \
             --local context=. \
             --local dockerfile=. \
-            --output type=image,name={{tag}},push=true,registry.insecure=true \
+            --output type=image,name="$TAG",push=true,registry.insecure=true \
             --export-cache type=inline \
-            --import-cache type=registry,ref={{tag}}
+            --import-cache type=registry,ref="$TAG"
     else
         echo "🔨 Building with Buildah..."
-        buildah bud -t {{tag}} .
-        buildah push {{tag}}
+        buildah bud --tag "$TAG" .
+        buildah push --tls-verify=false "$TAG"
     fi
 
 # -- Development ---------------------------------------------------------------
