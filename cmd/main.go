@@ -38,7 +38,7 @@ func main() {
 	http.HandleFunc("/health/liveness", healthLiveness)
 	http.HandleFunc("/health/ready", healthReady)
 
-	log.Println("Starting mathtrail-mentor on :8080")
+	log.Println("Starting mentor-api on :8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatal(err)
 	}

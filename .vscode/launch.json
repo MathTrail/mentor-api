@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug mathtrail-mentor",
+      "name": "Debug mentor-api",
       "type": "go",
       "request": "launch",
       "mode": "debug",
@@ -12,7 +12,7 @@
       "showLog": true
     },
     {
-      "name": "Debug mathtrail-mentor (with Telepresence)",
+      "name": "Debug mentor-api (with Telepresence)",
       "type": "go",
       "request": "launch",
       "mode": "debug",

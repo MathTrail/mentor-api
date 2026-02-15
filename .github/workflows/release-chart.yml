@@ -15,7 +15,7 @@ jobs:
 
       - name: Package chart
         run: |
-          helm package infra/helm/mathtrail-mentor \
+          helm package infra/helm/mentor-api \
             --destination /tmp/charts
 
       - name: Push to mathtrail-charts
@@ -32,5 +32,5 @@ jobs:
           helm repo index ./charts \
             --url https://MathTrail.github.io/charts/charts
           git add charts/
-          git commit -m "chore: update mathtrail-mentor chart"
+          git commit -m "chore: update mentor-api chart"
           git push

@@ -1,5 +1,5 @@
 image:
-  repository: mathtrail-mentor
+  repository: mentor-api
   tag: latest
 
 service:
@@ -7,7 +7,7 @@ service:
 
 dapr:
   enabled: true
-  appId: "mathtrail-mentor"
+  appId: "mentor-api"
 
 resources:
   requests:

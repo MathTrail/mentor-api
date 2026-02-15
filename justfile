@@ -3,8 +3,8 @@
 set shell := ["bash", "-c"]
 
 NAMESPACE := "mathtrail"
-SERVICE := "mathtrail-mentor"
-CHART_NAME := "mathtrail-mentor"
+SERVICE := "mentor-api"
+CHART_NAME := "mentor-api"
 
 # -- Development ---------------------------------------------------------------
 

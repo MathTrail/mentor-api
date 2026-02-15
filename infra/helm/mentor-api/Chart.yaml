@@ -1,5 +1,5 @@
 apiVersion: v2
-name: mathtrail-mentor
+name: mentor-api
 version: 0.1.0
 description: MathTrail Mentor Service chart
 dependencies:

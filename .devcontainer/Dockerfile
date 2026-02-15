@@ -9,7 +9,7 @@ RUN curl -Lo /tmp/skaffold "https://storage.googleapis.com/skaffold/releases/lat
 RUN curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
 
 # Install Telepresence
-RUN curl -fL https://app.getambassador.io/download/tel2oss/releases/download/v2.22.0/telepresence-linux-amd64 -o /tmp/telepresence \
+RUN curl -fL https://app.getambassador.io/download/tel2oss/releases/download/v2.26.2/telepresence-linux-amd64 -o /tmp/telepresence \
     && install /tmp/telepresence /usr/local/bin/telepresence \
     && rm -f /tmp/telepresence
 
