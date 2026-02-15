@@ -5,7 +5,7 @@ metadata:
 
 build:
   local:
-    push: false
+    push: true
     tryImportMissing: false
   insecureRegistries:
     - k3d-mathtrail-registry.localhost:5050

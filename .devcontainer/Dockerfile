@@ -1,5 +1,13 @@
 FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 
+# Install buildah with fuse-overlayfs for nested container builds
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends buildah fuse-overlayfs \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /etc/containers \
+    && printf '[storage]\ndriver = "overlay"\n\n[storage.options.overlay]\nmount_program = "/usr/bin/fuse-overlayfs"\n' \
+       > /etc/containers/storage.conf
+
 # Install Skaffold
 RUN curl -Lo /tmp/skaffold "https://storage.googleapis.com/skaffold/releases/latest/skaffold-linux-amd64" \
     && install /tmp/skaffold /usr/local/bin/skaffold \
@@ -13,7 +21,9 @@ RUN curl -fL https://app.getambassador.io/download/tel2oss/releases/download/v2.
     && install /tmp/telepresence /usr/local/bin/telepresence \
     && rm -f /tmp/telepresence
 
-# Pre-configure Docker daemon to trust the k3d registry
-RUN mkdir -p /etc/containers && \
-    printf '[registry]\nlocation = "k3d-mathtrail-registry.localhost:5050"\ninsecure = true\n' \
-    > /etc/containers/registries.conf.d/k3d.conf
+# Pre-configure buildah to trust the k3d registry and resolve short image names
+RUN mkdir -p /etc/containers/registries.conf.d && \
+    printf '[[registry]]\nlocation = "k3d-mathtrail-registry.localhost:5050"\ninsecure = true\n' \
+    > /etc/containers/registries.conf.d/k3d.conf && \
+    printf 'unqualified-search-registries = ["docker.io"]\n' \
+    > /etc/containers/registries.conf

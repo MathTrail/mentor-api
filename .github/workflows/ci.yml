@@ -10,7 +10,7 @@ env:
 
 jobs:
   ci:
-    runs-on: [self-hosted, linux, k3s]
+    runs-on: [self-hosted, linux, x64, buildah-ready]
     steps:
       - uses: actions/checkout@v4
 
