@@ -14,11 +14,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-
       - name: Prepare namespace
         if: github.event_name == 'pull_request'
         run: just ci-prepare ${{ env.NAMESPACE }}

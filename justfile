@@ -88,8 +88,8 @@ ci-test ns="":
         go test ./... -v -count=1
     fi
 
-# Build the Go binary
-ci-build ns="":
+# Fast binary build for PR verification
+ci-build:
     go build -o bin/server ./cmd/server
 
 # Create an ephemeral namespace for a PR
@@ -102,6 +102,27 @@ ci-prepare ns:
 # Delete an ephemeral namespace
 ci-cleanup ns:
     kubectl delete namespace {{ns}} --wait=false 2>/dev/null || true
+
+# -- Chart Release (OCI Version) ----------------------------------------------
+
+# Package and publish chart to OCI registry
+# Usage: just release-chart-oci oci://my-registry.com/charts
+release-chart-oci registry_url="oci://k3d-mathtrail-registry.localhost:5050/charts":
+    #!/bin/bash
+    set -e
+    CHART_DIR="infra/helm/{{ CHART_NAME }}"
+    
+    # Automatically extract version from Chart.yaml
+    VERSION=$(grep '^version:' "$CHART_DIR/Chart.yaml" | awk '{print $2}')
+    
+    echo "📦 Packaging {{ CHART_NAME }} v${VERSION}..."
+    helm package "$CHART_DIR" --destination /tmp/charts
+    
+    echo "🚀 Pushing to OCI registry: {{ registry_url }}..."
+    # Helm OCI uses the repository path rather than the specific file name in the URL
+    helm push "/tmp/charts/{{ CHART_NAME }}-${VERSION}.tgz" "{{ registry_url }}"
+    
+    echo "✅ Published {{ CHART_NAME }} v${VERSION} to OCI"
 
 # -- Telepresence --------------------------------------------------------------
 

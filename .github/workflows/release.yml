@@ -1,0 +1,54 @@
+name: Release
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: "k3d-mathtrail-registry.localhost:5050"
+  NAMESPACE: "pr-${{ github.event.pull_request.number || github.run_id }}"
+
+jobs:
+  # JOB 1: Validation and Regression Testing
+  # This job runs on every Pull Request to ensure the proposed changes are safe.
+  # It also runs on the Main branch after a merge to catch potential "logic conflicts"
+  # between independently tested PRs and to guarantee the integrity of the release state.
+  test:
+    runs-on: [self-hosted, linux, x64, buildah-ready]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare ephemeral namespace
+        if: github.event_name == 'pull_request'
+        run: just ci-prepare ${{ env.NAMESPACE }}
+
+      - name: Lint
+        run: just ci-lint
+
+      - name: Run Tests
+        run: just ci-test ${{ env.NAMESPACE }}
+
+      - name: Cleanup ephemeral namespace
+        if: always() && github.event_name == 'pull_request'
+        run: just ci-cleanup ${{ env.NAMESPACE }}
+
+  # JOB 2: Artifact Production and Delivery
+  # This job depends on 'test' and only triggers on the Main branch.
+  # It packages the validated code into a Docker image and an OCI Helm chart.
+  release:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, linux, x64, buildah-ready]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and Push Docker Image
+        run: |
+          # Use commit SHA as the image tag for traceability
+          just build-push-image "${{ env.REGISTRY }}/mentor-api:${{ github.sha }}"
+
+      - name: Release Helm Chart to OCI
+        run: |
+          # Push the chart to the same OCI registry
+          just release-chart-oci "${{ env.REGISTRY }}/charts"
