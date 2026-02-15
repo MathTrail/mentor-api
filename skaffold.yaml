@@ -14,11 +14,8 @@ build:
       custom:
         buildCommand: buildah bud --tag $IMAGE . && buildah push --tls-verify=false $IMAGE
         dependencies:
-          paths:
-            - "**/*.go"
-            - go.mod
-            - go.sum
-            - Dockerfile
+          dockerfile:
+            path: Dockerfile
 
 deploy:
   helm:
