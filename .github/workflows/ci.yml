@@ -2,15 +2,13 @@ name: CI
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
 
 env:
   NAMESPACE: "pr-${{ github.event.pull_request.number || github.run_id }}"
 
 jobs:
   ci:
-    runs-on: [self-hosted, linux, x64, buildah-ready]
+    runs-on: [self-hosted, Linux, X64, buildah-ready]
     steps:
       - uses: actions/checkout@v4
 
