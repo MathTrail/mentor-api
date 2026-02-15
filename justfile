@@ -90,7 +90,7 @@ ci-test ns="":
 
 # Fast binary build for PR verification
 ci-build:
-    go build -o bin/server ./cmd/server
+    go build -o bin/server ./cmd/main.go
 
 # Create an ephemeral namespace for a PR
 ci-prepare ns:
