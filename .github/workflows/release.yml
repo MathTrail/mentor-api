@@ -5,40 +5,21 @@ on:
 
 env:
   REGISTRY: "k3d-mathtrail-registry:5000"
-  NAMESPACE: "pr-${{ github.event.pull_request.number || github.run_id }}"
-  TEST_NAMESPACE: "tests-${{ github.event.pull_request.number || github.run_id }}"
 
 jobs:
-  # JOB 1: Validation and Regression Testing
-  # This job runs on every Pull Request to ensure the proposed changes are safe.
-  # It also runs on the Main branch after a merge to catch potential "logic conflicts"
-  # between independently tested PRs and to guarantee the integrity of the release state.
+  # JOB 1: Quick re-validation before release
+  # Full testing (lint, unit tests, deploy, k6 load tests) already ran in CI on the PR.
+  # This catches potential "logic conflicts" between independently tested PRs.
   test:
     runs-on: mathtrail-runners
     steps:
       - uses: actions/checkout@v4
-
-      - name: Prepare ephemeral namespace
-        if: github.event_name == 'pull_request'
-        run: just ci-prepare ${{ env.NAMESPACE }}
 
       - name: Lint
         run: just ci-lint
 
       - name: Run Tests
         run: just ci-test
-
-      - name: Functional Tests
-        if: github.event_name == 'pull_request'
-        run: TEST_NAMESPACE=${{ env.TEST_NAMESPACE }} just test-functional
-
-      - name: Cleanup ephemeral namespace
-        if: always() && github.event_name == 'pull_request'
-        run: just ci-cleanup ${{ env.NAMESPACE }}
-
-      - name: Cleanup functional test namespace
-        if: always() && github.event_name == 'pull_request'
-        run: kubectl delete namespace ${{ env.TEST_NAMESPACE }} --wait=false
 
   # JOB 2: Artifact Production and Delivery
   # This job depends on 'test' and only triggers on the Main branch.
