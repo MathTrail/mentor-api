@@ -18,6 +18,8 @@ build:
             path: Dockerfile
 
 deploy:
+  statusCheck: true
+  statusCheckDeadlineSeconds: 150
   helm:
     releases:
       - name: mentor-api

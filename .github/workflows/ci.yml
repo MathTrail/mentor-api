@@ -42,9 +42,7 @@ jobs:
 
       - name: Deploy service to PR namespace
         run: |
-          skaffold run --namespace=${{ env.NAMESPACE }}
-          kubectl wait deployment/mentor-api -n ${{ env.NAMESPACE }} \
-            --for=condition=Available --timeout=120s
+          skaffold run --namespace=${{ env.NAMESPACE }} --status-check=true
 
       - name: Setup k6
         uses: grafana/setup-k6-action@v1

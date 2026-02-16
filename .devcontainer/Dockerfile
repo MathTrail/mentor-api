@@ -9,15 +9,14 @@ RUN apt-get update \
        > /etc/containers/storage.conf
 
 # Install Skaffold
-RUN curl -Lo /tmp/skaffold "https://storage.googleapis.com/skaffold/releases/latest/skaffold-linux-amd64" \
+ARG SKAFFOLD_VERSION=2.17.2
+RUN curl -Lo /tmp/skaffold "https://github.com/GoogleContainerTools/skaffold/releases/download/v${SKAFFOLD_VERSION}/skaffold-linux-amd64" \
     && install /tmp/skaffold /usr/local/bin/skaffold \
     && rm -f /tmp/skaffold
 
-# Install k3d
-RUN curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
-
 # Install Telepresence
-RUN curl -fL https://app.getambassador.io/download/tel2oss/releases/download/v2.26.2/telepresence-linux-amd64 -o /tmp/telepresence \
+ARG TELEPRESENCE_VERSION=2.26.2
+RUN curl -fL https://app.getambassador.io/download/tel2oss/releases/download/v${TELEPRESENCE_VERSION}/telepresence-linux-amd64 -o /tmp/telepresence \
     && install /tmp/telepresence /usr/local/bin/telepresence \
     && rm -f /tmp/telepresence
 
@@ -32,8 +31,9 @@ RUN curl -fsSL "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-${ESBU
     | tar xz --strip-components=2 -C /usr/local/bin package/bin/esbuild
 
 # Pre-configure buildah to trust the k3d registry and resolve short image names
+ARG K3D_REGISTRY=k3d-mathtrail-registry.localhost:5050
 RUN mkdir -p /etc/containers/registries.conf.d && \
-    printf '[[registry]]\nlocation = "k3d-mathtrail-registry.localhost:5050"\ninsecure = true\n' \
+    printf '[[registry]]\nlocation = "%s"\ninsecure = true\n' "${K3D_REGISTRY}" \
     > /etc/containers/registries.conf.d/k3d.conf && \
     printf 'unqualified-search-registries = ["docker.io"]\n' \
     > /etc/containers/registries.conf
