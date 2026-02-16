@@ -5,6 +5,8 @@ set shell := ["bash", "-c"]
 NAMESPACE := "mathtrail"
 SERVICE := "mentor-api"
 CHART_NAME := "mentor-api"
+TEST_NAMESPACE := "mathtrail"
+TEST_CONFIGMAP := "mentor-api-functional"
 
 # -- Portable Image Build (buildctl → buildah) --------------------------------
 
@@ -50,6 +52,20 @@ build:
 # Run all tests
 test:
     go test ./... -v
+
+# Run functional tests with k6-operator
+test-functional ns=env("TEST_NAMESPACE", TEST_NAMESPACE):
+    #!/bin/bash
+    set -euo pipefail
+    kubectl create namespace {{ ns }} --dry-run=client -o yaml | kubectl apply -f -
+    kubectl create configmap {{ TEST_CONFIGMAP }} \
+        --from-file=tests/functional/hello.js \
+        --from-file=tests/functional/health.js \
+        -n {{ ns }} \
+        --dry-run=client -o yaml | kubectl apply -f -
+    kubectl apply -n {{ ns }} -f tests/functional/k6-resource.yaml
+    echo "Streaming k6 logs..."
+    kubectl logs -n {{ ns }} -l app=k6 -f --all-containers=true
 
 # Start development mode with hot-reload and port-forwarding
 dev: setup
