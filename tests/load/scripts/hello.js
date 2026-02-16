@@ -4,8 +4,11 @@ import { check } from "k6";
 const baseUrl = __ENV.BASE_URL || "http://mentor-api.mathtrail.svc.cluster.local:8080";
 
 export function testHello() {
-  const res = http.get(`${baseUrl}/hello`);
-  const ok = check(res, {
+  const res = http.get(`${baseUrl}/hello`, {
+    tags: { name: "GetHello" },
+  });
+
+  check(res, {
     "[hello] status is 200": (r) => r.status === 200,
     "[hello] response structure": (r) => {
       try {
@@ -20,10 +23,4 @@ export function testHello() {
       }
     },
   });
-
-  if (!ok) {
-    console.error(`[hello] Response body: ${res.body}`);
-  }
-
-  return ok;
 }

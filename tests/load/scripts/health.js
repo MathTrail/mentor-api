@@ -3,9 +3,12 @@ import { check } from "k6";
 
 const baseUrl = __ENV.BASE_URL || "http://mentor-api.mathtrail.svc.cluster.local:8080";
 
-function testEndpoint(path, expectedStatus) {
-  const res = http.get(`${baseUrl}${path}`);
-  const ok = check(res, {
+function testEndpoint(path, expectedStatus, tagName) {
+  const res = http.get(`${baseUrl}${path}`, {
+    tags: { name: tagName },
+  });
+
+  check(res, {
     [`[${path}] status is 200`]: (r) => r.status === 200,
     [`[${path}] status field matches`]: (r) => {
       try {
@@ -16,16 +19,10 @@ function testEndpoint(path, expectedStatus) {
       }
     },
   });
-
-  if (!ok) {
-    console.error(`[${path}] Response body: ${res.body}`);
-  }
-
-  return ok;
 }
 
 export function testHealth() {
-  testEndpoint("/health/startup", "started");
-  testEndpoint("/health/liveness", "ok");
-  testEndpoint("/health/ready", "ready");
+  testEndpoint("/health/startup", "started", "GetHealthStartup");
+  testEndpoint("/health/liveness", "ok", "GetHealthLiveness");
+  testEndpoint("/health/ready", "ready", "GetHealthReady");
 }
