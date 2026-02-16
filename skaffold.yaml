@@ -53,7 +53,6 @@ profiles:
             remoteChart: k6-test-runner
             namespace: mathtrail
             createNamespace: true
-            wait: true
             setValues:
               baseUrl: http://mentor-api.mathtrail.svc.cluster.local:8080
               parallelism: 2

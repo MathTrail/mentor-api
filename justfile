@@ -53,7 +53,7 @@ build:
 test:
     go test ./... -v
 
-# Run load tests: bundle scripts with esbuild, deploy k6-test-runner from OCI
+# Run load tests: bundle scripts with esbuild, deploy k6-test-runner chart
 load-test:
     #!/bin/bash
     set -euo pipefail
@@ -64,7 +64,31 @@ load-test:
         --external:k6 \
         --external:'k6/*' \
         --outfile=tests/load/dist/bundle.js
-    skaffold run -p load-test --tail
+    # Deploy TestRun + ConfigMap
+    skaffold run -p load-test
+    # Wait for k6 runner pods, then stream results
+    echo "Waiting for k6 runners..."
+    kubectl wait --for=condition=Ready pod -l k6_cr=mentor-api-load-test \
+        -n {{ NAMESPACE }} --timeout=120s 2>/dev/null || true
+
+    echo "⏳ Test is running..."
+    kubectl wait testrun mentor-api-load-test -n {{ NAMESPACE }} \
+        --for=jsonpath='{.status.stage}'=finished --timeout=600s
+
+    echo "📈 Test results:"
+    kubectl logs -l k6_cr=mentor-api-load-test -n {{ NAMESPACE }} \
+        --all-containers --prefix
+
+    FAILED=$(kubectl get jobs -n {{ NAMESPACE }} -l k6_cr=mentor-api-load-test \
+        -o jsonpath='{.items[?(@.status.failed>0)].metadata.name}')
+    if [ -n "$FAILED" ]; then
+        echo "❌ Load test failed: $FAILED"
+        skaffold delete -p load-test
+        exit 1
+    fi
+    echo "✅ Load test passed"
+    # Cleanup
+    skaffold delete -p load-test
 
 # Start development mode with hot-reload and port-forwarding
 dev: setup

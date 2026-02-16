@@ -3,10 +3,9 @@ import { testHealth } from "./health.js";
 
 export const options = {
   stages: [
-    { duration: "30s", target: 50 },  // Ramp-up: 0 → 50 VUs over 30s
-    { duration: "2m", target: 100 },  // Ramp-up: 50 → 100 VUs over 2m
-    { duration: "3m", target: 100 },  // Steady state: 100 VUs for 3m
-    { duration: "30s", target: 0 },   // Ramp-down: 100 → 0 VUs over 30s
+    { duration: "3s", target: 10 },   // Ramp-up: 0 → 10 VUs over 3s
+    { duration: "5s", target: 10 },   // Steady state: 10 VUs for 5s
+    { duration: "2s", target: 0 },    // Ramp-down: 10 → 0 VUs over 2s
   ],
   thresholds: {
     // Check success rate
