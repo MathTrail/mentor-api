@@ -33,7 +33,6 @@ jobs:
       - name: Build k6 test bundle
         run: |
           mkdir -p tests/load/dist
-          npm install --global esbuild
           esbuild tests/load/scripts/main.js \
             --bundle \
             --format=esm \
