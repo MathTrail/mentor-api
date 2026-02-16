@@ -1,21 +1,13 @@
 import http from "k6/http";
 import { check } from "k6";
 
-export const options = {
-  vus: 1,
-  iterations: 1,
-  thresholds: {
-    checks: ["rate==1.0"],
-  },
-};
-
 const baseUrl = __ENV.BASE_URL || "http://mentor-api.mathtrail.svc.cluster.local:8080";
 
-export default function () {
+export function testHello() {
   const res = http.get(`${baseUrl}/hello`);
   const ok = check(res, {
-    "status is 200": (r) => r.status === 200,
-    "message and version match": (r) => {
+    "[hello] status is 200": (r) => r.status === 200,
+    "[hello] response structure": (r) => {
       try {
         const body = r.json();
         return (
@@ -30,6 +22,8 @@ export default function () {
   });
 
   if (!ok) {
-    console.error(`Response body: ${res.body}`);
+    console.error(`[hello] Response body: ${res.body}`);
   }
+
+  return ok;
 }

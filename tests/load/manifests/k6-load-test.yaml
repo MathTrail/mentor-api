@@ -1,0 +1,17 @@
+apiVersion: k6.io/v1alpha1
+kind: K6
+metadata:
+  name: mentor-api-load-test
+spec:
+  parallelism: 2
+  cleanup: post
+  script:
+    configMap:
+      name: mentor-api-k6-scripts
+      file: main.js
+  runner:
+    env:
+      - name: BASE_URL
+        value: http://mentor-api.mathtrail.svc.cluster.local:8080
+  arguments: |
+    --summary-export=/tmp/summary.json

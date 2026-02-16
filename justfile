@@ -53,19 +53,9 @@ build:
 test:
     go test ./... -v
 
-# Run functional tests with k6-operator
-test-functional ns=env("TEST_NAMESPACE", TEST_NAMESPACE):
-    #!/bin/bash
-    set -euo pipefail
-    kubectl create namespace {{ ns }} --dry-run=client -o yaml | kubectl apply -f -
-    kubectl create configmap {{ TEST_CONFIGMAP }} \
-        --from-file=tests/functional/hello.js \
-        --from-file=tests/functional/health.js \
-        -n {{ ns }} \
-        --dry-run=client -o yaml | kubectl apply -f -
-    kubectl apply -n {{ ns }} -f tests/functional/k6-resource.yaml
-    echo "Streaming k6 logs..."
-    kubectl logs -n {{ ns }} -l app=k6 -f --all-containers=true
+# Run load tests using Skaffold profile (auto-updates ConfigMap and deploys K6)
+load-test: setup
+    skaffold run -p load-test --tail
 
 # Start development mode with hot-reload and port-forwarding
 dev: setup

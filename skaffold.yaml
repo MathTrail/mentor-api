@@ -38,3 +38,11 @@ portForward:
     namespace: mathtrail
     port: 8080
     localPort: 8080
+
+profiles:
+  - name: load-test
+    deploy:
+      kustomize:
+        paths:
+          - tests/load/manifests
+
