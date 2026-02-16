@@ -53,8 +53,17 @@ build:
 test:
     go test ./... -v
 
-# Run load tests using Skaffold profile (auto-updates ConfigMap and deploys K6)
-load-test: setup
+# Run load tests: bundle scripts with esbuild, deploy k6-test-runner from OCI
+load-test:
+    #!/bin/bash
+    set -euo pipefail
+    mkdir -p tests/load/dist
+    esbuild tests/load/scripts/main.js \
+        --bundle \
+        --format=esm \
+        --external:k6 \
+        --external:'k6/*' \
+        --outfile=tests/load/dist/bundle.js
     skaffold run -p load-test --tail
 
 # Start development mode with hot-reload and port-forwarding

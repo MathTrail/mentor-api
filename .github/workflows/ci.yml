@@ -23,8 +23,8 @@ jobs:
       - name: Test
         run: just ci-test ${{ env.NAMESPACE }}
 
-      - name: Functional Tests
-        run: TEST_NAMESPACE=${{ env.TEST_NAMESPACE }} just test-functional
+      - name: Load Tests
+        run: TEST_NAMESPACE=${{ env.TEST_NAMESPACE }} just load-test
 
       - name: Build
         run: just ci-build
@@ -33,6 +33,6 @@ jobs:
         if: always() && github.event_name == 'pull_request'
         run: just ci-cleanup ${{ env.NAMESPACE }}
 
-      - name: Cleanup functional test namespace
+      - name: Cleanup Load test namespace
         if: always() && github.event_name == 'pull_request'
         run: kubectl delete namespace ${{ env.TEST_NAMESPACE }} --wait=false

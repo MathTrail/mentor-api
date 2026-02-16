@@ -41,8 +41,21 @@ portForward:
 
 profiles:
   - name: load-test
+    patches:
+      - op: replace
+        path: /build/artifacts
+        value: []
     deploy:
-      kustomize:
-        paths:
-          - tests/load/manifests
-
+      helm:
+        releases:
+          - name: mentor-api-load-test
+            repo: https://MathTrail.github.io/charts/charts
+            remoteChart: k6-test-runner
+            namespace: mathtrail
+            createNamespace: true
+            wait: true
+            setValues:
+              baseUrl: http://mentor-api.mathtrail.svc.cluster.local:8080
+              parallelism: 2
+            setFiles:
+              loadTestScript: tests/load/dist/bundle.js

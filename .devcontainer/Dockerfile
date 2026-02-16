@@ -21,6 +21,16 @@ RUN curl -fL https://app.getambassador.io/download/tel2oss/releases/download/v2.
     && install /tmp/telepresence /usr/local/bin/telepresence \
     && rm -f /tmp/telepresence
 
+# Install BuildKit CLI (buildctl — talks to buildkitd sidecar in K3s)
+ARG BUILDKIT_VERSION=0.27.1
+RUN curl -sSfL "https://github.com/moby/buildkit/releases/download/v${BUILDKIT_VERSION}/buildkit-v${BUILDKIT_VERSION}.linux-amd64.tar.gz" \
+    | tar xz -C /usr/local/bin --strip-components=1 bin/buildctl
+
+# Install esbuild (for bundling k6 load test scripts)
+ARG ESBUILD_VERSION=0.27.3
+RUN curl -fsSL "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-${ESBUILD_VERSION}.tgz" \
+    | tar xz --strip-components=2 -C /usr/local/bin package/bin/esbuild
+
 # Pre-configure buildah to trust the k3d registry and resolve short image names
 RUN mkdir -p /etc/containers/registries.conf.d && \
     printf '[[registry]]\nlocation = "k3d-mathtrail-registry.localhost:5050"\ninsecure = true\n' \
