@@ -10,6 +10,7 @@ permissions:
 
 env:
   NAMESPACE: "pr-${{ github.event.pull_request.number || github.run_id }}"
+  SKAFFOLD_DEFAULT_REPO: k3d-mathtrail-registry.localhost:5050
 
 jobs:
   ci:

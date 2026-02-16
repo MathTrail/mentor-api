@@ -2,6 +2,8 @@
 
 set shell := ["bash", "-c"]
 
+export SKAFFOLD_DEFAULT_REPO := "k3d-mathtrail-registry.localhost:5050"
+
 NAMESPACE := "mathtrail"
 SERVICE := "mentor-api"
 CHART_NAME := "mentor-api"
