@@ -8,7 +8,7 @@ build:
     push: true
     tryImportMissing: false
   insecureRegistries:
-    - k3d-mathtrail-registry.localhost:5050
+    - k3d-mathtrail-registry:5000
   artifacts:
     - image: mentor-api
       custom:
@@ -18,6 +18,8 @@ build:
             path: Dockerfile
 
 deploy:
+  statusCheck: true
+  statusCheckDeadlineSeconds: 150
   helm:
     releases:
       - name: mentor-api
@@ -38,3 +40,23 @@ portForward:
     namespace: mathtrail
     port: 8080
     localPort: 8080
+
+profiles:
+  - name: load-test
+    patches:
+      - op: replace
+        path: /build/artifacts
+        value: []
+    deploy:
+      helm:
+        releases:
+          - name: mentor-api-load-test
+            repo: https://MathTrail.github.io/charts/charts
+            remoteChart: k6-test-runner
+            namespace: mathtrail
+            createNamespace: true
+            setValues:
+              baseUrl: http://mentor-api.mathtrail.svc.cluster.local:8080
+              parallelism: 2
+            setFiles:
+              loadTestScript: tests/load/dist/bundle.js

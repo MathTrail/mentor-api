@@ -2,9 +2,13 @@
 
 set shell := ["bash", "-c"]
 
+export SKAFFOLD_DEFAULT_REPO := "k3d-mathtrail-registry.localhost:5050"
+
 NAMESPACE := "mathtrail"
 SERVICE := "mentor-api"
 CHART_NAME := "mentor-api"
+TEST_NAMESPACE := "mathtrail"
+TEST_CONFIGMAP := "mentor-api-functional"
 
 # -- Portable Image Build (buildctl → buildah) --------------------------------
 
@@ -51,6 +55,43 @@ build:
 test:
     go test ./... -v
 
+# Run load tests: bundle scripts with esbuild, deploy k6-test-runner chart
+load-test:
+    #!/bin/bash
+    set -euo pipefail
+    mkdir -p tests/load/dist
+    esbuild tests/load/scripts/main.js \
+        --bundle \
+        --format=esm \
+        --external:k6 \
+        --external:'k6/*' \
+        --outfile=tests/load/dist/bundle.js
+    # Deploy TestRun + ConfigMap
+    skaffold run -p load-test
+    # Wait for k6 runner pods, then stream results
+    echo "Waiting for k6 runners..."
+    kubectl wait --for=condition=Ready pod -l k6_cr=mentor-api-load-test \
+        -n {{ NAMESPACE }} --timeout=120s 2>/dev/null || true
+
+    echo "⏳ Test is running..."
+    kubectl wait testrun mentor-api-load-test -n {{ NAMESPACE }} \
+        --for=jsonpath='{.status.stage}'=finished --timeout=600s
+
+    echo "📈 Test results:"
+    kubectl logs -l k6_cr=mentor-api-load-test -n {{ NAMESPACE }} \
+        --all-containers --prefix
+
+    FAILED=$(kubectl get jobs -n {{ NAMESPACE }} -l k6_cr=mentor-api-load-test \
+        -o jsonpath='{.items[?(@.status.failed>0)].metadata.name}')
+    if [ -n "$FAILED" ]; then
+        echo "❌ Load test failed: $FAILED"
+        skaffold delete -p load-test
+        exit 1
+    fi
+    echo "✅ Load test passed"
+    # Cleanup
+    skaffold delete -p load-test
+
 # Start development mode with hot-reload and port-forwarding
 dev: setup
     skaffold dev --port-forward
@@ -79,14 +120,8 @@ ci-lint:
     golangci-lint run ./...
 
 # Run tests
-ci-test ns="":
-    #!/bin/bash
-    set -e
-    if [ -n "{{ns}}" ]; then
-        NAMESPACE={{ns}} go test ./... -v -count=1
-    else
-        go test ./... -v -count=1
-    fi
+ci-test:
+    go test ./... -v -count=1
 
 # Fast binary build for PR verification
 ci-build:

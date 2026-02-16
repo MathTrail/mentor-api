@@ -1,14 +1,20 @@
 name: CI
+
 on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 env:
   NAMESPACE: "pr-${{ github.event.pull_request.number || github.run_id }}"
+  SKAFFOLD_DEFAULT_REPO: k3d-mathtrail-registry:5000
 
 jobs:
   ci:
-    runs-on: [self-hosted, Linux, X64, buildah-ready]
+    runs-on: mathtrail-runners
     steps:
       - uses: actions/checkout@v4
 
@@ -20,10 +26,41 @@ jobs:
         run: just ci-lint
 
       - name: Test
-        run: just ci-test ${{ env.NAMESPACE }}
+        run: just ci-test
 
-      - name: Build
-        run: just ci-build
+      - name: Build k6 test bundle
+        run: |
+          mkdir -p tests/load/dist
+          esbuild tests/load/scripts/main.js \
+            --bundle \
+            --format=esm \
+            --external:k6 \
+            --external:'k6/*' \
+            --outfile=tests/load/dist/bundle.js
+
+      - name: Deploy service to PR namespace
+        run: |
+          just setup
+          skaffold run --namespace=${{ env.NAMESPACE }} --status-check=true
+
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Run k6 load test
+        uses: grafana/run-k6-action@v1
+        with:
+          path: tests/load/dist/bundle.js
+          flags: --out json=summary.json
+        env:
+          BASE_URL: http://mentor-api.${{ env.NAMESPACE }}.svc.cluster.local:8080
+
+      - name: Upload performance baseline (main branch)
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-performance-baseline
+          path: summary.json
+          retention-days: 90
 
       - name: Cleanup namespace
         if: always() && github.event_name == 'pull_request'
