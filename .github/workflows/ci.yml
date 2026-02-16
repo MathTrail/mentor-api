@@ -13,7 +13,7 @@ env:
 
 jobs:
   ci:
-    runs-on: [self-hosted, Linux, X64, buildah-ready]
+    runs-on: mathtrail-runners
     steps:
       - uses: actions/checkout@v4
 

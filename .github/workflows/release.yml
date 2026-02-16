@@ -14,7 +14,7 @@ jobs:
   # It also runs on the Main branch after a merge to catch potential "logic conflicts"
   # between independently tested PRs and to guarantee the integrity of the release state.
   test:
-    runs-on: [self-hosted, Linux, X64, buildah-ready]
+    runs-on: mathtrail-runners
     steps:
       - uses: actions/checkout@v4
 
@@ -45,7 +45,7 @@ jobs:
   release:
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, X64, buildah-ready]
+    runs-on: mathtrail-runners
     steps:
       - uses: actions/checkout@v4
 
