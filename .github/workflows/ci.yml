@@ -26,10 +26,7 @@ jobs:
         run: just ci-lint
 
       - name: Test
-        run: just ci-test ${{ env.NAMESPACE }}
-
-      - name: Build
-        run: just ci-build
+        run: just ci-test
 
       - name: Build k6 test bundle
         run: |

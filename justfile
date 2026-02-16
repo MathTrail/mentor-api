@@ -120,14 +120,8 @@ ci-lint:
     golangci-lint run ./...
 
 # Run tests
-ci-test ns="":
-    #!/bin/bash
-    set -e
-    if [ -n "{{ns}}" ]; then
-        NAMESPACE={{ns}} go test ./... -v -count=1
-    else
-        go test ./... -v -count=1
-    fi
+ci-test:
+    go test ./... -v -count=1
 
 # Fast binary build for PR verification
 ci-build:
