@@ -38,7 +38,7 @@ jobs:
             --external:'k6/*' \
             --outfile=tests/load/dist/bundle.js
 
-      - name: Deploy service to PR namespace
+      - name: Deploy service to PR namespace 1
         run: |
           skaffold run --namespace=${{ env.NAMESPACE }} --status-check=true
 
