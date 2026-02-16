@@ -26,9 +26,10 @@ jobs:
         run: just ci-lint
 
       - name: Run Tests
-        run: just ci-test ${{ env.NAMESPACE }}
+        run: just ci-test
 
       - name: Functional Tests
+        if: github.event_name == 'pull_request'
         run: TEST_NAMESPACE=${{ env.TEST_NAMESPACE }} just test-functional
 
       - name: Cleanup ephemeral namespace
@@ -36,7 +37,7 @@ jobs:
         run: just ci-cleanup ${{ env.NAMESPACE }}
 
       - name: Cleanup functional test namespace
-        if: always()
+        if: always() && github.event_name == 'pull_request'
         run: kubectl delete namespace ${{ env.TEST_NAMESPACE }} --wait=false
 
   # JOB 2: Artifact Production and Delivery
