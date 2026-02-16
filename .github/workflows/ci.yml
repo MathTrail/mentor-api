@@ -10,7 +10,7 @@ permissions:
 
 env:
   NAMESPACE: "pr-${{ github.event.pull_request.number || github.run_id }}"
-  SKAFFOLD_DEFAULT_REPO: k3d-mathtrail-registry.localhost:5050
+  SKAFFOLD_DEFAULT_REPO: k3d-mathtrail-registry:5000
 
 jobs:
   ci:
@@ -38,7 +38,7 @@ jobs:
             --external:'k6/*' \
             --outfile=tests/load/dist/bundle.js
 
-      - name: Deploy service to PR namespace 1
+      - name: Deploy service to PR namespace
         run: |
           skaffold run --namespace=${{ env.NAMESPACE }} --status-check=true
 
