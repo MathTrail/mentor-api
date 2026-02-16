@@ -40,6 +40,14 @@ jobs:
             --external:'k6/*' \
             --outfile=tests/load/dist/bundle.js
 
+      - name: Setup port-forward to service
+        run: |
+          kubectl port-forward -n ${{ env.NAMESPACE }} svc/mentor-api 8080:8080 &
+          echo $! > /tmp/port-forward.pid
+          sleep 3
+          # Verify port-forward is working
+          curl -s http://localhost:8080/health/ready || echo "⚠️  Service not ready yet"
+
       - name: Setup k6
         uses: grafana/setup-k6-action@v1
 
@@ -49,7 +57,15 @@ jobs:
           path: tests/load/dist/bundle.js
           flags: --out json=summary.json
         env:
-          BASE_URL: http://mentor-api.${{ env.NAMESPACE }}.svc.cluster.local:8080
+          BASE_URL: http://localhost:8080
+
+      - name: Stop port-forward
+        if: always()
+        run: |
+          if [ -f /tmp/port-forward.pid ]; then
+            kill $(cat /tmp/port-forward.pid) 2>/dev/null || true
+            rm /tmp/port-forward.pid
+          fi
 
       - name: Upload performance baseline (main branch)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
