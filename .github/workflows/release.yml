@@ -7,16 +7,13 @@ env:
   REGISTRY: "k3d-mathtrail-registry:5000"
 
 jobs:
-  # JOB 1: Quick re-validation before release
-  # Full testing (lint, unit tests, deploy, k6 load tests) already ran in CI on the PR.
-  # This catches potential "logic conflicts" between independently tested PRs.
+  # JOB 1: Post-merge validation
+  # Runs unit tests to catch logic conflicts between independently merged PRs.
+  # Full CI (lint, deploy, k6 load tests) already passed on each PR.
   test:
     runs-on: mathtrail-runners
     steps:
       - uses: actions/checkout@v4
-
-      - name: Lint
-        run: just ci-lint
 
       - name: Run Tests
         run: just ci-test
