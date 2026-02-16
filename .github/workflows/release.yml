@@ -49,4 +49,4 @@ jobs:
       - name: Release Helm Chart to OCI
         run: |
           # Push the chart to the same OCI registry
-          just release-chart-oci "${{ env.REGISTRY }}/charts"
+          just release-chart-oci "oci://${{ env.REGISTRY }}/charts"
