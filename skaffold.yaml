@@ -58,8 +58,10 @@ profiles:
       - op: replace
         path: /build/artifacts
         value: []
-      - op: remove
+      - op: replace
         path: /deploy
+        value:
+          kubectl: {}
 
   - name: load-test
     patches:
