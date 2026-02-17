@@ -1,7 +1,37 @@
 # Dev overlay: K3s local development
 
+configMap:
+  enabled: true
+  data:
+    SERVER_PORT: "8080"
+    LOG_LEVEL: "info"
+    DB_HOST: "postgres-postgresql"
+    DB_PORT: "5432"
+    DB_USER: "postgres"
+    DB_NAME: "mentor"
+    DB_SSL_MODE: "disable"
+
 env:
-  - name: SERVER_PORT
-    value: "8080"
-  - name: LOG_LEVEL
-    value: "info"
+  - name: DB_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: postgres-postgresql
+        key: postgres-password
+
+migration:
+  env:
+    - name: DB_HOST
+      value: "postgres-postgresql"
+    - name: DB_PORT
+      value: "5432"
+    - name: DB_USER
+      value: "postgres"
+    - name: DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: postgres-postgresql
+          key: postgres-password
+    - name: DB_NAME
+      value: "mentor"
+    - name: DB_SSL_MODE
+      value: "disable"

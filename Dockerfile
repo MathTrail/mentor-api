@@ -9,8 +9,10 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /migrate ./cmd/migrate
 
 FROM alpine:3.21
 RUN apk add --no-cache ca-certificates tzdata
+RUN adduser -D -u 10001 appuser
 COPY --from=builder /app /app
 COPY --from=builder /migrate /migrate
 COPY migrations/ /migrations/
+USER 10001
 EXPOSE 8080
 ENTRYPOINT ["/app"]

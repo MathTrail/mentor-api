@@ -1,0 +1,26 @@
+# Build artifacts
+bin/
+
+# Git
+.git/
+.gitignore
+
+# IDE / DevContainer
+.devcontainer/
+.vscode/
+.claude/
+*.md
+
+# Infrastructure (not needed for Go build)
+infra/
+skaffold.yaml
+justfile
+
+# Tests and docs
+tests/
+docs/
+k6/
+
+# Docker
+Dockerfile
+.dockerignore

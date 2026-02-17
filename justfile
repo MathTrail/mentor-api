@@ -25,7 +25,7 @@ build-push-image tag=env("IMAGE", ""):
         echo "Error: no image tag provided (set \$IMAGE or pass as argument)" >&2
         exit 1
     fi
-    if [ "${CI:-}" = "true" ] || command -v buildctl &>/dev/null; then
+    if [ "${CI:-}" = "true" ] || buildctl debug workers &>/dev/null; then
         echo "🔨 Building with BuildKit..."
         buildctl build \
             --frontend=dockerfile.v0 \
@@ -36,8 +36,8 @@ build-push-image tag=env("IMAGE", ""):
             --import-cache type=registry,ref="$TAG"
     else
         echo "🔨 Building with Buildah..."
-        buildah bud --tag "$TAG" .
-        buildah push --tls-verify=false "$TAG"
+        buildah bud --log-level=error --tag "$TAG" .
+        buildah push --log-level=error --tls-verify=false "$TAG"
     fi
 
 # -- Development ---------------------------------------------------------------

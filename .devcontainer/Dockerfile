@@ -30,6 +30,10 @@ ARG ESBUILD_VERSION=0.27.3
 RUN curl -fsSL "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-${ESBUILD_VERSION}.tgz" \
     | tar xz --strip-components=2 -C /usr/local/bin package/bin/esbuild
 
+# Install swag (Swagger doc generator for Go)
+ARG SWAG_VERSION=v2.0.0-rc5
+RUN GOBIN=/usr/local/bin go install github.com/swaggo/swag/v2/cmd/swag@${SWAG_VERSION}
+
 # Pre-configure buildah to trust the k3d registry and resolve short image names
 ARG K3D_REGISTRY=k3d-mathtrail-registry.localhost:5050
 RUN mkdir -p /etc/containers/registries.conf.d && \
