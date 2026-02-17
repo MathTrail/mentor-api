@@ -47,6 +47,10 @@ setup:
     helm repo add mathtrail-charts https://MathTrail.github.io/charts/charts 2>/dev/null || true
     helm repo update
 
+# Deploy service dependencies (PostgreSQL)
+dependencies:
+    skaffold run -p dependencies --status-check=true
+
 # Build the Go binary
 build:
     go build -o bin/server ./cmd/server

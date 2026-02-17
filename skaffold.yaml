@@ -44,6 +44,18 @@ portForward:
     localPort: 8080
 
 profiles:
+  - name: dependencies
+    patches:
+      - op: add
+        path: /requires
+        value:
+          - git:
+              repo: https://github.com/MathTrail/infra-local
+              path: skaffold.yaml
+              ref: main # todo: use commit sha or tag for better reproducibility
+            activeProfiles:
+              - postgres
+
   - name: load-test
     patches:
       - op: replace

@@ -28,6 +28,9 @@ jobs:
       - name: Test
         run: just ci-test
 
+      - name: Deploy dependencies
+        run: just dependencies
+
       - name: Deploy service to PR namespace
         run: |
           just setup
