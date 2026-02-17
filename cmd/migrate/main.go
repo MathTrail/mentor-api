@@ -10,8 +10,6 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/MathTrail/mentor-api/internal/config"
-	"github.com/MathTrail/mentor-api/internal/database"
-	"github.com/MathTrail/mentor-api/internal/feedback"
 	"github.com/MathTrail/mentor-api/internal/logging"
 	"go.uber.org/zap"
 )
@@ -26,30 +24,21 @@ func main() {
 	// Ensure the target database exists
 	ensureDatabase(cfg, logger)
 
-	// Connect to database
-	db := database.NewConnection(cfg, logger)
-
-	// Get underlying sql.DB for raw queries
-	sqlDB, err := db.DB()
-	if err != nil {
-		logger.Fatal("failed to get sql.DB", zap.Error(err))
-	}
-
-	// Run SQL migrations (extensions, custom types, etc.)
-	runSQLMigrations(sqlDB, logger)
-
-	// Run GORM AutoMigrate (tables, columns, indexes)
-	logger.Info("running auto-migrate")
-	if err := db.AutoMigrate(&feedback.Feedback{}); err != nil {
-		logger.Fatal("auto-migrate failed", zap.Error(err))
-	}
+	// Run SQL migrations (extensions, custom types, tables)
+	runSQLMigrations(cfg.DSN(), logger)
 
 	logger.Info("all migrations completed successfully")
 	fmt.Println("✓ Database migrations completed successfully")
 }
 
 // runSQLMigrations executes all .sql files from the migrations directory.
-func runSQLMigrations(sqlDB *sql.DB, logger *zap.Logger) {
+func runSQLMigrations(dsn string, logger *zap.Logger) {
+	sqlDB, err := sql.Open("pgx", dsn)
+	if err != nil {
+		logger.Fatal("failed to open sql connection for migrations", zap.Error(err))
+	}
+	defer func() { _ = sqlDB.Close() }()
+
 	migrationsDir := "/migrations"
 	if _, err := os.Stat(migrationsDir); os.IsNotExist(err) {
 		migrationsDir = "./migrations"

@@ -1,29 +1,29 @@
 package app
 
 import (
+	"context"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/MathTrail/mentor-api/internal/clients"
 	"github.com/MathTrail/mentor-api/internal/config"
 	"github.com/MathTrail/mentor-api/internal/database"
 	"github.com/MathTrail/mentor-api/internal/feedback"
 	"github.com/MathTrail/mentor-api/internal/logging"
 	"github.com/MathTrail/mentor-api/internal/server"
-	"github.com/MathTrail/mentor-api/internal/strategy"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 // Container holds all application dependencies
 type Container struct {
 	Config *config.Config
 	Logger *zap.Logger
-	DB     *gorm.DB
+	Pool   *pgxpool.Pool
 
 	// Clients
-	ProfileClient clients.ProfileClient
-	LLMClient     clients.LLMClient
+	LLMClient clients.LLMClient
 
 	// Components
-	Analyzer           *strategy.Analyzer
 	FeedbackRepository feedback.Repository
 	FeedbackService    feedback.Service
 	FeedbackController *feedback.Controller
@@ -34,6 +34,8 @@ type Container struct {
 
 // NewContainer creates and wires all application dependencies
 func NewContainer() *Container {
+	ctx := context.Background()
+
 	// Load configuration
 	cfg := config.Load()
 
@@ -41,30 +43,24 @@ func NewContainer() *Container {
 	logger := logging.NewLogger(cfg.LogLevel)
 
 	// Connect to database
-	db := database.NewConnection(cfg, logger)
+	pool := database.NewPool(ctx, cfg, logger)
 
-	// Initialize mock clients (will be replaced with real implementations later)
-	profileClient := clients.NewMockProfileClient()
+	// Initialize LLM client (mock for now, will be replaced with real implementation)
 	llmClient := clients.NewMockLLMClient()
 
-	// Initialize strategy analyzer
-	analyzer := strategy.NewAnalyzer()
-
 	// Initialize feedback components
-	feedbackRepo := feedback.NewRepository(db)
-	feedbackService := feedback.NewService(feedbackRepo, profileClient, analyzer, logger)
+	feedbackRepo := feedback.NewRepository(pool)
+	feedbackService := feedback.NewService(feedbackRepo, llmClient, logger)
 	feedbackController := feedback.NewController(feedbackService, logger)
 
 	// Create router
-	router := server.NewRouter(feedbackController, db, logger)
+	router := server.NewRouter(feedbackController, pool, logger)
 
 	return &Container{
 		Config:             cfg,
 		Logger:             logger,
-		DB:                 db,
-		ProfileClient:      profileClient,
+		Pool:               pool,
 		LLMClient:          llmClient,
-		Analyzer:           analyzer,
 		FeedbackRepository: feedbackRepo,
 		FeedbackService:    feedbackService,
 		FeedbackController: feedbackController,
@@ -76,7 +72,7 @@ func NewContainer() *Container {
 func (c *Container) Ready() bool {
 	return c.Config != nil &&
 		c.Logger != nil &&
-		c.DB != nil &&
+		c.Pool != nil &&
 		c.FeedbackRepository != nil &&
 		c.FeedbackService != nil &&
 		c.FeedbackController != nil &&

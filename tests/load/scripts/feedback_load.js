@@ -18,47 +18,33 @@ export const options = {
   },
 };
 
-const feedbackMessages = {
-  en: {
-    hard: [
-      'This is too hard',
-      'Very difficult problem',
-      'I can\'t solve this',
-      'Too challenging for me',
-      'This is confusing',
-    ],
-    easy: [
-      'This is too easy',
-      'Very simple task',
-      'Boring, need harder problems',
-      'Trivial exercise',
-      'Super easy',
-    ],
-    neutral: [
-      'I completed the task',
-      'Thank you',
-      'Interesting problem',
-      'Good exercise',
-      'Nice task',
-    ],
-  },
-};
+const feedbackMessages = [
+  'This is too hard',
+  'Very difficult problem',
+  "I can't solve this",
+  'Too challenging for me',
+  'This is confusing',
+  'This is too easy',
+  'Very simple task',
+  'Boring, need harder problems',
+  'Trivial exercise',
+  'Super easy',
+  'I completed the task',
+  'Thank you',
+  'Interesting problem',
+  'Good exercise',
+  'Nice task',
+];
 
 function randomElement(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
 function generateFeedback() {
-  const language = 'en';
-  const sentiments = ['hard', 'easy', 'neutral'];
-  const sentiment = randomElement(sentiments);
-  const message = randomElement(feedbackMessages[language][sentiment]);
-
   return {
     student_id: uuidv4(),
     task_id: `task-${Math.floor(Math.random() * 1000)}`,
-    message: message,
-    language: language,
+    message: randomElement(feedbackMessages),
   };
 }
 

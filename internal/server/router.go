@@ -3,14 +3,15 @@ package server
 import (
 	"net/http"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/MathTrail/mentor-api/internal/feedback"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 // NewRouter creates and configures the Gin router with all routes and middleware
-func NewRouter(feedbackController *feedback.Controller, db *gorm.DB, logger *zap.Logger) *gin.Engine {
+func NewRouter(feedbackController *feedback.Controller, pool *pgxpool.Pool, logger *zap.Logger) *gin.Engine {
 	// Set Gin to release mode (disable debug logs)
 	gin.SetMode(gin.ReleaseMode)
 
@@ -24,7 +25,7 @@ func NewRouter(feedbackController *feedback.Controller, db *gorm.DB, logger *zap
 	// Health check endpoints (for Kubernetes probes)
 	router.GET("/health/startup", healthStartup)
 	router.GET("/health/liveness", healthLiveness)
-	router.GET("/health/ready", healthReady(db))
+	router.GET("/health/ready", healthReady(pool))
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
@@ -46,14 +47,9 @@ func healthLiveness(c *gin.Context) {
 }
 
 // healthReady verifies that all dependencies are available before reporting ready
-func healthReady(db *gorm.DB) gin.HandlerFunc {
+func healthReady(pool *pgxpool.Pool) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		sqlDB, err := db.DB()
-		if err != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not ready", "reason": "db: " + err.Error()})
-			return
-		}
-		if err := sqlDB.PingContext(c.Request.Context()); err != nil {
+		if err := pool.Ping(c.Request.Context()); err != nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not ready", "reason": "db: " + err.Error()})
 			return
 		}

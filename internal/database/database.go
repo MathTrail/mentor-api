@@ -1,39 +1,47 @@
 package database
 
 import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 
 	"github.com/MathTrail/mentor-api/internal/config"
-	"github.com/MathTrail/mentor-api/internal/logging"
 )
 
-// NewConnection opens a GORM PostgreSQL connection using the provided config.
-// SQL queries are logged through the zap-based GORM logger.
-func NewConnection(cfg *config.Config, logger *zap.Logger) *gorm.DB {
-	gormLogger := logging.NewGormLogger(logger)
+// NewPool creates a pgx connection pool using the provided config.
+func NewPool(ctx context.Context, cfg *config.Config, logger *zap.Logger) *pgxpool.Pool {
+	connStr := fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBSSLMode,
+	)
 
-	db, err := gorm.Open(postgres.Open(cfg.DSN()), &gorm.Config{
-		Logger: gormLogger,
-	})
+	poolCfg, err := pgxpool.ParseConfig(connStr)
 	if err != nil {
-		logger.Fatal("failed to connect to database", zap.Error(err))
+		logger.Fatal("failed to parse database config", zap.Error(err))
 	}
 
-	sqlDB, err := db.DB()
+	poolCfg.MaxConns = 25
+	poolCfg.MinConns = 5
+	poolCfg.MaxConnLifetime = 30 * time.Minute
+	poolCfg.MaxConnIdleTime = 5 * time.Minute
+
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
-		logger.Fatal("failed to get underlying sql.DB", zap.Error(err))
+		logger.Fatal("failed to create connection pool", zap.Error(err))
 	}
 
-	sqlDB.SetMaxOpenConns(25)
-	sqlDB.SetMaxIdleConns(5)
+	if err := pool.Ping(ctx); err != nil {
+		logger.Fatal("failed to ping database", zap.Error(err))
+	}
 
-	logger.Info("database connection established",
+	logger.Info("database connection pool established",
 		zap.String("host", cfg.DBHost),
 		zap.String("port", cfg.DBPort),
 		zap.String("dbname", cfg.DBName),
 	)
 
-	return db
+	return pool
 }

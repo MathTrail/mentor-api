@@ -1,19 +1,18 @@
 # mentor-api
 
-Student Feedback Loop service for the MathTrail platform. Receives student feedback about task difficulty, analyzes it using rule-based keyword matching, and stores it in PostgreSQL for analytics.
+Student Feedback Loop service for the MathTrail platform. Receives student feedback about task difficulty, delegates analysis to an LLM, and stores the resulting strategy in PostgreSQL.
 
 ## Mission & Responsibilities
 
-- **Receive student feedback** about task difficulty (too easy, too hard, neutral)
-- **Analyze feedback** using rule-based keyword matching (English/Russian)
+- **Receive student feedback** about task difficulty
+- **Analyse feedback via LLM** (mock stub now, real integration planned)
 - **Store feedback history** in PostgreSQL with JSONB strategy snapshots
-- **Support future AI/LLM analysis** with rich historical data
 - **Event publishing** via Debezium CDC (monitoring feedback table)
 
 ## Architecture
 
 ```
-Student → POST /v1/feedback → FeedbackService → Rule-based Analyzer
+Student → POST /v1/feedback → FeedbackService → LLMClient (stub)
                                ↓
                            PostgreSQL (feedback table with strategy_snapshot JSONB)
                                ↓
@@ -24,12 +23,12 @@ Student → POST /v1/feedback → FeedbackService → Rule-based Analyzer
 - **No Dapr publisher** - Events are published by Debezium CDC monitoring the PostgreSQL feedback table
 - **JSONB for strategy_snapshot** - Flexible schema for storing strategy state at the time of feedback
 - **PostgreSQL ENUM** - difficulty_level ('easy', 'ok', 'hard')
-- **Rule-based v1** - Keyword matching for sentiment analysis (LLM integration planned for v2)
+- **LLM-first** - All analysis delegated to LLM; currently a mock returning neutral strategy
 
 ## Tech Stack
 
 - **Language**: Go 1.25.7
-- **Framework**: Gin (HTTP), GORM (ORM)
+- **Framework**: Gin (HTTP), pgx (PostgreSQL driver)
 - **Database**: PostgreSQL with JSONB for strategy snapshots
 - **Events**: Debezium CDC (handled externally)
 - **Testing**: Go testing + testify, Grafana k6
@@ -45,8 +44,7 @@ Submit student feedback about task difficulty.
 {
   "student_id": "550e8400-e29b-41d4-a716-446655440000",
   "task_id": "task-123",
-  "message": "This is too hard",
-  "language": "en"  // optional, auto-detected if not provided
+  "message": "This is too hard"
 }
 ```
 
@@ -55,15 +53,13 @@ Submit student feedback about task difficulty.
 {
   "student_id": "550e8400-e29b-41d4-a716-446655440000",
   "task_id": "task-123",
-  "difficulty_adjustment": -0.15,
-  "topic_weights": {"general": 0.85},
-  "sentiment": "hard",
+  "difficulty_adjustment": 0.0,
+  "topic_weights": {"general": 1.0},
+  "sentiment": "neutral",
   "strategy_snapshot": {
-    "difficulty_weight": 0.85,
-    "timestamp": 1708098765,
+    "difficulty_weight": 1.0,
     "feedback_based": true,
-    "language": "en",
-    "sentiment": "hard"
+    "sentiment": "neutral"
   },
   "timestamp": "2026-02-16T10:12:45Z"
 }
@@ -166,7 +162,6 @@ This service does NOT publish events directly. Instead, Debezium monitors the `f
 ### Unit Tests
 ```bash
 just test
-# Output: internal/strategy/analyzer_test.go passed
 ```
 
 ### Load Tests
@@ -185,13 +180,12 @@ GitHub Actions workflow runs on every PR:
 - k6 load test in ephemeral namespace
 - Automatic cleanup
 
-## Future Enhancements (v2)
+## Future Enhancements
 
-1. **LLM Integration**: Replace rule-based analyzer with OpenAI/Claude API for sentiment analysis
-2. **Topic Extraction**: Extract specific math topics (algebra, geometry) from feedback text
+1. **Real LLM Integration**: Connect mock LLM client to OpenAI/Claude API
+2. **Topic Extraction**: LLM identifies specific math topics (algebra, geometry) from feedback
 3. **Real-time Dashboards**: Grafana dashboards for feedback analytics
 4. **Feedback Aggregation**: Weekly/monthly reports on difficulty trends
-5. **Multi-language Support**: Expand beyond English/Russian
 
 ## References
 
