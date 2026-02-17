@@ -2,45 +2,51 @@ package config
 
 import (
 	"fmt"
-	"os"
+
+	"github.com/spf13/viper"
 )
 
 type Config struct {
 	// Server
-	ServerPort string
+	ServerPort string `mapstructure:"SERVER_PORT"`
 
 	// Database
-	DBHost     string
-	DBPort     string
-	DBUser     string
-	DBPassword string
-	DBName     string
-	DBSSLMode  string
+	DBHost     string `mapstructure:"DB_HOST"`
+	DBPort     string `mapstructure:"DB_PORT"`
+	DBUser     string `mapstructure:"DB_USER"`
+	DBPassword string `mapstructure:"DB_PASSWORD"`
+	DBName     string `mapstructure:"DB_NAME"`
+	DBSSLMode  string `mapstructure:"DB_SSL_MODE"`
 
 	// Dapr
-	DaprHost string
-	DaprPort string
+	DaprHost string `mapstructure:"DAPR_HOST"`
+	DaprPort string `mapstructure:"DAPR_PORT"`
 
 	// Logging
-	LogLevel string
+	LogLevel string `mapstructure:"LOG_LEVEL"`
 }
 
 func Load() *Config {
-	return &Config{
-		ServerPort: getEnv("SERVER_PORT", "8080"),
+	v := viper.New()
+	v.AutomaticEnv()
 
-		DBHost:     getEnv("DB_HOST", "postgres-postgresql"),
-		DBPort:     getEnv("DB_PORT", "5432"),
-		DBUser:     getEnv("DB_USER", "postgres"),
-		DBPassword: getEnv("DB_PASSWORD", "postgres"),
-		DBName:     getEnv("DB_NAME", "mentor"),
-		DBSSLMode:  getEnv("DB_SSL_MODE", "disable"),
+	v.SetDefault("SERVER_PORT", "8080")
+	v.SetDefault("DB_HOST", "postgres-postgresql")
+	v.SetDefault("DB_PORT", "5432")
+	v.SetDefault("DB_USER", "postgres")
+	v.SetDefault("DB_PASSWORD", "postgres")
+	v.SetDefault("DB_NAME", "mentor")
+	v.SetDefault("DB_SSL_MODE", "disable")
+	v.SetDefault("DAPR_HOST", "localhost")
+	v.SetDefault("DAPR_PORT", "3500")
+	v.SetDefault("LOG_LEVEL", "info")
 
-		DaprHost: getEnv("DAPR_HOST", "localhost"),
-		DaprPort: getEnv("DAPR_PORT", "3500"),
-
-		LogLevel: getEnv("LOG_LEVEL", "info"),
+	cfg := &Config{}
+	if err := v.Unmarshal(cfg); err != nil {
+		panic(fmt.Sprintf("failed to unmarshal config: %v", err))
 	}
+
+	return cfg
 }
 
 func (c *Config) DSN() string {
@@ -48,11 +54,4 @@ func (c *Config) DSN() string {
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		c.DBHost, c.DBPort, c.DBUser, c.DBPassword, c.DBName, c.DBSSLMode,
 	)
-}
-
-func getEnv(key, defaultValue string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-	return defaultValue
 }
