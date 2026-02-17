@@ -96,7 +96,7 @@ func ensureDatabase(cfg *config.Config, logger *zap.Logger) {
 	if err != nil {
 		logger.Fatal("failed to connect to admin database", zap.Error(err))
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	var exists bool
 	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)", cfg.DBName).Scan(&exists)
