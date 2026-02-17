@@ -10,7 +10,7 @@ Port: 8080
 Infra: infra/helm/mentor-api/
 
 # Communication Map
-Dapr App ID: mathtrail-mentor
+Dapr App ID: mentor-api
 Inbound:
   - REST API: POST /api/v1/feedback (submit student feedback)
   - Health probes: /health/startup, /health/liveness, /health/ready
