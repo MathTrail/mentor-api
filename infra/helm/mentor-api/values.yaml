@@ -1,3 +1,5 @@
+replicaCount: 1
+
 image:
   repository: mentor-api
   tag: latest
@@ -7,7 +9,7 @@ service:
 
 dapr:
   enabled: true
-  appId: "mentor-api"
+  appId: "mathtrail-mentor"
 
 resources:
   requests:
@@ -16,6 +18,11 @@ resources:
   limits:
     cpu: "500m"
     memory: "512Mi"
+
+migration:
+  enabled: true
+  command: ["/migrate"]
+  waitTimeout: "120s"
 
 externalSecrets:
   enabled: false

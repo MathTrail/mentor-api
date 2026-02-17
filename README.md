@@ -1,48 +1,201 @@
 # mentor-api
-AI strategist that analyzes student profiles and determines optimal learning paths — a stateless analyst that instructs other services.
+
+Student Feedback Loop service for the MathTrail platform. Receives student feedback about task difficulty, analyzes it using rule-based keyword matching, and stores it in PostgreSQL for analytics.
 
 ## Mission & Responsibilities
-- Analyze student profile data to identify skill gaps
-- Generate Learning Strategy (topic weights, difficulty curve)
-- Respond to student requests ("more logic", "harder problems")
-- Pass generation parameters to Task Service (type, difficulty, topic)
-- Stateless: reads from Profile, writes instructions to Task
 
-## Tech Stack
-- **Language**: Go 1.25.7
-- **Framework**: stdlib net/http
-- **AI**: Rule-based engine (v1), LLM integration (v2)
-- **Events**: Dapr pub/sub over Kafka
+- **Receive student feedback** about task difficulty (too easy, too hard, neutral)
+- **Analyze feedback** using rule-based keyword matching (English/Russian)
+- **Store feedback history** in PostgreSQL with JSONB strategy snapshots
+- **Support future AI/LLM analysis** with rich historical data
+- **Event publishing** via Debezium CDC (monitoring feedback table)
 
 ## Architecture
-Mentor is a **stateless analyst** — it does NOT store data. It reads from Profile Service and publishes instructions for Task Service:
+
 ```
-Profile → [data] → Mentor → [strategy] → Task
+Student → POST /v1/feedback → FeedbackService → Rule-based Analyzer
+                               ↓
+                           PostgreSQL (feedback table with strategy_snapshot JSONB)
+                               ↓
+                           Debezium CDC → Kafka → mentor.strategy.updated event
 ```
 
-## API & Communication (Dapr)
-- **Inbound**: REST API (POST /strategy/generate), Dapr service invocation from UI
-- **Outbound**: Dapr invoke → mathtrail-profile (GET profile data)
-- **Publishes**: `mentor.strategy.updated` (parameters for Task Service)
-- **Subscribes**: `task.attempt.completed` (trigger re-evaluation)
+**Key Design Decisions:**
+- **No Dapr publisher** - Events are published by Debezium CDC monitoring the PostgreSQL feedback table
+- **JSONB for strategy_snapshot** - Flexible schema for storing strategy state at the time of feedback
+- **PostgreSQL ENUM** - difficulty_level ('easy', 'ok', 'hard')
+- **Rule-based v1** - Keyword matching for sentiment analysis (LLM integration planned for v2)
 
-## Data Persistence
-- **None** — stateless service. All state lives in Profile Service.
+## Tech Stack
 
-## Secrets
-- None required (reads only public profile data via Dapr)
+- **Language**: Go 1.25.7
+- **Framework**: Gin (HTTP), GORM (ORM)
+- **Database**: PostgreSQL with JSONB for strategy snapshots
+- **Events**: Debezium CDC (handled externally)
+- **Testing**: Go testing + testify, Grafana k6
+- **Infrastructure**: Docker, Helm (mathtrail-service-lib), Skaffold
 
-## Infrastructure
-Standard `infra/` layout:
-- `infra/helm/` — Helm chart + environment overlays (dev, on-prem, cloud)
-- `infra/terraform/` — Environment scaffolds (stateless — no DB)
-- `infra/ansible/` — On-prem node preparation
+## API Endpoints
+
+### POST /api/v1/feedback
+Submit student feedback about task difficulty.
+
+**Request:**
+```json
+{
+  "student_id": "550e8400-e29b-41d4-a716-446655440000",
+  "task_id": "task-123",
+  "message": "This is too hard",
+  "language": "en"  // optional, auto-detected if not provided
+}
+```
+
+**Response:**
+```json
+{
+  "student_id": "550e8400-e29b-41d4-a716-446655440000",
+  "task_id": "task-123",
+  "difficulty_adjustment": -0.15,
+  "topic_weights": {"general": 0.85},
+  "sentiment": "hard",
+  "strategy_snapshot": {
+    "difficulty_weight": 0.85,
+    "timestamp": 1708098765,
+    "feedback_based": true,
+    "language": "en",
+    "sentiment": "hard"
+  },
+  "timestamp": "2026-02-16T10:12:45Z"
+}
+```
+
+### GET /health/startup, /health/liveness, /health/ready
+Kubernetes health probes.
+
+## Database Schema
+
+```sql
+CREATE TYPE difficulty_level AS ENUM ('easy', 'ok', 'hard');
+
+CREATE TABLE feedback (
+    id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id           UUID NOT NULL,
+    message              TEXT,
+    perceived_difficulty difficulty_level NOT NULL,
+    strategy_snapshot    JSONB NOT NULL,
+    created_at           TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_feedback_student_id ON feedback(student_id);
+CREATE INDEX idx_feedback_created_at ON feedback(created_at DESC);
+CREATE INDEX idx_feedback_strategy_snapshot ON feedback USING GIN (strategy_snapshot);
+```
 
 ## Development
-- `just dev` — Skaffold dev loop
-- `just test` — Go unit tests
 
-## Roadmap
-1. Implement rule-based Learning Strategy engine (topic weights + difficulty mapping)
-2. Build Dapr service invocation client for Profile reads
-3. Add pub/sub publisher for `mentor.strategy.updated` events
+### Prerequisites
+- k3d cluster running (see `infra-local-k3s` repo)
+- DevContainer (VS Code) or Go 1.25.7 + dependencies installed locally
+
+### Quick Start
+
+```bash
+# Start development mode (hot-reload + port-forward)
+just dev
+
+# Build binary
+just build
+
+# Run tests
+just test
+
+# Run k6 load test
+just k6-load
+
+# Generate Swagger docs
+just swagger
+```
+
+### DevContainer
+The repository includes a fully configured DevContainer with Go, Docker, kubectl, Helm, Skaffold, Telepresence, and all necessary tools.
+
+```bash
+# Open in VS Code
+code .
+# Command Palette → "Dev Containers: Reopen in Container"
+```
+
+## Deployment
+
+### Local k3d Cluster
+
+```bash
+# Deploy to local k3d
+just deploy
+
+# View logs
+just logs
+
+# Check status
+just status
+
+# Access locally
+just test-endpoints
+```
+
+### Production
+Helm chart is available at `infra/helm/mentor-api` with environment-specific values overlays.
+
+## Event Publishing (Debezium CDC)
+
+This service does NOT publish events directly. Instead, Debezium monitors the `feedback` table and automatically publishes change events to Kafka:
+
+- **Table:** `feedback`
+- **Topic:** `mentor.feedback`
+- **Event Type:** `mentor.strategy.updated`
+- **Payload:** Full feedback row including JSONB strategy_snapshot
+
+**Why Debezium?**
+- Guaranteed delivery (no missed events)
+- Transactional consistency (event published only if DB commit succeeds)
+- No application code needed for event publishing
+- Automatic schema evolution support
+
+## Testing
+
+### Unit Tests
+```bash
+just test
+# Output: internal/strategy/analyzer_test.go passed
+```
+
+### Load Tests
+```bash
+# Local
+BASE_URL=http://localhost:8080 just k6-load
+
+# In cluster
+just load-test
+```
+
+### CI/CD
+GitHub Actions workflow runs on every PR:
+- Lint (golangci-lint)
+- Unit tests
+- k6 load test in ephemeral namespace
+- Automatic cleanup
+
+## Future Enhancements (v2)
+
+1. **LLM Integration**: Replace rule-based analyzer with OpenAI/Claude API for sentiment analysis
+2. **Topic Extraction**: Extract specific math topics (algebra, geometry) from feedback text
+3. **Real-time Dashboards**: Grafana dashboards for feedback analytics
+4. **Feedback Aggregation**: Weekly/monthly reports on difficulty trends
+5. **Multi-language Support**: Expand beyond English/Russian
+
+## References
+
+- **Architecture Docs**: `../core/docs/architecture/feedback-loop.md`
+- **Library Chart**: `mathtrail-charts/charts/mathtrail-service-lib`
+- **Profile Service**: `../profile-api` (similar patterns)
+- **Debezium Docs**: https://debezium.io/documentation/

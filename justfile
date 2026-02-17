@@ -55,6 +55,14 @@ build:
 test:
     go test ./... -v
 
+# Generate Swagger documentation
+swagger:
+    swag init -g cmd/server/main.go
+
+# Run k6 load test locally
+k6-load:
+    k6 run k6/load/feedback_load.js
+
 # Run load tests: bundle scripts with esbuild, deploy k6-test-runner chart
 load-test:
     #!/bin/bash
@@ -125,7 +133,7 @@ ci-test:
 
 # Fast binary build for PR verification
 ci-build:
-    go build -o bin/server ./cmd/main.go
+    go build -o bin/server ./cmd/server
 
 # Create an ephemeral namespace for a PR
 ci-prepare ns:

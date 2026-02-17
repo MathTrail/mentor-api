@@ -28,16 +28,6 @@ jobs:
       - name: Test
         run: just ci-test
 
-      - name: Build k6 test bundle
-        run: |
-          mkdir -p tests/load/dist
-          esbuild tests/load/scripts/main.js \
-            --bundle \
-            --format=esm \
-            --external:k6 \
-            --external:'k6/*' \
-            --outfile=tests/load/dist/bundle.js
-
       - name: Deploy service to PR namespace
         run: |
           just setup
@@ -49,7 +39,7 @@ jobs:
       - name: Run k6 load test
         uses: grafana/run-k6-action@v1
         with:
-          path: tests/load/dist/bundle.js
+          path: k6/load/feedback_load.js
           flags: --out json=summary.json
         env:
           BASE_URL: http://mentor-api.${{ env.NAMESPACE }}.svc.cluster.local:8080
