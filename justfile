@@ -61,7 +61,7 @@ swagger:
 
 # Run k6 load test locally
 k6-load:
-    k6 run k6/load/feedback_load.js
+    k6 run tests/load/scripts/main.js
 
 # Run load tests: bundle scripts with esbuild, deploy k6-test-runner chart
 load-test:

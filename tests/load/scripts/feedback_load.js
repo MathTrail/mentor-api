@@ -1,6 +1,7 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate } from 'k6/metrics';
+import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 const errorRate = new Rate('errors');
@@ -16,14 +17,6 @@ export const options = {
     errors: ['rate<0.1'],              // Error rate should be below 10%
   },
 };
-
-const studentIDs = [
-  '550e8400-e29b-41d4-a716-446655440000',
-  '550e8400-e29b-41d4-a716-446655440001',
-  '550e8400-e29b-41d4-a716-446655440002',
-  '550e8400-e29b-41d4-a716-446655440003',
-  '550e8400-e29b-41d4-a716-446655440004',
-];
 
 const feedbackMessages = {
   en: {
@@ -62,7 +55,7 @@ function generateFeedback() {
   const message = randomElement(feedbackMessages[language][sentiment]);
 
   return {
-    student_id: randomElement(studentIDs),
+    student_id: uuidv4(),
     task_id: `task-${Math.floor(Math.random() * 1000)}`,
     message: message,
     language: language,
