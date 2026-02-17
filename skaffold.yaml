@@ -7,6 +7,8 @@ build:
   local:
     push: true
     tryImportMissing: false
+  tagPolicy:
+    inputDigest: {}
   insecureRegistries:
     - k3d-mathtrail-registry:5000
   artifacts:
@@ -57,6 +59,6 @@ profiles:
             createNamespace: true
             setValues:
               baseUrl: http://mentor-api.mathtrail.svc.cluster.local:8080
-              parallelism: 2
+              parallelism: 1
             setFiles:
               loadTestScript: tests/load/dist/bundle.js

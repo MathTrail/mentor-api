@@ -1,6 +1,7 @@
 package server
 
 import (
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -40,8 +41,14 @@ func ZapLogger(logger *zap.Logger) gin.HandlerFunc {
 
 		c.Next()
 
-		latency := time.Since(start)
 		status := c.Writer.Status()
+
+		// Skip logging for successful health probes and Dapr sidecar calls.
+		if status < 400 && isInternalPath(path) {
+			return
+		}
+
+		latency := time.Since(start)
 
 		fields := []zap.Field{
 			zap.Int("status", status),
@@ -83,4 +90,17 @@ func ZapRecovery(logger *zap.Logger) gin.HandlerFunc {
 		)
 		c.AbortWithStatus(500)
 	})
+}
+
+// internalPrefixes lists path prefixes that are only logged on errors.
+var internalPrefixes = []string{"/health/", "/dapr/"}
+
+// isInternalPath reports whether the path matches a probe or sidecar prefix.
+func isInternalPath(path string) bool {
+	for _, p := range internalPrefixes {
+		if strings.HasPrefix(path, p) {
+			return true
+		}
+	}
+	return false
 }

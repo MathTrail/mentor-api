@@ -1,13 +1,17 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
+
 	"github.com/MathTrail/mentor-api/internal/config"
 	"github.com/MathTrail/mentor-api/internal/database"
+	"github.com/MathTrail/mentor-api/internal/feedback"
 	"github.com/MathTrail/mentor-api/internal/logging"
 	"go.uber.org/zap"
 )
@@ -19,6 +23,9 @@ func main() {
 	// Load configuration
 	cfg := config.Load()
 
+	// Ensure the target database exists
+	ensureDatabase(cfg, logger)
+
 	// Connect to database
 	db := database.NewConnection(cfg, logger)
 
@@ -28,7 +35,21 @@ func main() {
 		logger.Fatal("failed to get sql.DB", zap.Error(err))
 	}
 
-	// Read migration files
+	// Run SQL migrations (extensions, custom types, etc.)
+	runSQLMigrations(sqlDB, logger)
+
+	// Run GORM AutoMigrate (tables, columns, indexes)
+	logger.Info("running auto-migrate")
+	if err := db.AutoMigrate(&feedback.Feedback{}); err != nil {
+		logger.Fatal("auto-migrate failed", zap.Error(err))
+	}
+
+	logger.Info("all migrations completed successfully")
+	fmt.Println("✓ Database migrations completed successfully")
+}
+
+// runSQLMigrations executes all .sql files from the migrations directory.
+func runSQLMigrations(sqlDB *sql.DB, logger *zap.Logger) {
 	migrationsDir := "/migrations"
 	if _, err := os.Stat(migrationsDir); os.IsNotExist(err) {
 		migrationsDir = "./migrations"
@@ -40,16 +61,13 @@ func main() {
 	}
 
 	if len(files) == 0 {
-		logger.Warn("no migration files found", zap.String("directory", migrationsDir))
+		logger.Info("no SQL migration files found", zap.String("directory", migrationsDir))
 		return
 	}
 
-	// Sort files by name (assumes numeric prefix like 001_init.sql)
 	sort.Strings(files)
+	logger.Info("running SQL migrations", zap.Int("count", len(files)))
 
-	logger.Info("running migrations", zap.Int("count", len(files)))
-
-	// Execute each migration file
 	for _, file := range files {
 		logger.Info("executing migration", zap.String("file", filepath.Base(file)))
 
@@ -67,7 +85,32 @@ func main() {
 
 		logger.Info("migration completed", zap.String("file", filepath.Base(file)))
 	}
+}
 
-	logger.Info("all migrations completed successfully")
-	fmt.Println("✓ Database migrations completed successfully")
+// ensureDatabase connects to the default "postgres" database and creates the
+// target database if it does not already exist.
+func ensureDatabase(cfg *config.Config, logger *zap.Logger) {
+	adminDSN := cfg.DSNForDB("postgres")
+
+	db, err := sql.Open("pgx", adminDSN)
+	if err != nil {
+		logger.Fatal("failed to connect to admin database", zap.Error(err))
+	}
+	defer db.Close()
+
+	var exists bool
+	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)", cfg.DBName).Scan(&exists)
+	if err != nil {
+		logger.Fatal("failed to check database existence", zap.Error(err))
+	}
+
+	if !exists {
+		// CREATE DATABASE cannot run inside a transaction
+		if _, err := db.Exec(fmt.Sprintf(`CREATE DATABASE "%s"`, cfg.DBName)); err != nil {
+			logger.Fatal("failed to create database", zap.String("dbname", cfg.DBName), zap.Error(err))
+		}
+		logger.Info("database created", zap.String("dbname", cfg.DBName))
+	} else {
+		logger.Info("database already exists", zap.String("dbname", cfg.DBName))
+	}
 }

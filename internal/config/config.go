@@ -50,8 +50,13 @@ func Load() *Config {
 }
 
 func (c *Config) DSN() string {
+	return c.DSNForDB(c.DBName)
+}
+
+// DSNForDB returns a connection string targeting the given database.
+func (c *Config) DSNForDB(dbname string) string {
 	return fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		c.DBHost, c.DBPort, c.DBUser, c.DBPassword, c.DBName, c.DBSSLMode,
+		c.DBHost, c.DBPort, c.DBUser, c.DBPassword, dbname, c.DBSSLMode,
 	)
 }
