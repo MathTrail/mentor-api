@@ -55,6 +55,11 @@ profiles:
               ref: main # todo: use commit sha or tag for better reproducibility
             activeProfiles:
               - name: postgres
+      - op: replace
+        path: /build/artifacts
+        value: []
+      - op: remove
+        path: /deploy
 
   - name: load-test
     patches:
