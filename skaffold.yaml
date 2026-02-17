@@ -54,7 +54,7 @@ profiles:
               path: skaffold.yaml
               ref: main # todo: use commit sha or tag for better reproducibility
             activeProfiles:
-              - postgres
+              - name: postgres
 
   - name: load-test
     patches:
