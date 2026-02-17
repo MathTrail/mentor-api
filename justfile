@@ -48,8 +48,8 @@ setup:
     helm repo update
 
 # Deploy service dependencies (PostgreSQL)
-dependencies:
-    skaffold run -p dependencies --status-check=true
+dependencies namespace="mathtrail":
+    skaffold run -p dependencies --namespace={{namespace}} --status-check=true
 
 # Build the Go binary
 build:
