@@ -41,7 +41,6 @@ func NewService(
 }
 
 // ProcessFeedback processes student feedback and stores it in the database
-// Debezium CDC will automatically publish events to Kafka by monitoring the feedback table
 func (s *serviceImpl) ProcessFeedback(ctx context.Context, req *FeedbackRequest) (*StrategyUpdate, error) {
 	// 1. Detect language if not provided
 	language := req.Language
@@ -87,7 +86,6 @@ func (s *serviceImpl) ProcessFeedback(ctx context.Context, req *FeedbackRequest)
 	)
 
 	// 5. Build StrategyUpdate response (for HTTP response only)
-	// NOTE: Debezium CDC will publish the actual event to Kafka by monitoring the feedback table
 	update := &StrategyUpdate{
 		StudentID:            req.StudentID,
 		TaskID:               req.TaskID,

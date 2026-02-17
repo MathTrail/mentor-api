@@ -1,13 +1,16 @@
 package server
 
 import (
+	"net/http"
+
 	"github.com/MathTrail/mentor-api/internal/feedback"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 // NewRouter creates and configures the Gin router with all routes and middleware
-func NewRouter(feedbackController *feedback.Controller, logger *zap.Logger) *gin.Engine {
+func NewRouter(feedbackController *feedback.Controller, db *gorm.DB, logger *zap.Logger) *gin.Engine {
 	// Set Gin to release mode (disable debug logs)
 	gin.SetMode(gin.ReleaseMode)
 
@@ -21,7 +24,7 @@ func NewRouter(feedbackController *feedback.Controller, logger *zap.Logger) *gin
 	// Health check endpoints (for Kubernetes probes)
 	router.GET("/health/startup", healthStartup)
 	router.GET("/health/liveness", healthLiveness)
-	router.GET("/health/ready", healthReady)
+	router.GET("/health/ready", healthReady(db))
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
@@ -34,15 +37,26 @@ func NewRouter(feedbackController *feedback.Controller, logger *zap.Logger) *gin
 
 // healthStartup indicates that the application has started
 func healthStartup(c *gin.Context) {
-	c.JSON(200, gin.H{"status": "started"})
+	c.JSON(http.StatusOK, gin.H{"status": "started"})
 }
 
 // healthLiveness indicates that the application is running
 func healthLiveness(c *gin.Context) {
-	c.JSON(200, gin.H{"status": "ok"})
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
-// healthReady indicates that the application is ready to serve traffic
-func healthReady(c *gin.Context) {
-	c.JSON(200, gin.H{"status": "ready"})
+// healthReady verifies that all dependencies are available before reporting ready
+func healthReady(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		sqlDB, err := db.DB()
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not ready", "reason": "db: " + err.Error()})
+			return
+		}
+		if err := sqlDB.PingContext(c.Request.Context()); err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not ready", "reason": "db: " + err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ready"})
+	}
 }

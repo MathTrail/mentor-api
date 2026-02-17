@@ -21,7 +21,7 @@ func NewController(service Service, logger *zap.Logger) *Controller {
 
 // SubmitFeedback godoc
 // @Summary Submit student feedback
-// @Description Process student feedback about task difficulty and save to database. Debezium CDC automatically publishes events to Kafka.
+// @Description Process student feedback about task difficulty.
 // @Tags feedback
 // @Accept json
 // @Produce json
@@ -37,8 +37,6 @@ func (c *Controller) SubmitFeedback(ctx *gin.Context) {
 		return
 	}
 
-	// Process feedback and save to PostgreSQL
-	// Debezium CDC will automatically publish events to Kafka
 	update, err := c.service.ProcessFeedback(ctx.Request.Context(), &req)
 	if err != nil {
 		c.logger.Error("failed to process feedback", zap.Error(err))

@@ -15,11 +15,9 @@ func NewAnalyzer() *Analyzer {
 	return &Analyzer{
 		hardKeywords: map[string][]string{
 			"en": {"hard", "difficult", "challenging", "tough", "complex", "confusing", "can't solve", "too hard", "struggle"},
-			"ru": {"сложно", "трудно", "не понимаю", "слишком сложно", "тяжело", "непонятно", "очень сложно", "не получается"},
 		},
 		easyKeywords: map[string][]string{
 			"en": {"easy", "simple", "too easy", "boring", "trivial", "very easy", "super easy"},
-			"ru": {"легко", "просто", "слишком легко", "скучно", "очень легко", "совсем просто"},
 		},
 	}
 }

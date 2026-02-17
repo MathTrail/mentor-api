@@ -26,7 +26,6 @@ type FeedbackRequest struct {
 }
 
 // StrategyUpdate is the response DTO returned after processing feedback
-// NOTE: This is also the structure that Debezium CDC will publish to Kafka
 type StrategyUpdate struct {
 	StudentID            uuid.UUID              `json:"student_id"`
 	TaskID               string                 `json:"task_id"`

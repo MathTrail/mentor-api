@@ -10,9 +10,9 @@ func TestAnalyzer_English_Hard(t *testing.T) {
 	a := NewAnalyzer()
 
 	tests := []struct {
-		name     string
-		message  string
-		expected string
+		name        string
+		message     string
+		expected    string
 		adjExpected float64
 	}{
 		{"hard keyword", "this is too hard", "hard", -0.15},
@@ -34,9 +34,9 @@ func TestAnalyzer_English_Easy(t *testing.T) {
 	a := NewAnalyzer()
 
 	tests := []struct {
-		name     string
-		message  string
-		expected string
+		name        string
+		message     string
+		expected    string
 		adjExpected float64
 	}{
 		{"easy keyword", "this is easy", "easy", 0.15},
@@ -54,54 +54,6 @@ func TestAnalyzer_English_Easy(t *testing.T) {
 	}
 }
 
-func TestAnalyzer_Russian_Hard(t *testing.T) {
-	a := NewAnalyzer()
-
-	tests := []struct {
-		name     string
-		message  string
-		expected string
-		adjExpected float64
-	}{
-		{"сложно", "это слишком сложно", "hard", -0.15},
-		{"трудно", "очень трудно", "hard", -0.15},
-		{"не понимаю", "я не понимаю", "hard", -0.15},
-		{"непонятно", "мне непонятно", "hard", -0.15},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			difficulty, adj := a.Analyze(tt.message, "ru")
-			assert.Equal(t, tt.expected, difficulty)
-			assert.Equal(t, tt.adjExpected, adj)
-		})
-	}
-}
-
-func TestAnalyzer_Russian_Easy(t *testing.T) {
-	a := NewAnalyzer()
-
-	tests := []struct {
-		name     string
-		message  string
-		expected string
-		adjExpected float64
-	}{
-		{"легко", "это легко", "easy", 0.15},
-		{"просто", "совсем просто", "easy", 0.15},
-		{"слишком легко", "слишком легко", "easy", 0.15},
-		{"скучно", "скучно", "easy", 0.15},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			difficulty, adj := a.Analyze(tt.message, "ru")
-			assert.Equal(t, tt.expected, difficulty)
-			assert.Equal(t, tt.adjExpected, adj)
-		})
-	}
-}
-
 func TestAnalyzer_Neutral(t *testing.T) {
 	a := NewAnalyzer()
 
@@ -111,7 +63,6 @@ func TestAnalyzer_Neutral(t *testing.T) {
 		lang    string
 	}{
 		{"English neutral", "I completed the task", "en"},
-		{"Russian neutral", "Я решил задачу", "ru"},
 		{"No keywords", "Thank you", "en"},
 	}
 

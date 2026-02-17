@@ -49,29 +49,6 @@ const feedbackMessages = {
       'Nice task',
     ],
   },
-  ru: {
-    hard: [
-      'Это слишком сложно',
-      'Очень трудно',
-      'Я не понимаю',
-      'Мне непонятно',
-      'Слишком сложная задача',
-    ],
-    easy: [
-      'Это легко',
-      'Совсем просто',
-      'Слишком легко',
-      'Скучно',
-      'Очень легкая задача',
-    ],
-    neutral: [
-      'Я решил задачу',
-      'Спасибо',
-      'Интересная задача',
-      'Хорошее упражнение',
-      'Нормальная задача',
-    ],
-  },
 };
 
 function randomElement(arr) {
@@ -79,7 +56,7 @@ function randomElement(arr) {
 }
 
 function generateFeedback() {
-  const language = Math.random() > 0.5 ? 'en' : 'ru';
+  const language = 'en';
   const sentiments = ['hard', 'easy', 'neutral'];
   const sentiment = randomElement(sentiments);
   const message = randomElement(feedbackMessages[language][sentiment]);
