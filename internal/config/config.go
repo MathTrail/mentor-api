@@ -24,6 +24,11 @@ type Config struct {
 
 	// Logging
 	LogLevel string `mapstructure:"LOG_LEVEL"`
+
+	// Observability
+	ServiceName       string `mapstructure:"APP_NAME"`
+	OTelEndpoint      string `mapstructure:"OTEL_ENDPOINT"`
+	PyroscopeEndpoint string `mapstructure:"PYROSCOPE_ENDPOINT"`
 }
 
 func Load() *Config {
@@ -40,6 +45,9 @@ func Load() *Config {
 	v.SetDefault("DAPR_HOST", "localhost")
 	v.SetDefault("DAPR_PORT", "3500")
 	v.SetDefault("LOG_LEVEL", "info")
+	v.SetDefault("APP_NAME", "mentor-api")
+	v.SetDefault("OTEL_ENDPOINT", "otel-collector-opentelemetry-collector.monitoring.svc.cluster.local:4317")
+	v.SetDefault("PYROSCOPE_ENDPOINT", "http://pyroscope.monitoring.svc.cluster.local:4040")
 
 	cfg := &Config{}
 	if err := v.Unmarshal(cfg); err != nil {

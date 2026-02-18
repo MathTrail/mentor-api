@@ -34,3 +34,12 @@ rollout:
   strategy: ""
   steps: []
   autoPromotionEnabled: true
+
+podAnnotations:
+  # Connect the Dapr sidecar to the tracing Configuration CRD deployed by infra-observability.
+  # Without this annotation the sidecar runs but does not export any traces.
+  dapr.io/config: "mathtrail-observability"
+  # Let Alloy (k8s-monitoring DaemonSet) scrape Prometheus metrics exposed on /metrics.
+  prometheus.io/scrape: "true"
+  prometheus.io/path: "/metrics"
+  prometheus.io/port: "8080"

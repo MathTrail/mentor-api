@@ -93,7 +93,7 @@ func ZapRecovery(logger *zap.Logger) gin.HandlerFunc {
 }
 
 // internalPrefixes lists path prefixes that are only logged on errors.
-var internalPrefixes = []string{"/health/", "/dapr/"}
+var internalPrefixes = []string{"/health/", "/dapr/", "/metrics"}
 
 // isInternalPath reports whether the path matches a probe or sidecar prefix.
 func isInternalPath(path string) bool {

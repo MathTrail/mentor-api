@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
 	"github.com/MathTrail/mentor-api/internal/feedback"
 	"github.com/gin-gonic/gin"
@@ -18,9 +20,13 @@ func NewRouter(feedbackController *feedback.Controller, pool *pgxpool.Pool, logg
 	router := gin.New()
 
 	// Global middleware
+	router.Use(otelgin.Middleware("mentor-api")) // extracts traceparent from Dapr, creates child spans
 	router.Use(RequestID())
 	router.Use(ZapLogger(logger))
 	router.Use(ZapRecovery(logger))
+
+	// Observability endpoints
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// Health check endpoints (for Kubernetes probes)
 	router.GET("/health/startup", healthStartup)

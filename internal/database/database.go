@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 
@@ -22,6 +23,8 @@ func NewPool(ctx context.Context, cfg *config.Config, logger *zap.Logger) *pgxpo
 	if err != nil {
 		logger.Fatal("failed to parse database config", zap.Error(err))
 	}
+
+	poolCfg.ConnConfig.Tracer = otelpgx.NewTracer()
 
 	poolCfg.MaxConns = 25
 	poolCfg.MinConns = 5
