@@ -1,4 +1,4 @@
-apiVersion: skaffold/v4beta12
+apiVersion: skaffold/v4beta13
 kind: Config
 metadata:
   name: mentor-api
@@ -26,7 +26,6 @@ deploy:
     releases:
       - name: mentor-api
         chartPath: infra/helm/mentor-api
-        namespace: mathtrail
         createNamespace: true
         wait: true
         valuesFiles:
@@ -39,18 +38,14 @@ deploy:
 portForward:
   - resourceType: service
     resourceName: mentor-api
-    namespace: mathtrail
     port: 8080
     localPort: 8080
 
 ---
-apiVersion: skaffold/v4beta12
+apiVersion: skaffold/v4beta13
 kind: Config
 metadata:
   name: mentor-deps
-
-build:
-  artifacts: []
 
 manifests:
   rawYaml:
@@ -68,7 +63,7 @@ requires:
       - name: postgres
 
 ---
-apiVersion: skaffold/v4beta12
+apiVersion: skaffold/v4beta13
 kind: Config
 metadata:
   name: mentor-load-tests
@@ -82,10 +77,9 @@ deploy:
       - name: mentor-api-load-test
         repo: https://MathTrail.github.io/charts/charts
         remoteChart: k6-test-runner
-        namespace: mathtrail
         createNamespace: true
         setValues:
-          baseUrl: http://mentor-api.mathtrail.svc.cluster.local:8080
+          baseUrl: http://mentor-api:8080
           parallelism: 1
         setFiles:
           loadTestScript: tests/load/dist/bundle.js
