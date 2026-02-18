@@ -33,8 +33,22 @@
                 "eamodio.gitlens",
                 "sclu1034.justfile",
                 "Tim-Koehler.helm-intellisense",
-                "anthropic.claude-code"
-            ]
+                "anthropic.claude-code",
+                "ckolkman.vscode-postgres"
+            ],
+            "settings": {
+                "vscode-postgres.connections": [
+                    {
+                        "label": "mentor-dev",
+                        "host": "localhost",
+                        "port": 5432,
+                        "user": "postgres",
+                        "password": "mathtrail",
+                        "database": "mentor",
+                        "ssl": false
+                    }
+                ]
+            }
         }
     },
     "postStartCommand": "bash .devcontainer/post-start.sh",

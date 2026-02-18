@@ -1,36 +1,48 @@
 # Identity & Context
-You are an expert Go developer working on mentor-api — the AI strategist that determines optimal learning paths.
-CRITICAL: This service is STATELESS. It does NOT store data. It reads from Profile Service and publishes instructions for Task Service.
-Flow: Profile → [data] → Mentor → [strategy] → Task
+You are an expert Go developer working on mentor-api — the Student Feedback Loop service that receives student feedback, analyzes it, and stores it in PostgreSQL.
 
-Tech Stack: Go 1.25.7, stdlib net/http (no external framework), Dapr pub/sub over Kafka
+CRITICAL: This service stores feedback history in PostgreSQL with JSONB strategy snapshots. Events are published by Debezium CDC, NOT by the application.
+
+Architecture: Student → POST /v1/feedback → Service → PostgreSQL → Debezium CDC → Kafka
+
+Tech Stack: Go 1.25.7, Gin (HTTP), GORM (ORM), PostgreSQL with JSONB
 Port: 8080
 Infra: infra/helm/mentor-api/
 
 # Communication Map
 Dapr App ID: mentor-api
 Inbound:
-  - REST API: POST /strategy/generate
-  - Dapr service invocation from UI
-  - Dapr pub/sub: subscribes to `task.attempt.completed` (trigger re-evaluation)
+  - REST API: POST /api/v1/feedback (submit student feedback)
+  - Health probes: /health/startup, /health/liveness, /health/ready
 Outbound:
-  - Dapr invoke → mathtrail-profile (GET profile data)
-  - Dapr pub/sub: publishes `mentor.strategy.updated` (parameters for Task Service)
-Secrets (Vault): None — reads only public profile data via Dapr
+  - PostgreSQL: feedback table with JSONB strategy_snapshot
+  - Debezium CDC: monitors feedback table, publishes to Kafka
+Database: PostgreSQL (mentor schema)
+Secrets: DB credentials via Kubernetes secrets
+
+# Key Implementation Details
+- **No Dapr publisher**: Events are published by Debezium CDC monitoring the feedback table
+- **JSONB for strategy_snapshot**: Flexible schema for storing strategy state at feedback time
+- **PostgreSQL ENUM**: difficulty_level ('easy', 'ok', 'hard')
+- **Rule-based v1**: Keyword matching for sentiment analysis (English/Russian)
+- **Future v2**: LLM integration for sentiment analysis and topic extraction
 
 # Development Standards
-- Stdlib only — no external HTTP frameworks (use net/http)
+- Follow Clean Architecture: Domain → Repository → Service → Controller
+- Use GORM for database access with proper context propagation
 - Handle errors explicitly — never ignore error returns
-- Strategy logic must be deterministic and testable without external dependencies
-- All Dapr service calls must have timeout and retry configuration
-- Keep the service truly stateless — no in-memory state between requests
+- All comments in English (user requirement)
+- Use Gin for HTTP routing with structured logging (zap)
+- Middleware: RequestID, ZapLogger, ZapRecovery
+- Testing: Unit tests for analyzer, integration tests for API endpoints
 
 # Commit Convention
-Use Conventional Commits: feat(mentor):, fix(mentor):, test(mentor):, docs(mentor):
-Example: feat(mentor): add difficulty curve calculation
+Use Conventional Commits: feat(feedback):, fix(feedback):, test(feedback):, docs(feedback):
+Example: feat(feedback): add Russian keyword support
 
 # Testing Strategy
 Run: `just test` or `go test ./... -v`
-Unit tests: Strategy logic must be 100% unit-testable (pure functions)
-Integration tests: Dapr sidecar tests for service invocation and pub/sub
-Priority: Unit tests 90%, Integration tests 10%
+Unit tests: internal/strategy/analyzer_test.go (keyword matching logic)
+Load tests: k6/load/feedback_load.js (API endpoint performance)
+CI: GitHub Actions runs lint, test, and k6 load test on every PR
+Priority: Unit tests 70%, Integration tests 20%, Load tests 10%

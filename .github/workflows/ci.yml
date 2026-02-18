@@ -28,20 +28,17 @@ jobs:
       - name: Test
         run: just ci-test
 
-      - name: Build k6 test bundle
-        run: |
-          mkdir -p tests/load/dist
-          esbuild tests/load/scripts/main.js \
-            --bundle \
-            --format=esm \
-            --external:k6 \
-            --external:'k6/*' \
-            --outfile=tests/load/dist/bundle.js
+      - name: Setup
+        run: just setup
+
+      - name: Deploy dependencies
+        run: just dependencies ${{ env.NAMESPACE }}
 
       - name: Deploy service to PR namespace
-        run: |
-          just setup
-          skaffold run --namespace=${{ env.NAMESPACE }} --status-check=true
+        run: skaffold run -m mentor-api --namespace=${{ env.NAMESPACE }} --status-check=true
+
+      - name: Bundle k6 load test scripts
+        run: just bundle-k6
 
       - name: Setup k6
         uses: grafana/setup-k6-action@v1

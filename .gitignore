@@ -36,3 +36,13 @@ go.work.sum
 
 # esbuild output
 tests/load/dist/
+
+# Helm charts
+charts/
+*.tgz
+Chart.lock
+
+# Swagger docs
+docs/docs.go
+docs/swagger.json
+docs/swagger.yaml

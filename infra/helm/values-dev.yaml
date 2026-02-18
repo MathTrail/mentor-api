@@ -5,3 +5,18 @@ env:
     value: "8080"
   - name: LOG_LEVEL
     value: "info"
+  - name: DB_HOST
+    value: "postgres-postgresql"
+  - name: DB_PORT
+    value: "5432"
+  - name: DB_USER
+    value: "postgres"
+  - name: DB_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: postgres-postgresql
+        key: postgres-password
+  - name: DB_NAME
+    value: "mentor"
+  - name: DB_SSL_MODE
+    value: "disable"

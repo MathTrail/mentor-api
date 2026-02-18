@@ -1,4 +1,4 @@
-apiVersion: skaffold/v4beta12
+apiVersion: skaffold/v4beta13
 kind: Config
 metadata:
   name: mentor-api
@@ -7,6 +7,8 @@ build:
   local:
     push: true
     tryImportMissing: false
+  tagPolicy:
+    inputDigest: {}
   insecureRegistries:
     - k3d-mathtrail-registry:5000
   artifacts:
@@ -24,7 +26,6 @@ deploy:
     releases:
       - name: mentor-api
         chartPath: infra/helm/mentor-api
-        namespace: mathtrail
         createNamespace: true
         wait: true
         valuesFiles:
@@ -37,26 +38,48 @@ deploy:
 portForward:
   - resourceType: service
     resourceName: mentor-api
-    namespace: mathtrail
     port: 8080
     localPort: 8080
 
-profiles:
-  - name: load-test
-    patches:
-      - op: replace
-        path: /build/artifacts
-        value: []
-    deploy:
-      helm:
-        releases:
-          - name: mentor-api-load-test
-            repo: https://MathTrail.github.io/charts/charts
-            remoteChart: k6-test-runner
-            namespace: mathtrail
-            createNamespace: true
-            setValues:
-              baseUrl: http://mentor-api.mathtrail.svc.cluster.local:8080
-              parallelism: 2
-            setFiles:
-              loadTestScript: tests/load/dist/bundle.js
+---
+apiVersion: skaffold/v4beta13
+kind: Config
+metadata:
+  name: mentor-deps
+
+manifests:
+  rawYaml:
+    - infra/k8s/deps-anchor.yaml
+
+deploy:
+  kubectl: {}
+
+requires:
+  - git:
+      repo: https://github.com/MathTrail/infra-local
+      path: skaffold.yaml
+      ref: main # todo: specify concrete version
+    configs:
+      - postgres
+
+---
+apiVersion: skaffold/v4beta13
+kind: Config
+metadata:
+  name: mentor-load-tests
+
+build:
+  artifacts: []
+
+deploy:
+  helm:
+    releases:
+      - name: mentor-api-load-test
+        repo: https://MathTrail.github.io/charts/charts
+        remoteChart: k6-test-runner
+        createNamespace: true
+        setValues:
+          baseUrl: http://mentor-api:8080
+          parallelism: 1
+        setFiles:
+          loadTestScript: tests/load/dist/bundle.js

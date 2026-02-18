@@ -25,7 +25,7 @@ build-push-image tag=env("IMAGE", ""):
         echo "Error: no image tag provided (set \$IMAGE or pass as argument)" >&2
         exit 1
     fi
-    if [ "${CI:-}" = "true" ] || command -v buildctl &>/dev/null; then
+    if [ "${CI:-}" = "true" ] || buildctl debug workers &>/dev/null; then
         echo "🔨 Building with BuildKit..."
         buildctl build \
             --frontend=dockerfile.v0 \
@@ -36,8 +36,8 @@ build-push-image tag=env("IMAGE", ""):
             --import-cache type=registry,ref="$TAG"
     else
         echo "🔨 Building with Buildah..."
-        buildah bud --tag "$TAG" .
-        buildah push --tls-verify=false "$TAG"
+        buildah bud --log-level=error --tag "$TAG" .
+        buildah push --log-level=error --tls-verify=false "$TAG"
     fi
 
 # -- Development ---------------------------------------------------------------
@@ -47,6 +47,10 @@ setup:
     helm repo add mathtrail-charts https://MathTrail.github.io/charts/charts 2>/dev/null || true
     helm repo update
 
+# Deploy service dependencies (PostgreSQL)
+dependencies namespace="mathtrail":
+    skaffold run -m mentor-deps --namespace={{namespace}} --status-check=true
+
 # Build the Go binary
 build:
     go build -o bin/server ./cmd/server
@@ -55,10 +59,12 @@ build:
 test:
     go test ./... -v
 
-# Run load tests: bundle scripts with esbuild, deploy k6-test-runner chart
-load-test:
-    #!/bin/bash
-    set -euo pipefail
+# Generate Swagger documentation
+swagger:
+    swag init -g cmd/server/main.go
+
+# Bundle k6 load test scripts (esbuild)
+bundle-k6:
     mkdir -p tests/load/dist
     esbuild tests/load/scripts/main.js \
         --bundle \
@@ -66,35 +72,53 @@ load-test:
         --external:k6 \
         --external:'k6/*' \
         --outfile=tests/load/dist/bundle.js
+
+# Run load tests: bundle scripts with esbuild, deploy k6-test-runner chart
+load-test: bundle-k6
+    #!/bin/bash
+    set -euo pipefail
+
+    # Clean previous run
+    skaffold delete -m mentor-load-tests 2>/dev/null || true
+    kubectl delete testrun mentor-api-load-test -n {{ NAMESPACE }} --ignore-not-found
+
     # Deploy TestRun + ConfigMap
-    skaffold run -p load-test
-    # Wait for k6 runner pods, then stream results
-    echo "Waiting for k6 runners..."
-    kubectl wait --for=condition=Ready pod -l k6_cr=mentor-api-load-test \
-        -n {{ NAMESPACE }} --timeout=120s 2>/dev/null || true
+    skaffold run -m mentor-load-tests
 
+    # Wait for TestRun to appear (k6-operator creates it asynchronously)
+    echo "Waiting for TestRun..."
+    for i in $(seq 1 30); do
+        kubectl get testrun mentor-api-load-test -n {{ NAMESPACE }} &>/dev/null && break
+        sleep 1
+    done
+
+    # Stream logs in background
     echo "⏳ Test is running..."
-    kubectl wait testrun mentor-api-load-test -n {{ NAMESPACE }} \
-        --for=jsonpath='{.status.stage}'=finished --timeout=600s
-
-    echo "📈 Test results:"
     kubectl logs -l k6_cr=mentor-api-load-test -n {{ NAMESPACE }} \
-        --all-containers --prefix
+        --all-containers --prefix -f 2>/dev/null &
+    LOGS_PID=$!
 
+    # Wait for finish (tolerate TestRun already gone for fast tests)
+    kubectl wait testrun mentor-api-load-test -n {{ NAMESPACE }} \
+        --for=jsonpath='{.status.stage}'=finished --timeout=600s 2>/dev/null || true
+    sleep 2
+    kill $LOGS_PID 2>/dev/null || true
+
+    echo ""
+    echo "📈 Checking results..."
     FAILED=$(kubectl get jobs -n {{ NAMESPACE }} -l k6_cr=mentor-api-load-test \
-        -o jsonpath='{.items[?(@.status.failed>0)].metadata.name}')
+        -o jsonpath='{.items[?(@.status.failed>0)].metadata.name}' 2>/dev/null)
     if [ -n "$FAILED" ]; then
-        echo "❌ Load test failed: $FAILED"
-        skaffold delete -p load-test
+        echo "❌ Load test failed"
+        skaffold delete -m mentor-load-tests
         exit 1
     fi
     echo "✅ Load test passed"
-    # Cleanup
-    skaffold delete -p load-test
+    skaffold delete -m mentor-load-tests
 
 # Start development mode with hot-reload and port-forwarding
 dev: setup
-    skaffold dev --port-forward
+    skaffold dev -m mentor-api,mentor-deps --port-forward
 
 # Build and deploy to cluster
 deploy: setup
@@ -125,7 +149,7 @@ ci-test:
 
 # Fast binary build for PR verification
 ci-build:
-    go build -o bin/server ./cmd/main.go
+    go build -o bin/server ./cmd/server
 
 # Create an ephemeral namespace for a PR
 ci-prepare ns:
