@@ -15,7 +15,7 @@ import (
 // NewPool creates a pgx connection pool using the provided config.
 func NewPool(ctx context.Context, cfg *config.Config, logger *zap.Logger) *pgxpool.Pool {
 	connStr := fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		"postgres://%s:%s@%s:%s/%s?sslmode=%s&default_query_exec_mode=simple_protocol",
 		cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBSSLMode,
 	)
 

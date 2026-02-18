@@ -1,14 +1,15 @@
 ﻿# MathTrail Mentor Service
 
 set shell := ["bash", "-c"]
+set dotenv-load := true
+set dotenv-path := env("HOME") + "/.env.shared"
 
 export SKAFFOLD_DEFAULT_REPO := "k3d-mathtrail-registry.localhost:5050"
 
-NAMESPACE := "mathtrail"
+NAMESPACE := env_var("NAMESPACE")
 SERVICE := "mentor-api"
 CHART_NAME := "mentor-api"
 TEST_NAMESPACE := "mathtrail"
-TEST_CONFIGMAP := "mentor-api-functional"
 
 # -- Portable Image Build (buildctl → buildah) --------------------------------
 
@@ -48,8 +49,8 @@ setup:
     helm repo update
 
 # Deploy service dependencies (PostgreSQL)
-dependencies namespace="mathtrail":
-    skaffold run -m mentor-deps --namespace={{namespace}} --status-check=true
+dependencies:
+    skaffold run -m mentor-deps --namespace="{{ NAMESPACE }}" --status-check=true
 
 # Build the Go binary
 build:

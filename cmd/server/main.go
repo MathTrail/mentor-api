@@ -1,3 +1,7 @@
+// @title       Mentor API
+// @version     1.0
+// @BasePath    /
+
 package main
 
 import (
@@ -14,6 +18,8 @@ import (
 	"github.com/MathTrail/mentor-api/internal/observability"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+
+	_ "github.com/MathTrail/mentor-api/docs"
 )
 
 func main() {

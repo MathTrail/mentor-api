@@ -2,8 +2,9 @@ package app
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	dapr "github.com/dapr/go-sdk/client"
 
 	"github.com/MathTrail/mentor-api/internal/clients"
 	"github.com/MathTrail/mentor-api/internal/config"
@@ -18,7 +19,7 @@ import (
 type Container struct {
 	Config *config.Config
 	Logger *zap.Logger
-	Pool   *pgxpool.Pool
+	DB     *database.DaprDB
 
 	// Clients
 	LLMClient clients.LLMClient
@@ -34,32 +35,42 @@ type Container struct {
 
 // NewContainer creates and wires all application dependencies
 func NewContainer() *Container {
-	ctx := context.Background()
-
 	// Load configuration
 	cfg := config.Load()
 
 	// Initialize logger
 	logger := logging.NewLogger(cfg.LogLevel)
 
-	// Connect to database
-	pool := database.NewPool(ctx, cfg, logger)
+	// Connect to the Dapr sidecar. NewClient() reads DAPR_GRPC_PORT from the environment
+	// (injected automatically by the Dapr sidecar into the application container).
+	daprClient, err := dapr.NewClient()
+	if err != nil {
+		panic(fmt.Sprintf("failed to create Dapr client: %v", err))
+	}
+
+	// DaprDB wraps the Dapr binding so the app never handles DB credentials directly.
+	db := database.NewDaprDB(daprClient, cfg.DBBindingName)
+
+	// Verify the binding is reachable on startup.
+	if err := db.Ping(context.Background()); err != nil {
+		logger.Fatal("database binding not reachable", zap.Error(err))
+	}
 
 	// Initialize LLM client (mock for now, will be replaced with real implementation)
 	llmClient := clients.NewMockLLMClient()
 
 	// Initialize feedback components
-	feedbackRepo := feedback.NewRepository(pool)
+	feedbackRepo := feedback.NewRepository(db)
 	feedbackService := feedback.NewService(feedbackRepo, llmClient, logger)
 	feedbackController := feedback.NewController(feedbackService, logger)
 
 	// Create router
-	router := server.NewRouter(feedbackController, pool, logger)
+	router := server.NewRouter(feedbackController, db, logger)
 
 	return &Container{
 		Config:             cfg,
 		Logger:             logger,
-		Pool:               pool,
+		DB:                 db,
 		LLMClient:          llmClient,
 		FeedbackRepository: feedbackRepo,
 		FeedbackService:    feedbackService,
@@ -72,7 +83,7 @@ func NewContainer() *Container {
 func (c *Container) Ready() bool {
 	return c.Config != nil &&
 		c.Logger != nil &&
-		c.Pool != nil &&
+		c.DB != nil &&
 		c.FeedbackRepository != nil &&
 		c.FeedbackService != nil &&
 		c.FeedbackController != nil &&

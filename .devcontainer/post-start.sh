@@ -29,3 +29,9 @@ if kubectl cluster-info 2>/dev/null; then
 else
     echo "Cluster not accessible"
 fi
+
+# Load shared environment variables (written by chezmoi on postCreateCommand)
+if [ -f ~/.env.shared ]; then
+    source ~/.env.shared
+    echo "Environment loaded: NAMESPACE=${NAMESPACE}"
+fi

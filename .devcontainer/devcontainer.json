@@ -13,7 +13,8 @@
             "version": "1.31.0",
             "minikube": "none"
         },
-        "ghcr.io/eitsupi/devcontainer-features/just:0.1.1": {}
+        "ghcr.io/eitsupi/devcontainer-features/just:0.1.1": {},
+        "ghcr.io/prulloac/devcontainer-features/chezmoi:1": {}
     },
     "mounts": [
         "source=${localEnv:HOME}${localEnv:USERPROFILE}/.kube,target=/home/vscode/.kube-host,type=bind,consistency=cached"
@@ -51,6 +52,7 @@
             }
         }
     },
+    "postCreateCommand": "bash .devcontainer/setup.sh",
     "postStartCommand": "bash .devcontainer/post-start.sh",
     "forwardPorts": [8080]
 }

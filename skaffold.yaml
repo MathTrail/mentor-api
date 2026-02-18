@@ -25,6 +25,7 @@ deploy:
   helm:
     releases:
       - name: mentor-api
+        namespace: "$NAMESPACE"
         chartPath: infra/helm/mentor-api
         createNamespace: true
         wait: true
@@ -52,7 +53,8 @@ manifests:
     - infra/k8s/deps-anchor.yaml
 
 deploy:
-  kubectl: {}
+  kubectl:
+    defaultNamespace: "$NAMESPACE"
 
 requires:
   - git:
@@ -75,6 +77,7 @@ deploy:
   helm:
     releases:
       - name: mentor-api-load-test
+        namespace: "$NAMESPACE"
         repo: https://MathTrail.github.io/charts/charts
         remoteChart: k6-test-runner
         createNamespace: true

@@ -19,8 +19,9 @@ type Config struct {
 	DBSSLMode  string `mapstructure:"DB_SSL_MODE"`
 
 	// Dapr
-	DaprHost string `mapstructure:"DAPR_HOST"`
-	DaprPort string `mapstructure:"DAPR_PORT"`
+	DaprHost      string `mapstructure:"DAPR_HOST"`
+	DaprPort      string `mapstructure:"DAPR_PORT"`
+	DBBindingName string `mapstructure:"DB_BINDING_NAME"` // Dapr binding component name for DB access (server binary)
 
 	// Logging
 	LogLevel string `mapstructure:"LOG_LEVEL"`
@@ -36,14 +37,15 @@ func Load() *Config {
 	v.AutomaticEnv()
 
 	v.SetDefault("SERVER_PORT", "8080")
-	v.SetDefault("DB_HOST", "postgres-postgresql")
-	v.SetDefault("DB_PORT", "5432")
+	v.SetDefault("DB_HOST", "postgres-pgbouncer")
+	v.SetDefault("DB_PORT", "6432")
 	v.SetDefault("DB_USER", "postgres")
 	v.SetDefault("DB_PASSWORD", "postgres")
 	v.SetDefault("DB_NAME", "mentor")
 	v.SetDefault("DB_SSL_MODE", "disable")
 	v.SetDefault("DAPR_HOST", "localhost")
 	v.SetDefault("DAPR_PORT", "3500")
+	v.SetDefault("DB_BINDING_NAME", "mentor-db")
 	v.SetDefault("LOG_LEVEL", "info")
 	v.SetDefault("APP_NAME", "mentor-api")
 	v.SetDefault("OTEL_ENDPOINT", "otel-collector-opentelemetry-collector.monitoring.svc.cluster.local:4317")

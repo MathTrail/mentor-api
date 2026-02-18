@@ -29,6 +29,20 @@ externalSecrets:
   vaultPath: ""
   keys: []
 
+# Dynamic DB credentials via Vault Database Secrets Engine + ESO.
+# When enabled, ESO creates and rotates the K8s Secret mentor-api-db-dynamic-creds.
+dbDynamicSecret:
+  enabled: false
+  pgHost: "postgres-postgresql"
+  pgPort: "5432"
+  pgDatabase: "mentor"
+
+# Dapr PostgreSQL binding component.
+# When enabled, the app accesses the DB exclusively through the Dapr sidecar binding.
+dbBinding:
+  enabled: false
+  name: "mentor-db"
+
 dashboard:
   enabled: true
 
