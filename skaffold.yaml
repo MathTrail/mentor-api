@@ -43,41 +43,39 @@ portForward:
     port: 8080
     localPort: 8080
 
-profiles:
-  - name: dependencies
-    patches:
-      - op: add
-        path: /requires
-        value:
-          - git:
-              repo: https://github.com/MathTrail/infra-local
-              path: skaffold.yaml
-              ref: main # todo: use commit sha or tag for better reproducibility
-            activeProfiles:
-              - name: postgres
-      - op: replace
-        path: /build/artifacts
-        value: []
-      - op: replace
-        path: /deploy
-        value:
-          kubectl: {}
+---
+apiVersion: skaffold/v4beta12
+kind: Config
+metadata:
+  name: mentor-deps
 
-  - name: load-test
-    patches:
-      - op: replace
-        path: /build/artifacts
-        value: []
-    deploy:
-      helm:
-        releases:
-          - name: mentor-api-load-test
-            repo: https://MathTrail.github.io/charts/charts
-            remoteChart: k6-test-runner
-            namespace: mathtrail
-            createNamespace: true
-            setValues:
-              baseUrl: http://mentor-api.mathtrail.svc.cluster.local:8080
-              parallelism: 1
-            setFiles:
-              loadTestScript: tests/load/dist/bundle.js
+requires:
+  - git:
+      repo: https://github.com/MathTrail/infra-local
+      path: skaffold.yaml
+      ref: main # todo: specify concrete version
+    activeProfiles:
+      - name: postgres
+
+---
+apiVersion: skaffold/v4beta12
+kind: Config
+metadata:
+  name: mentor-load-tests
+
+build:
+  artifacts: []
+
+deploy:
+  helm:
+    releases:
+      - name: mentor-api-load-test
+        repo: https://MathTrail.github.io/charts/charts
+        remoteChart: k6-test-runner
+        namespace: mathtrail
+        createNamespace: true
+        setValues:
+          baseUrl: http://mentor-api.mathtrail.svc.cluster.local:8080
+          parallelism: 1
+        setFiles:
+          loadTestScript: tests/load/dist/bundle.js

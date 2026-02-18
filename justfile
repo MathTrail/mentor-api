@@ -49,7 +49,7 @@ setup:
 
 # Deploy service dependencies (PostgreSQL)
 dependencies namespace="mathtrail":
-    skaffold run -p dependencies --namespace={{namespace}} --status-check=true
+    skaffold run -m mentor-deps --namespace={{namespace}} --status-check=true
 
 # Build the Go binary
 build:
@@ -76,11 +76,11 @@ load-test:
         --outfile=tests/load/dist/bundle.js
 
     # Clean previous run
-    skaffold delete -p load-test 2>/dev/null || true
+    skaffold delete -m mentor-load-tests 2>/dev/null || true
     kubectl delete testrun mentor-api-load-test -n {{ NAMESPACE }} --ignore-not-found
 
     # Deploy TestRun + ConfigMap
-    skaffold run -p load-test
+    skaffold run -m mentor-load-tests
 
     # Wait for TestRun to appear (k6-operator creates it asynchronously)
     echo "Waiting for TestRun..."
@@ -107,15 +107,15 @@ load-test:
         -o jsonpath='{.items[?(@.status.failed>0)].metadata.name}' 2>/dev/null)
     if [ -n "$FAILED" ]; then
         echo "❌ Load test failed"
-        skaffold delete -p load-test
+        skaffold delete -m mentor-load-tests
         exit 1
     fi
     echo "✅ Load test passed"
-    skaffold delete -p load-test
+    skaffold delete -m mentor-load-tests
 
 # Start development mode with hot-reload and port-forwarding
 dev: setup
-    skaffold dev --port-forward
+    skaffold dev -m mentor-api,mentor-deps --port-forward
 
 # Build and deploy to cluster
 deploy: setup

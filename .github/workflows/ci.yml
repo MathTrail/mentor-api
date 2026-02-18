@@ -34,7 +34,7 @@ jobs:
       - name: Deploy service to PR namespace
         run: |
           just setup
-          skaffold run --namespace=${{ env.NAMESPACE }} --status-check=true
+          skaffold run -m mentor-api --namespace=${{ env.NAMESPACE }} --status-check=true
 
       - name: Setup k6
         uses: grafana/setup-k6-action@v1
