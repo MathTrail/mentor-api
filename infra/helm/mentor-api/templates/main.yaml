@@ -11,3 +11,5 @@
 {{ include "mathtrail-service-lib.service" . }}
 ---
 {{ include "mathtrail-service-lib.hpa" . }}
+---
+{{ include "mathtrail-service-lib.grafanaDashboard" . }}

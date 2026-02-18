@@ -29,6 +29,9 @@ externalSecrets:
   vaultPath: ""
   keys: []
 
+dashboard:
+  enabled: true
+
 rollout:
   enabled: false
   strategy: ""
