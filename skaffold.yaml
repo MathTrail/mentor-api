@@ -54,14 +54,7 @@ build:
 
 manifests:
   rawYaml:
-    - |
-      apiVersion: v1
-      kind: ConfigMap
-      metadata:
-        name: mentor-deps-anchor
-        namespace: mathtrail
-      data:
-        status: "infrastructure-ready"
+    - infra/k8s/deps-anchor.yaml
 
 deploy:
   kubectl: {}
