@@ -52,6 +52,12 @@ metadata:
 build:
   artifacts: []
 
+manifests:
+  rawYaml: [] 
+
+deploy:
+  kubectl: {}
+
 requires:
   - git:
       repo: https://github.com/MathTrail/infra-local
