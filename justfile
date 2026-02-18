@@ -122,7 +122,7 @@ dev: setup
 
 # Build and deploy to cluster
 deploy: setup
-    skaffold run
+    skaffold run -m mentor-api
 
 # Remove from cluster
 delete:
