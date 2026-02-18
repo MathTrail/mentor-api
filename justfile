@@ -63,10 +63,8 @@ test:
 swagger:
     swag init -g cmd/server/main.go
 
-# Run load tests: bundle scripts with esbuild, deploy k6-test-runner chart
-load-test:
-    #!/bin/bash
-    set -euo pipefail
+# Bundle k6 load test scripts (esbuild)
+bundle-k6:
     mkdir -p tests/load/dist
     esbuild tests/load/scripts/main.js \
         --bundle \
@@ -74,6 +72,11 @@ load-test:
         --external:k6 \
         --external:'k6/*' \
         --outfile=tests/load/dist/bundle.js
+
+# Run load tests: bundle scripts with esbuild, deploy k6-test-runner chart
+load-test: bundle-k6
+    #!/bin/bash
+    set -euo pipefail
 
     # Clean previous run
     skaffold delete -m mentor-load-tests 2>/dev/null || true

@@ -28,13 +28,17 @@ jobs:
       - name: Test
         run: just ci-test
 
+      - name: Setup
+        run: just setup
+
       - name: Deploy dependencies
         run: just dependencies ${{ env.NAMESPACE }}
 
       - name: Deploy service to PR namespace
-        run: |
-          just setup
-          skaffold run -m mentor-api --namespace=${{ env.NAMESPACE }} --status-check=true
+        run: skaffold run -m mentor-api --namespace=${{ env.NAMESPACE }} --status-check=true
+
+      - name: Bundle k6 load test scripts
+        run: just bundle-k6
 
       - name: Setup k6
         uses: grafana/setup-k6-action@v1
@@ -42,7 +46,7 @@ jobs:
       - name: Run k6 load test
         uses: grafana/run-k6-action@v1
         with:
-          path: k6/load/feedback_load.js
+          path: tests/load/dist/bundle.js
           flags: --out json=summary.json
         env:
           BASE_URL: http://mentor-api.${{ env.NAMESPACE }}.svc.cluster.local:8080
