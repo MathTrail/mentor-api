@@ -21,6 +21,7 @@ func NewRouter(feedbackController *feedback.Controller, pool *pgxpool.Pool, logg
 
 	// Global middleware
 	router.Use(otelgin.Middleware("mentor-api")) // extracts traceparent from Dapr, creates child spans
+	router.Use(UserSpanAttributes())             // injects X-User-ID (from Oathkeeper) into active OTel span
 	router.Use(RequestID())
 	router.Use(ZapLogger(logger))
 	router.Use(ZapRecovery(logger))

@@ -6,6 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
 
@@ -90,6 +92,19 @@ func ZapRecovery(logger *zap.Logger) gin.HandlerFunc {
 		)
 		c.AbortWithStatus(500)
 	})
+}
+
+// UserSpanAttributes reads the X-User-ID header injected by Oathkeeper and sets
+// it as an attribute on the active OTel span. This allows filtering traces by
+// authenticated user in Grafana Tempo.
+func UserSpanAttributes() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if userID := c.GetHeader("X-User-ID"); userID != "" {
+			span := trace.SpanFromContext(c.Request.Context())
+			span.SetAttributes(attribute.String("user.id", userID))
+		}
+		c.Next()
+	}
 }
 
 // internalPrefixes lists path prefixes that are only logged on errors.

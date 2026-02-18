@@ -126,7 +126,7 @@ deploy: setup
 
 # Remove from cluster
 delete:
-    skaffold delete
+    skaffold delete -m mentor-api
 
 # View pod logs
 logs:
