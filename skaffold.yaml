@@ -53,7 +53,15 @@ build:
   artifacts: []
 
 manifests:
-  rawYaml: [] 
+  rawYaml:
+    - |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: mentor-deps-anchor
+        namespace: mathtrail
+      data:
+        status: "infrastructure-ready"
 
 deploy:
   kubectl: {}
