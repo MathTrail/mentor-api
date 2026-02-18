@@ -174,6 +174,9 @@ release-chart-oci registry_url="oci://k3d-mathtrail-registry.localhost:5050/char
     # Automatically extract version from Chart.yaml
     VERSION=$(grep '^version:' "$CHART_DIR/Chart.yaml" | awk '{print $2}')
     
+    echo "📦 Updating chart dependencies..."
+    helm dependency update "$CHART_DIR"
+    
     echo "📦 Packaging {{ CHART_NAME }} v${VERSION}..."
     helm package "$CHART_DIR" --destination /tmp/charts
     

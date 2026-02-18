@@ -28,6 +28,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup
+        run: just setup
+
       - name: Build and Push Docker Image
         run: |
           # Use commit SHA as the image tag for traceability
