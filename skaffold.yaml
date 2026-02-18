@@ -49,6 +49,9 @@ kind: Config
 metadata:
   name: mentor-deps
 
+build:
+  artifacts: []
+
 requires:
   - git:
       repo: https://github.com/MathTrail/infra-local
