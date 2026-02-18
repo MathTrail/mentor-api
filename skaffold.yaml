@@ -59,8 +59,8 @@ requires:
       repo: https://github.com/MathTrail/infra-local
       path: skaffold.yaml
       ref: main # todo: specify concrete version
-    activeProfiles:
-      - name: postgres
+    configs:
+      - postgres
 
 ---
 apiVersion: skaffold/v4beta13
