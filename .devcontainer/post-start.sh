@@ -1,8 +1,14 @@
 #!/bin/bash
 set -e
 
+# Load shared env vars and auto-export them (set -a) so they're available to subprocesses
+set -a
 source ~/.env.shared
+set +a
 REGISTRY_HOST="${REGISTRY%:*}"
+
+# Create skaffold.env symlink so Skaffold picks up shared variables
+ln -sf "$HOME/.env.shared" "$PWD/skaffold.env"
 
 mkdir -p /home/vscode/.kube
 chmod 700 /home/vscode/.kube

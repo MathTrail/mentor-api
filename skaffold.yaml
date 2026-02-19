@@ -25,7 +25,7 @@ deploy:
   helm:
     releases:
       - name: mentor-api
-        namespace: ${NAMESPACE}
+        namespace: "{{.NAMESPACE}}"
         chartPath: infra/helm/mentor-api
         createNamespace: true
         wait: true
@@ -54,7 +54,7 @@ manifests:
 
 deploy:
   kubectl:
-    defaultNamespace: ${NAMESPACE}
+    defaultNamespace: "{{.NAMESPACE}}"
 
 requires:
   - git:
@@ -77,8 +77,8 @@ deploy:
   helm:
     releases:
       - name: mentor-api-load-test
-        namespace: ${NAMESPACE}
-        repo: ${CHARTS_REPO}
+        namespace: "{{.NAMESPACE}}"
+        repo: "{{.CHARTS_REPO}}"
         remoteChart: k6-test-runner
         createNamespace: true
         setValues:
