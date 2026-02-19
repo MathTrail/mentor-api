@@ -78,7 +78,7 @@ deploy:
     releases:
       - name: mentor-api-load-test
         namespace: "$NAMESPACE"
-        repo: https://MathTrail.github.io/charts/charts
+        repo: ${CHARTS_REPO}
         remoteChart: k6-test-runner
         createNamespace: true
         setValues:

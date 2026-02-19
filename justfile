@@ -45,7 +45,7 @@ build-push-image tag=env("IMAGE", ""):
 
 # One-time setup: add Helm repo for service-lib dependency
 setup:
-    helm repo add mathtrail-charts https://MathTrail.github.io/charts/charts 2>/dev/null || true
+    helm repo add mathtrail-charts ${CHARTS_REPO} 2>/dev/null || true
     helm repo update
 
 # Deploy service dependencies (PostgreSQL)
@@ -233,13 +233,13 @@ release-chart:
     echo "Packaging {{ CHART_NAME }} v${VERSION}..."
     helm package "$CHART_DIR" --destination /tmp/mathtrail-charts
 
-    CHARTS_REPO="/tmp/mathtrail-charts-repo"
-    rm -rf "$CHARTS_REPO"
-    git clone git@github.com:MathTrail/charts.git "$CHARTS_REPO"
-    cp /tmp/mathtrail-charts/{{ CHART_NAME }}-*.tgz "$CHARTS_REPO/charts/"
-    cd "$CHARTS_REPO"
+    CHARTS_REPO_DIR="/tmp/mathtrail-charts-repo"
+    rm -rf "$CHARTS_REPO_DIR"
+    git clone git@github.com:MathTrail/charts.git "$CHARTS_REPO_DIR"
+    cp /tmp/mathtrail-charts/{{ CHART_NAME }}-*.tgz "$CHARTS_REPO_DIR/charts/"
+    cd "$CHARTS_REPO_DIR"
     helm repo index ./charts \
-        --url https://MathTrail.github.io/charts/charts
+        --url ${CHARTS_REPO}
     git add charts/
     git commit -m "chore: release {{ CHART_NAME }} v${VERSION}"
     git push
