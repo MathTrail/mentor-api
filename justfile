@@ -4,12 +4,12 @@ set shell := ["bash", "-c"]
 set dotenv-load := true
 set dotenv-path := env("HOME") + "/.env.shared"
 
-export SKAFFOLD_DEFAULT_REPO := "k3d-mathtrail-registry.localhost:5050"
+export SKAFFOLD_DEFAULT_REPO := env_var("REGISTRY")
 
 NAMESPACE := env_var("NAMESPACE")
 SERVICE := "mentor-api"
 CHART_NAME := "mentor-api"
-TEST_NAMESPACE := "mathtrail"
+TEST_NAMESPACE := env_var("NAMESPACE")
 
 # -- Portable Image Build (buildctl → buildah) --------------------------------
 
