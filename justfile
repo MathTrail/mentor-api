@@ -1,8 +1,9 @@
 ﻿# MathTrail Mentor Service
 
 set shell := ["bash", "-c"]
-set dotenv-load := true
-set dotenv-path := env("HOME") + "/.env.shared"
+set dotenv-load
+set dotenv-path := "/etc/mathtrail/platform.env"
+set export
 
 export SKAFFOLD_DEFAULT_REPO := env_var("REGISTRY")
 

@@ -9,20 +9,19 @@
         },
         "ghcr.io/devcontainers/features/docker-in-docker:2": {},
         "ghcr.io/devcontainers/features/kubectl-helm-minikube:1.2.2": {
-            "helm": "3.14.0",
-            "version": "1.31.0",
+            "helm": "4.1.0",
+            "version": "1.35.0",
             "minikube": "none"
         },
-        "ghcr.io/eitsupi/devcontainer-features/just:0.1.1": {},
-        "ghcr.io/prulloac/devcontainer-features/chezmoi:1": {}
+        "ghcr.io/eitsupi/devcontainer-features/just:0.1.1": {}
     },
     "mounts": [
-        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.kube,target=/home/vscode/.kube-host,type=bind,consistency=cached"
+        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.kube,target=/home/vscode/.kube-host,type=bind,consistency=cached,readonly"
     ],
-    "remoteEnv": {
-        "KUBECONFIG": "/home/vscode/.kube/k3d-mathtrail-dev.yaml",
-        "SKAFFOLD_DEFAULT_REPO": "k3d-mathtrail-registry.localhost:5050"
-    },
+    "runArgs": [
+        "--add-host=host.docker.internal:host-gateway",
+        "--add-host=k3d-mathtrail-registry.localhost:host-gateway"
+    ],
     "customizations": {
         "vscode": {
             "extensions": [
@@ -33,6 +32,9 @@
                 "redhat.vscode-yaml",
                 "eamodio.gitlens",
                 "sclu1034.justfile",
+                "vscode-icons-team.vscode-icons",
+                "waderyan.gitblame",
+                "donjayamanne.githistory",
                 "Tim-Koehler.helm-intellisense",
                 "anthropic.claude-code",
                 "ckolkman.vscode-postgres"
@@ -52,7 +54,6 @@
             }
         }
     },
-    "postCreateCommand": "bash .devcontainer/setup.sh",
     "postStartCommand": "bash .devcontainer/post-start.sh",
     "forwardPorts": [8080]
 }
