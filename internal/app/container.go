@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"time"
 
 	dapr "github.com/dapr/go-sdk/client"
 
@@ -43,7 +44,22 @@ func NewContainer() *Container {
 
 	// Connect to the Dapr sidecar. NewClient() reads DAPR_GRPC_PORT from the environment
 	// (injected automatically by the Dapr sidecar into the application container).
-	daprClient, err := dapr.NewClient()
+	// Retry because the sidecar and the app container start concurrently in Kubernetes.
+	var (
+		daprClient dapr.Client
+		err        error
+	)
+	for attempt := 1; attempt <= 10; attempt++ {
+		daprClient, err = dapr.NewClient()
+		if err == nil {
+			break
+		}
+		logger.Warn("dapr sidecar not ready, retrying",
+			zap.Int("attempt", attempt),
+			zap.Error(err),
+		)
+		time.Sleep(time.Duration(attempt) * time.Second)
+	}
 	if err != nil {
 		panic(fmt.Sprintf("failed to create Dapr client: %v", err))
 	}

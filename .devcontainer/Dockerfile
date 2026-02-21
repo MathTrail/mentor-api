@@ -1,3 +1,8 @@
+# Build swag binary in a Go image (Go is not available in the base image)
+FROM golang:1.25-bookworm AS swag-builder
+ARG SWAG_VERSION=v2.0.0-rc5
+RUN go install github.com/swaggo/swag/v2/cmd/swag@${SWAG_VERSION}
+
 FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 COPY --from=ghcr.io/mathtrail/platform-env:1 /config/global.env /etc/mathtrail/platform.env
 
@@ -31,9 +36,8 @@ ARG ESBUILD_VERSION=0.27.3
 RUN curl -fsSL "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-${ESBUILD_VERSION}.tgz" \
     | tar xz --strip-components=2 -C /usr/local/bin package/bin/esbuild
 
-# Install swag (Swagger doc generator for Go)
-ARG SWAG_VERSION=v2.0.0-rc5
-RUN GOBIN=/usr/local/bin go install github.com/swaggo/swag/v2/cmd/swag@${SWAG_VERSION}
+# Copy swag binary from builder stage
+COPY --from=swag-builder /go/bin/swag /usr/local/bin/swag
 
 # Pre-configure buildah to trust the k3d registry and resolve short image names
 ARG K3D_REGISTRY=k3d-mathtrail-registry.localhost:5050

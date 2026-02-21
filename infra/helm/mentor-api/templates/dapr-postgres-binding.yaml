@@ -1,8 +1,9 @@
-{{- if dig "dbBinding" "enabled" false .Values }}
+{{- $v := .Values | toYaml | fromYaml }}
+{{- if dig "dbBinding" "enabled" false $v }}
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  name: {{ dig "dbBinding" "name" "mentor-db" .Values }}
+  name: {{ dig "dbBinding" "name" "mentor-db" $v }}
   labels:
     {{- include "mathtrail-service-lib.labels" . | nindent 4 }}
 spec:

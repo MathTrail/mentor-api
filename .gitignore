@@ -41,9 +41,6 @@ tests/load/dist/
 # Helm charts
 charts/
 *.tgz
-Chart.lock
 
-# Swagger docs
-docs/docs.go
-docs/swagger.json
-docs/swagger.yaml
+# Swagger docs (generated — kept out of git but tracked for Docker builds)
+# docs/docs.go is intentionally committed so the Docker build can compile it.

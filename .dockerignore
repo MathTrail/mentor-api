@@ -16,9 +16,8 @@ infra/
 skaffold.yaml
 justfile
 
-# Tests and docs
+# Tests
 tests/
-docs/
 k6/
 
 # Docker
