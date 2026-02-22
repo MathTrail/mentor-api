@@ -3,9 +3,6 @@ on:
   push:
     branches: [main]
 
-env:
-  REGISTRY: "k3d-mathtrail-registry:5000"
-
 jobs:
   # JOB 1: Post-merge validation
   # Runs unit tests to catch logic conflicts between independently merged PRs.
@@ -14,6 +11,9 @@ jobs:
     runs-on: mathtrail-runners
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Environment
+        uses: MathTrail/core/.github/actions/setup-env@v1
 
       - name: Run Tests
         run: just ci-test
@@ -28,12 +28,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Environment
+        uses: MathTrail/core/.github/actions/setup-env@v1
+
+      - name: Setup
+        run: just setup
+
       - name: Build and Push Docker Image
         run: |
           # Use commit SHA as the image tag for traceability
-          just build-push-image "${{ env.REGISTRY }}/mentor-api:${{ github.sha }}"
+          just build-push-image "${{ env.REGISTRY_CLUSTER }}/mentor-api:${{ github.sha }}"
 
       - name: Release Helm Chart to OCI
         run: |
           # Push the chart to the same OCI registry
-          just release-chart-oci "oci://${{ env.REGISTRY }}/charts"
+          just release-chart-oci "oci://${{ env.REGISTRY_CLUSTER }}/charts"

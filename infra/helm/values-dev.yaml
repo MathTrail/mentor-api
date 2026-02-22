@@ -1,22 +1,42 @@
 # Dev overlay: K3s local development
+# DB credentials come from Vault via ESO (dynamic rotation), delivered through the Dapr binding.
+# No static passwords here — the app only knows the binding name.
 
 env:
   - name: SERVER_PORT
     value: "8080"
   - name: LOG_LEVEL
     value: "info"
-  - name: DB_HOST
-    value: "postgres-postgresql"
-  - name: DB_PORT
-    value: "5432"
-  - name: DB_USER
-    value: "postgres"
-  - name: DB_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        name: postgres-postgresql
-        key: postgres-password
-  - name: DB_NAME
-    value: "mentor"
-  - name: DB_SSL_MODE
-    value: "disable"
+  - name: DB_BINDING_NAME
+    value: "mentor-db"
+
+# The migration Job still needs a direct DB connection with DDL privileges.
+# It inherits the shared `env` above, then these migration-specific vars are layered on top.
+# Credentials come from the Bitnami chart's auto-generated postgres-postgresql Secret.
+migration:
+  env:
+    - name: DB_HOST
+      value: "postgres-postgresql"
+    - name: DB_PORT
+      value: "5432"
+    - name: DB_USER
+      value: "postgres"
+    - name: DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: postgres-postgresql
+          key: postgres-password
+    - name: DB_NAME
+      value: "mentor"
+    - name: DB_SSL_MODE
+      value: "disable"
+
+dbDynamicSecret:
+  enabled: true
+  pgHost: "postgres-postgresql"
+  pgPort: "5432"
+  pgDatabase: "mentor"
+
+dbBinding:
+  enabled: true
+  name: "mentor-db"

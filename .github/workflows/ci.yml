@@ -10,13 +10,20 @@ permissions:
 
 env:
   NAMESPACE: "pr-${{ github.event.pull_request.number || github.run_id }}"
-  SKAFFOLD_DEFAULT_REPO: k3d-mathtrail-registry:5000
 
 jobs:
   ci:
     runs-on: mathtrail-runners
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Environment
+        uses: MathTrail/core/.github/actions/setup-env@v1
+
+      - name: Set CI deployment context
+        run: |
+          echo "SKAFFOLD_DEFAULT_REPO=${REGISTRY_CLUSTER}" >> "$GITHUB_ENV"
+          echo "NAMESPACE=pr-${{ github.event.pull_request.number || github.run_id }}" >> "$GITHUB_ENV"
 
       - name: Prepare namespace
         if: github.event_name == 'pull_request'
@@ -35,7 +42,7 @@ jobs:
         run: just dependencies ${{ env.NAMESPACE }}
 
       - name: Deploy service to PR namespace
-        run: skaffold run -m mentor-api --namespace=${{ env.NAMESPACE }} --status-check=true
+        run: skaffold run -m mentor-api --namespace=${{ env.NAMESPACE }} --status-check=true --insecure-registry=${REGISTRY_CLUSTER}
 
       - name: Bundle k6 load test scripts
         run: just bundle-k6
@@ -59,6 +66,6 @@ jobs:
           path: summary.json
           retention-days: 90
 
-      - name: Cleanup namespace
-        if: always() && github.event_name == 'pull_request'
-        run: just ci-cleanup ${{ env.NAMESPACE }}
+      # - name: Cleanup namespace
+      #   if: always() && github.event_name == 'pull_request'
+      #   run: just ci-cleanup ${{ env.NAMESPACE }}

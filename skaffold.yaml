@@ -6,11 +6,11 @@ metadata:
 build:
   local:
     push: true
-    tryImportMissing: false
+    tryImportMissing: true
   tagPolicy:
     inputDigest: {}
   insecureRegistries:
-    - k3d-mathtrail-registry:5000
+    - ${REGISTRY_CLUSTER}
   artifacts:
     - image: mentor-api
       custom:
@@ -25,6 +25,7 @@ deploy:
   helm:
     releases:
       - name: mentor-api
+        namespace: "{{.NAMESPACE}}"
         chartPath: infra/helm/mentor-api
         createNamespace: true
         wait: true
@@ -34,12 +35,20 @@ deploy:
         setValueTemplates:
           image.repository: "{{.IMAGE_REPO_mentor_api}}"
           image.tag: "{{.IMAGE_TAG_mentor_api}}"
+          dbDynamicSecret.vaultRole: "mentor-api-role-{{.NAMESPACE}}"
 
 portForward:
   - resourceType: service
     resourceName: mentor-api
     port: 8080
     localPort: 8080
+
+profiles:
+  - name: observability
+    patches:
+      - op: add
+        path: /deploy/helm/releases/0/valuesFiles/-
+        value: infra/helm/values-observability.yaml
 
 ---
 apiVersion: skaffold/v4beta13
@@ -52,7 +61,8 @@ manifests:
     - infra/k8s/deps-anchor.yaml
 
 deploy:
-  kubectl: {}
+  kubectl:
+    defaultNamespace: "{{.NAMESPACE}}"
 
 requires:
   - git:
@@ -61,6 +71,28 @@ requires:
       ref: main # todo: specify concrete version
     configs:
       - postgres
+      - vault-db-init
+
+---
+apiVersion: skaffold/v4beta13
+kind: Config
+metadata:
+  name: mentor-load-deps
+
+build:
+  artifacts: []
+
+deploy:
+  statusCheck: true
+  statusCheckDeadlineSeconds: 120
+  helm:
+    releases:
+      - name: k6-operator
+        namespace: k6-operator
+        repo: "{{.CHARTS_REPO}}"
+        remoteChart: k6-operator
+        createNamespace: true
+        wait: true
 
 ---
 apiVersion: skaffold/v4beta13
@@ -75,7 +107,8 @@ deploy:
   helm:
     releases:
       - name: mentor-api-load-test
-        repo: https://MathTrail.github.io/charts/charts
+        namespace: "{{.NAMESPACE}}"
+        repo: "{{.CHARTS_REPO}}"
         remoteChart: k6-test-runner
         createNamespace: true
         setValues:
