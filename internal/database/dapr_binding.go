@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	dapr "github.com/dapr/go-sdk/client"
 )
@@ -35,10 +36,22 @@ func (d *DaprDB) Query(ctx context.Context, sql string, params ...any) ([]map[st
 		return nil, fmt.Errorf("daprdb: marshal params: %w", err)
 	}
 
-	wrapped := fmt.Sprintf(
-		"SELECT COALESCE(json_agg(row_to_json(t))::text,'[]') FROM (%s) t",
-		sql,
-	)
+	// DML statements (INSERT/UPDATE/DELETE … RETURNING) cannot be used as
+	// subqueries in PostgreSQL. Wrap them with a CTE instead.
+	var wrapped string
+	trimmed := strings.TrimSpace(sql)
+	upper := strings.ToUpper(trimmed[:6])
+	if upper == "INSERT" || upper == "UPDATE" || upper == "DELETE" {
+		wrapped = fmt.Sprintf(
+			"WITH t AS (%s) SELECT COALESCE(json_agg(row_to_json(t))::text,'[]') FROM t",
+			sql,
+		)
+	} else {
+		wrapped = fmt.Sprintf(
+			"SELECT COALESCE(json_agg(row_to_json(t))::text,'[]') FROM (%s) t",
+			sql,
+		)
+	}
 
 	resp, err := d.client.InvokeBinding(ctx, &dapr.InvokeBindingRequest{
 		Name:      d.bindingName,
