@@ -61,7 +61,11 @@ func main() {
 			fmt.Fprintf(os.Stderr, "failed to init pyroscope: %v\n", err)
 			os.Exit(1)
 		}
-		defer profiler.Stop()
+		defer func() {
+			if err := profiler.Stop(); err != nil {
+				fmt.Fprintf(os.Stderr, "failed to stop pyroscope profiler: %v\n", err)
+			}
+		}()
 	}
 
 	// Initialize DI container (pool gets otelpgx tracer, router gets otelgin middleware)
