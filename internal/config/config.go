@@ -48,8 +48,8 @@ func Load() *Config {
 	v.SetDefault("DB_BINDING_NAME", "mentor-db")
 	v.SetDefault("LOG_LEVEL", "info")
 	v.SetDefault("APP_NAME", "mentor-api")
-	v.SetDefault("OTEL_ENDPOINT", "otel-collector-opentelemetry-collector.monitoring.svc.cluster.local:4317")
-	v.SetDefault("PYROSCOPE_ENDPOINT", "http://pyroscope.monitoring.svc.cluster.local:4040")
+	v.SetDefault("OTEL_ENDPOINT", "")
+	v.SetDefault("PYROSCOPE_ENDPOINT", "")
 
 	cfg := &Config{}
 	if err := v.Unmarshal(cfg); err != nil {

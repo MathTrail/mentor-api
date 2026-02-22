@@ -35,7 +35,7 @@ build-push-image tag=env("IMAGE", ""):
             --local dockerfile=. \
             --output type=image,name="$TAG",push=true,registry.insecure=true \
             --export-cache type=inline \
-            --import-cache type=registry,ref="$TAG"```
+            --import-cache type=registry,ref="$TAG"
     else
         echo "🔨 Building with Buildah..."
         buildah bud --log-level=error --tag "$TAG" .
@@ -118,13 +118,23 @@ load-test: bundle-k6
     echo "✅ Load test passed"
     skaffold delete -m mentor-load-tests
 
-# Start development mode with hot-reload and port-forwarding
-dev: setup
-    skaffold dev -m mentor-api,mentor-deps --port-forward
+# Start development mode with hot-reload and port-forwarding.
+# Pass observability=true to enable Dapr observability (requires infra-observability stack in cluster).
+dev observability="false": setup
+    #!/bin/bash
+    set -euo pipefail
+    EXTRA=""
+    [ "{{ observability }}" = "true" ] && EXTRA="-p observability"
+    skaffold dev -m mentor-api,mentor-deps --port-forward $EXTRA
 
-# Build and deploy to cluster
-deploy: setup
-    skaffold run -m mentor-api
+# Build and deploy to cluster.
+# Pass observability=true to enable Dapr observability (requires infra-observability stack in cluster).
+deploy observability="false": setup
+    #!/bin/bash
+    set -euo pipefail
+    EXTRA=""
+    [ "{{ observability }}" = "true" ] && EXTRA="-p observability"
+    skaffold run -m mentor-api $EXTRA
 
 # Remove from cluster
 delete:

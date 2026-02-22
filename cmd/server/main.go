@@ -27,16 +27,19 @@ func main() {
 	cfg := config.Load()
 
 	// --- Tracing ---
-	tracerShutdown, err := observability.InitTracer(cfg)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to init tracer: %v\n", err)
-		os.Exit(1)
+	// Skipped when OTEL_ENDPOINT is empty (default in dev; set via values-observability.yaml in prod).
+	if cfg.OTelEndpoint != "" {
+		tracerShutdown, err := observability.InitTracer(cfg)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to init tracer: %v\n", err)
+			os.Exit(1)
+		}
+		defer func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = tracerShutdown(ctx)
+		}()
 	}
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = tracerShutdown(ctx)
-	}()
 
 	// --- Metrics ---
 	metricsShutdown, err := observability.InitMetrics()
@@ -51,12 +54,15 @@ func main() {
 	}()
 
 	// --- Profiling ---
-	profiler, err := observability.InitPyroscope(cfg)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to init pyroscope: %v\n", err)
-		os.Exit(1)
+	// Skipped when PYROSCOPE_ENDPOINT is empty (default in dev; set via values-observability.yaml in prod).
+	if cfg.PyroscopeEndpoint != "" {
+		profiler, err := observability.InitPyroscope(cfg)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to init pyroscope: %v\n", err)
+			os.Exit(1)
+		}
+		defer profiler.Stop()
 	}
-	defer profiler.Stop()
 
 	// Initialize DI container (pool gets otelpgx tracer, router gets otelgin middleware)
 	container := app.NewContainer()

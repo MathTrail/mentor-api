@@ -52,10 +52,13 @@ rollout:
   steps: []
   autoPromotionEnabled: true
 
+observability:
+  # Set to true only when the infra-observability stack is deployed in the cluster.
+  # Enabling this without that stack causes Dapr Sentry to crash (PermissionDenied).
+  # Use the Skaffold 'observability' profile (just dev obs=true) to activate.
+  enabled: false
+
 podAnnotations:
-  # Connect the Dapr sidecar to the tracing Configuration CRD deployed by infra-observability.
-  # Without this annotation the sidecar runs but does not export any traces.
-  dapr.io/config: "mathtrail-observability"
   # Let Alloy (k8s-monitoring DaemonSet) scrape Prometheus metrics exposed on /metrics.
   prometheus.io/scrape: "true"
   prometheus.io/path: "/metrics"

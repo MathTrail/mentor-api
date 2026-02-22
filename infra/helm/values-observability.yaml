@@ -1,0 +1,16 @@
+# Observability overlay: Dapr tracing via the mathtrail-observability Configuration CRD.
+# Requires the infra-observability stack to be deployed in the cluster.
+# Applied automatically when using: just dev observability=true  |  just deploy observability=true
+
+observability:
+  enabled: true
+
+podAnnotations:
+  # Connect the Dapr sidecar to the tracing Configuration CRD deployed by infra-observability.
+  dapr.io/config: "mathtrail-observability"
+
+env:
+  - name: OTEL_ENDPOINT
+    value: "otel-collector-opentelemetry-collector.monitoring.svc.cluster.local:4317"
+  - name: PYROSCOPE_ENDPOINT
+    value: "http://pyroscope.monitoring.svc.cluster.local:4040"
