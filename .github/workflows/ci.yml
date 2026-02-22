@@ -9,7 +9,7 @@ permissions:
   pull-requests: write
 
 env:
-  NAMESPACE: "pr-${{ github.event.pull_request.number || github.run_id }}"
+  NAMESPACE: "ns-mentor-api-${{ github.run_id }}"
 
 jobs:
   ci:
@@ -23,7 +23,8 @@ jobs:
       - name: Set CI deployment context
         run: |
           echo "SKAFFOLD_DEFAULT_REPO=${REGISTRY_CLUSTER}" >> "$GITHUB_ENV"
-          echo "NAMESPACE=pr-${{ github.event.pull_request.number || github.run_id }}" >> "$GITHUB_ENV"
+          echo "NAMESPACE=ns-mentor-api-${{ github.run_id }}" >> "$GITHUB_ENV"
+          echo "VAULT_ROLE=mentor-api-role-ns-mentor-api-${{ github.run_id }}" >> "$GITHUB_ENV"
 
       - name: Prepare namespace
         if: github.event_name == 'pull_request'
@@ -42,7 +43,7 @@ jobs:
         run: just dependencies ${{ env.NAMESPACE }}
 
       - name: Deploy service to PR namespace
-        run: skaffold run -m mentor-api --namespace=${{ env.NAMESPACE }} --status-check=true --insecure-registry=${REGISTRY_CLUSTER}
+        run: skaffold run -m mentor-api -p ci --namespace=${{ env.NAMESPACE }} --status-check=true --insecure-registry=${REGISTRY_CLUSTER}
 
       - name: Bundle k6 load test scripts
         run: just bundle-k6

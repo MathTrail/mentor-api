@@ -49,6 +49,11 @@ profiles:
       - op: add
         path: /deploy/helm/releases/0/valuesFiles/-
         value: infra/helm/values-observability.yaml
+  - name: ci
+    patches:
+      - op: replace
+        path: /deploy/helm/releases/0/setValueTemplates/dbDynamicSecret.vaultRole
+        value: "{{.VAULT_ROLE}}"
 
 ---
 apiVersion: skaffold/v4beta13
