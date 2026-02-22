@@ -4,10 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	dapr "github.com/dapr/go-sdk/client"
 )
+
+// wsRe collapses consecutive whitespace (spaces, tabs, newlines) into a single
+// space. gRPC metadata headers reject newline characters, so SQL must be
+// flattened before being passed through the Dapr binding.
+var wsRe = regexp.MustCompile(`\s+`)
+
+func flattenSQL(sql string) string {
+	return strings.TrimSpace(wsRe.ReplaceAllString(sql, " "))
+}
 
 // DaprDB executes SQL via a Dapr PostgreSQL output binding.
 // The binding reads its connection string from a K8s Secret managed by ESO,
@@ -36,20 +46,23 @@ func (d *DaprDB) Query(ctx context.Context, sql string, params ...any) ([]map[st
 		return nil, fmt.Errorf("daprdb: marshal params: %w", err)
 	}
 
+	// Flatten whitespace so that multi-line SQL literals don't break gRPC
+	// metadata headers (which reject newlines).
+	flat := flattenSQL(sql)
+
 	// DML statements (INSERT/UPDATE/DELETE … RETURNING) cannot be used as
 	// subqueries in PostgreSQL. Wrap them with a CTE instead.
 	var wrapped string
-	trimmed := strings.TrimSpace(sql)
-	upper := strings.ToUpper(trimmed[:6])
+	upper := strings.ToUpper(flat[:6])
 	if upper == "INSERT" || upper == "UPDATE" || upper == "DELETE" {
 		wrapped = fmt.Sprintf(
 			"WITH t AS (%s) SELECT COALESCE(json_agg(row_to_json(t))::text,'[]') FROM t",
-			sql,
+			flat,
 		)
 	} else {
 		wrapped = fmt.Sprintf(
 			"SELECT COALESCE(json_agg(row_to_json(t))::text,'[]') FROM (%s) t",
-			sql,
+			flat,
 		)
 	}
 
@@ -93,7 +106,7 @@ func (d *DaprDB) Exec(ctx context.Context, sql string, params ...any) error {
 	_, err = d.client.InvokeBinding(ctx, &dapr.InvokeBindingRequest{
 		Name:      d.bindingName,
 		Operation: "exec",
-		Metadata:  map[string]string{"sql": sql, "params": string(p)},
+		Metadata:  map[string]string{"sql": flattenSQL(sql), "params": string(p)},
 	})
 	if err != nil {
 		return fmt.Errorf("daprdb: invoke binding: %w", err)
