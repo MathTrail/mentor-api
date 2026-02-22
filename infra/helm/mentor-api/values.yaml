@@ -36,6 +36,7 @@ dbDynamicSecret:
   pgHost: "postgres-postgresql"
   pgPort: "5432"
   pgDatabase: "mentor"
+  vaultRole: "mentor-api-role"
 
 # Dapr PostgreSQL binding component.
 # When enabled, the app accesses the DB exclusively through the Dapr sidecar binding.

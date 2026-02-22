@@ -35,6 +35,7 @@ deploy:
         setValueTemplates:
           image.repository: "{{.IMAGE_REPO_mentor_api}}"
           image.tag: "{{.IMAGE_TAG_mentor_api}}"
+          dbDynamicSecret.vaultRole: "mentor-api-role-{{.NAMESPACE}}"
 
 portForward:
   - resourceType: service
@@ -70,6 +71,7 @@ requires:
       ref: main # todo: specify concrete version
     configs:
       - postgres
+      - vault-init
 
 ---
 apiVersion: skaffold/v4beta13
