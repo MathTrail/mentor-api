@@ -49,9 +49,9 @@ setup:
     helm repo add mathtrail-charts ${CHARTS_REPO} 2>/dev/null || true
     helm repo update
 
-# Deploy service dependencies (PostgreSQL)
-dependencies:
-    skaffold run -m mentor-deps --namespace="{{ NAMESPACE }}" --status-check=true
+# Deploy service dependencies
+dependencies ns=NAMESPACE:
+    skaffold run -m mentor-deps --namespace="{{ ns }}" --status-check=true
 
 # Build the Go binary
 build:
