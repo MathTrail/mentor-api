@@ -40,7 +40,7 @@ jobs:
         run: just dependencies ${{ env.NAMESPACE }}
 
       - name: Deploy service to PR namespace
-        run: skaffold run -m mentor-api --namespace=${{ env.NAMESPACE }} --status-check=true
+        run: skaffold run -m mentor-api --namespace=${{ env.NAMESPACE }} --status-check=true --insecure-registry=${REGISTRY_CLUSTER}
 
       - name: Bundle k6 load test scripts
         run: just bundle-k6

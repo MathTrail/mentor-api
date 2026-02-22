@@ -35,7 +35,7 @@ build-push-image tag=env("IMAGE", ""):
             --local dockerfile=. \
             --output type=image,name="$TAG",push=true,registry.insecure=true \
             --export-cache type=inline \
-            --import-cache type=registry,ref="$TAG"
+            --import-cache type=registry,ref="$TAG",registry.insecure=true
     else
         echo "🔨 Building with Buildah..."
         buildah bud --log-level=error --tag "$TAG" .
