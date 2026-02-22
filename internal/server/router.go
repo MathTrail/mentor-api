@@ -28,6 +28,13 @@ func NewRouter(feedbackController *feedback.Controller, db *database.DaprDB, log
 	router.Use(ZapLogger(logger))
 	router.Use(ZapRecovery(logger))
 
+	// Dapr app configuration endpoint.
+	// The Dapr sidecar probes this on startup to discover pub/sub subscriptions.
+	// Returning 200 with an empty object signals "no subscriptions" and suppresses sidecar 404 noise.
+	router.GET("/dapr/config", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{})
+	})
+
 	// Observability endpoints
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
