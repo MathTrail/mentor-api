@@ -80,9 +80,12 @@ load-test: bundle-k6
     #!/bin/bash
     set -euo pipefail
 
+    # Ensure k6 operator CRDs are present
+    skaffold run -m mentor-load-deps
+
     # Clean previous run
     skaffold delete -m mentor-load-tests 2>/dev/null || true
-    kubectl delete testrun mentor-api-load-test -n {{ NAMESPACE }} --ignore-not-found
+    kubectl delete testrun mentor-api-load-test -n {{ NAMESPACE }} --ignore-not-found 2>/dev/null || true
 
     # Deploy TestRun + ConfigMap
     skaffold run -m mentor-load-tests

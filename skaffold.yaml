@@ -71,7 +71,28 @@ requires:
       ref: main # todo: specify concrete version
     configs:
       - postgres
-      - vault-init
+      - vault-db-init
+
+---
+apiVersion: skaffold/v4beta13
+kind: Config
+metadata:
+  name: mentor-load-deps
+
+build:
+  artifacts: []
+
+deploy:
+  statusCheck: true
+  statusCheckDeadlineSeconds: 120
+  helm:
+    releases:
+      - name: k6-operator
+        namespace: k6-operator
+        repo: "{{.CHARTS_REPO}}"
+        remoteChart: k6-operator
+        createNamespace: true
+        wait: true
 
 ---
 apiVersion: skaffold/v4beta13
