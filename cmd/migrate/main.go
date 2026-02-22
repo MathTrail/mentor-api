@@ -3,77 +3,54 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"os"
-	"path/filepath"
-	"sort"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
+	"go.uber.org/zap"
 
 	"github.com/MathTrail/mentor-api/internal/config"
 	"github.com/MathTrail/mentor-api/internal/logging"
-	"go.uber.org/zap"
+	"github.com/MathTrail/mentor-api/migrations"
 )
 
 func main() {
-	// Initialize logger
 	logger := logging.NewLogger("info")
 
-	// Load configuration
 	cfg := config.Load()
 
-	// Ensure the target database exists
+	// Ensure the target database exists (Goose requires it).
 	ensureDatabase(cfg, logger)
 
-	// Run SQL migrations (extensions, custom types, tables)
-	runSQLMigrations(cfg.DSN(), logger)
+	// Run Goose migrations with embedded SQL files.
+	if err := runMigrations(cfg.DSN(), logger); err != nil {
+		logger.Fatal("migrations failed", zap.Error(err))
+	}
 
 	logger.Info("all migrations completed successfully")
 	fmt.Println("✓ Database migrations completed successfully")
 }
 
-// runSQLMigrations executes all .sql files from the migrations directory.
-func runSQLMigrations(dsn string, logger *zap.Logger) {
-	sqlDB, err := sql.Open("pgx", dsn)
+// runMigrations applies all pending Goose migrations from the embedded FS.
+func runMigrations(dsn string, logger *zap.Logger) error {
+	db, err := sql.Open("pgx", dsn)
 	if err != nil {
-		logger.Fatal("failed to open sql connection for migrations", zap.Error(err))
+		return fmt.Errorf("failed to open db for migrations: %w", err)
 	}
-	defer func() { _ = sqlDB.Close() }()
+	defer func() { _ = db.Close() }()
 
-	migrationsDir := "/migrations"
-	if _, err := os.Stat(migrationsDir); os.IsNotExist(err) {
-		migrationsDir = "./migrations"
-	}
+	goose.SetBaseFS(migrations.FS)
+	goose.SetLogger(&gooseLogAdapter{l: logger})
 
-	files, err := filepath.Glob(filepath.Join(migrationsDir, "*.sql"))
-	if err != nil {
-		logger.Fatal("failed to read migrations directory", zap.Error(err))
+	if err := goose.SetDialect("postgres"); err != nil {
+		return fmt.Errorf("failed to set goose dialect: %w", err)
 	}
 
-	if len(files) == 0 {
-		logger.Info("no SQL migration files found", zap.String("directory", migrationsDir))
-		return
+	logger.Info("starting goose migrations")
+	if err := goose.Up(db, "."); err != nil {
+		return fmt.Errorf("goose up failed: %w", err)
 	}
 
-	sort.Strings(files)
-	logger.Info("running SQL migrations", zap.Int("count", len(files)))
-
-	for _, file := range files {
-		logger.Info("executing migration", zap.String("file", filepath.Base(file)))
-
-		content, err := os.ReadFile(file)
-		if err != nil {
-			logger.Fatal("failed to read migration file", zap.String("file", file), zap.Error(err))
-		}
-
-		if _, err := sqlDB.Exec(string(content)); err != nil {
-			logger.Fatal("migration failed",
-				zap.String("file", filepath.Base(file)),
-				zap.Error(err),
-			)
-		}
-
-		logger.Info("migration completed", zap.String("file", filepath.Base(file)))
-	}
+	return nil
 }
 
 // ensureDatabase connects to the default "postgres" database and creates the
@@ -94,7 +71,7 @@ func ensureDatabase(cfg *config.Config, logger *zap.Logger) {
 	}
 
 	if !exists {
-		// CREATE DATABASE cannot run inside a transaction
+		// CREATE DATABASE cannot run inside a transaction.
 		if _, err := db.Exec(fmt.Sprintf(`CREATE DATABASE "%s"`, cfg.DBName)); err != nil {
 			logger.Fatal("failed to create database", zap.String("dbname", cfg.DBName), zap.Error(err))
 		}
@@ -102,4 +79,17 @@ func ensureDatabase(cfg *config.Config, logger *zap.Logger) {
 	} else {
 		logger.Info("database already exists", zap.String("dbname", cfg.DBName))
 	}
+}
+
+// gooseLogAdapter bridges Goose's logger interface to zap.
+type gooseLogAdapter struct {
+	l *zap.Logger
+}
+
+func (a *gooseLogAdapter) Printf(format string, v ...interface{}) {
+	a.l.Info(fmt.Sprintf(format, v...))
+}
+
+func (a *gooseLogAdapter) Fatalf(format string, v ...interface{}) {
+	a.l.Fatal(fmt.Sprintf(format, v...))
 }
