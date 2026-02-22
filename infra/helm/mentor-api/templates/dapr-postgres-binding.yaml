@@ -1,0 +1,17 @@
+{{- $v := .Values | toYaml | fromYaml }}
+{{- if dig "dbBinding" "enabled" false $v }}
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: {{ dig "dbBinding" "name" "mentor-db" $v }}
+  labels:
+    {{- include "mathtrail-service-lib.labels" . | nindent 4 }}
+spec:
+  type: bindings.postgresql
+  version: v1
+  metadata:
+    - name: connectionString
+      secretKeyRef:
+        name: mentor-api-db-dynamic-creds
+        key: connectionString
+{{- end }}

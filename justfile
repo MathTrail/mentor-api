@@ -1,14 +1,16 @@
 ﻿# MathTrail Mentor Service
 
 set shell := ["bash", "-c"]
+set dotenv-load
+set dotenv-path := "/etc/mathtrail/platform.env"
+set export
 
-export SKAFFOLD_DEFAULT_REPO := "k3d-mathtrail-registry.localhost:5050"
+export SKAFFOLD_DEFAULT_REPO := env_var("REGISTRY")
 
-NAMESPACE := "mathtrail"
+NAMESPACE := env_var("NAMESPACE")
 SERVICE := "mentor-api"
 CHART_NAME := "mentor-api"
-TEST_NAMESPACE := "mathtrail"
-TEST_CONFIGMAP := "mentor-api-functional"
+TEST_NAMESPACE := env_var("NAMESPACE")
 
 # -- Portable Image Build (buildctl → buildah) --------------------------------
 
@@ -33,7 +35,7 @@ build-push-image tag=env("IMAGE", ""):
             --local dockerfile=. \
             --output type=image,name="$TAG",push=true,registry.insecure=true \
             --export-cache type=inline \
-            --import-cache type=registry,ref="$TAG"
+            --import-cache type=registry,ref="$TAG",registry.insecure=true
     else
         echo "🔨 Building with Buildah..."
         buildah bud --log-level=error --tag "$TAG" .
@@ -44,12 +46,12 @@ build-push-image tag=env("IMAGE", ""):
 
 # One-time setup: add Helm repo for service-lib dependency
 setup:
-    helm repo add mathtrail-charts https://MathTrail.github.io/charts/charts 2>/dev/null || true
+    helm repo add mathtrail-charts ${CHARTS_REPO} 2>/dev/null || true
     helm repo update
 
-# Deploy service dependencies (PostgreSQL)
-dependencies namespace="mathtrail":
-    skaffold run -m mentor-deps --namespace={{namespace}} --status-check=true
+# Deploy service dependencies
+dependencies ns=NAMESPACE:
+    skaffold run -m mentor-deps --namespace="{{ ns }}" --status-check=true
 
 # Build the Go binary
 build:
@@ -78,9 +80,12 @@ load-test: bundle-k6
     #!/bin/bash
     set -euo pipefail
 
+    # Ensure k6 operator CRDs are present
+    skaffold run -m mentor-load-deps
+
     # Clean previous run
     skaffold delete -m mentor-load-tests 2>/dev/null || true
-    kubectl delete testrun mentor-api-load-test -n {{ NAMESPACE }} --ignore-not-found
+    kubectl delete testrun mentor-api-load-test -n {{ NAMESPACE }} --ignore-not-found 2>/dev/null || true
 
     # Deploy TestRun + ConfigMap
     skaffold run -m mentor-load-tests
@@ -116,17 +121,27 @@ load-test: bundle-k6
     echo "✅ Load test passed"
     skaffold delete -m mentor-load-tests
 
-# Start development mode with hot-reload and port-forwarding
-dev: setup
-    skaffold dev -m mentor-api,mentor-deps --port-forward
+# Start development mode with hot-reload and port-forwarding.
+# Pass observability=true to enable Dapr observability (requires infra-observability stack in cluster).
+dev observability="false": setup
+    #!/bin/bash
+    set -euo pipefail
+    EXTRA=""
+    [ "{{ observability }}" = "true" ] && EXTRA="-p observability"
+    skaffold dev -m mentor-api,mentor-deps --port-forward $EXTRA
 
-# Build and deploy to cluster
-deploy: setup
-    skaffold run
+# Build and deploy to cluster.
+# Pass observability=true to enable Dapr observability (requires infra-observability stack in cluster).
+deploy observability="false": setup
+    #!/bin/bash
+    set -euo pipefail
+    EXTRA=""
+    [ "{{ observability }}" = "true" ] && EXTRA="-p observability"
+    skaffold run -m mentor-api $EXTRA
 
 # Remove from cluster
 delete:
-    skaffold delete
+    skaffold delete -m mentor-api
 
 # View pod logs
 logs:
@@ -173,6 +188,9 @@ release-chart-oci registry_url="oci://k3d-mathtrail-registry.localhost:5050/char
     
     # Automatically extract version from Chart.yaml
     VERSION=$(grep '^version:' "$CHART_DIR/Chart.yaml" | awk '{print $2}')
+    
+    echo "📦 Updating chart dependencies..."
+    helm dependency update "$CHART_DIR"
     
     echo "📦 Packaging {{ CHART_NAME }} v${VERSION}..."
     helm package "$CHART_DIR" --destination /tmp/charts
@@ -229,13 +247,13 @@ release-chart:
     echo "Packaging {{ CHART_NAME }} v${VERSION}..."
     helm package "$CHART_DIR" --destination /tmp/mathtrail-charts
 
-    CHARTS_REPO="/tmp/mathtrail-charts-repo"
-    rm -rf "$CHARTS_REPO"
-    git clone git@github.com:MathTrail/charts.git "$CHARTS_REPO"
-    cp /tmp/mathtrail-charts/{{ CHART_NAME }}-*.tgz "$CHARTS_REPO/charts/"
-    cd "$CHARTS_REPO"
+    CHARTS_REPO_DIR="/tmp/mathtrail-charts-repo"
+    rm -rf "$CHARTS_REPO_DIR"
+    git clone git@github.com:MathTrail/charts.git "$CHARTS_REPO_DIR"
+    cp /tmp/mathtrail-charts/{{ CHART_NAME }}-*.tgz "$CHARTS_REPO_DIR/charts/"
+    cd "$CHARTS_REPO_DIR"
     helm repo index ./charts \
-        --url https://MathTrail.github.io/charts/charts
+        --url ${CHARTS_REPO}
     git add charts/
     git commit -m "chore: release {{ CHART_NAME }} v${VERSION}"
     git push

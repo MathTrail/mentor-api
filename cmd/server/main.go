@@ -1,3 +1,7 @@
+// @title       Mentor API
+// @version     1.0
+// @BasePath    /
+
 package main
 
 import (
@@ -10,12 +14,61 @@ import (
 	"time"
 
 	"github.com/MathTrail/mentor-api/internal/app"
+	"github.com/MathTrail/mentor-api/internal/config"
+	"github.com/MathTrail/mentor-api/internal/observability"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+
+	_ "github.com/MathTrail/mentor-api/docs"
 )
 
 func main() {
-	// Initialize DI container
+	// Load config early so observability can read its endpoints.
+	cfg := config.Load()
+
+	// --- Tracing ---
+	// Skipped when OTEL_ENDPOINT is empty (default in dev; set via values-observability.yaml in prod).
+	if cfg.OTelEndpoint != "" {
+		tracerShutdown, err := observability.InitTracer(cfg)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to init tracer: %v\n", err)
+			os.Exit(1)
+		}
+		defer func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = tracerShutdown(ctx)
+		}()
+	}
+
+	// --- Metrics ---
+	metricsShutdown, err := observability.InitMetrics()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to init metrics: %v\n", err)
+		os.Exit(1)
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = metricsShutdown(ctx)
+	}()
+
+	// --- Profiling ---
+	// Skipped when PYROSCOPE_ENDPOINT is empty (default in dev; set via values-observability.yaml in prod).
+	if cfg.PyroscopeEndpoint != "" {
+		profiler, err := observability.InitPyroscope(cfg)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to init pyroscope: %v\n", err)
+			os.Exit(1)
+		}
+		defer func() {
+			if err := profiler.Stop(); err != nil {
+				fmt.Fprintf(os.Stderr, "failed to stop pyroscope profiler: %v\n", err)
+			}
+		}()
+	}
+
+	// Initialize DI container (pool gets otelpgx tracer, router gets otelgin middleware)
 	container := app.NewContainer()
 
 	// Verify all dependencies are ready
@@ -26,6 +79,8 @@ func main() {
 	container.Logger.Info("starting mentor-api server",
 		zap.String("port", container.Config.ServerPort),
 		zap.String("db_host", container.Config.DBHost),
+		zap.String("otel_endpoint", cfg.OTelEndpoint),
+		zap.String("pyroscope_endpoint", cfg.PyroscopeEndpoint),
 	)
 
 	// Create HTTP server
@@ -59,4 +114,5 @@ func main() {
 	}
 
 	container.Logger.Info("server shutdown complete")
+	// deferred OTel flush and Pyroscope stop run here
 }
