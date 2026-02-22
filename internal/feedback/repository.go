@@ -147,13 +147,20 @@ func scanFeedback(row map[string]any) (Feedback, error) {
 }
 
 // parseTime converts the Dapr binding's timestamp representation to time.Time.
-// PostgreSQL timestamps arrive as RFC3339 strings.
+// PostgreSQL TIMESTAMP (no tz) arrives as "2006-01-02T15:04:05.999999";
+// TIMESTAMPTZ arrives as RFC 3339.
 func parseTime(v any) (time.Time, error) {
 	s, ok := v.(string)
 	if !ok {
 		return time.Time{}, fmt.Errorf("expected string, got %T", v)
 	}
-	for _, layout := range []string{time.RFC3339Nano, time.RFC3339, "2006-01-02T15:04:05.999999Z07:00"} {
+	for _, layout := range []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02T15:04:05.999999Z07:00",
+		"2006-01-02T15:04:05.999999", // TIMESTAMP without time zone
+		"2006-01-02T15:04:05",        // TIMESTAMP without fractional seconds
+	} {
 		if t, err := time.Parse(layout, s); err == nil {
 			return t, nil
 		}
