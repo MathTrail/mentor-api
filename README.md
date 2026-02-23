@@ -34,53 +34,45 @@ Mentor API is the intelligence hub of the MathTrail platform, responsible for ad
 ## System Architecture
 
 ```mermaid
-graph TD
-    User([Student UI])
-
-    subgraph auth [" Auth "]
-        OK[Oathkeeper]
-    end
-
-    subgraph app [" Mentor API "]
+graph LR
+    User([Student UI]) -- "Auth" --> OK[Oathkeeper]
+    
+    subgraph MentorService [Mentor API Platform]
+        direction LR
         App["Mentor API\n:8080"]
         Sidecar["Dapr Sidecar\n:3500"]
+        App <--> Sidecar
     end
 
-    subgraph data [" Data "]
-        PGB["PgBouncer\n:6432"]
-        PG[("PostgreSQL\n:5432")]
-        MigJob["Migration Job"]
+    OK -- "X-User-ID" --> App
+
+    subgraph Storage [Data Layer]
+        direction TB
+        PGB["PgBouncer"] --> PG[("PostgreSQL")]
+        Mig["Migration Job"] --> PG
     end
 
-    subgraph secrets [" Secrets "]
-        Vault["HashiCorp Vault"]
-        ESO["External Secrets Operator"]
+    Sidecar -- "SQL" --> PGB
+    PG -- "CDC" --> Deb[Debezium]
+    
+    subgraph Bus [Event Bus]
+        Kfk{Kafka}
     end
 
-    Deb[Debezium]
-    Kfk{Kafka}
-    Obs["Observability\ntraces · logs · metrics · profiling"]
+    Deb -- "feedback.created" --> Kfk
+    Kfk -- "progress / profile" --> App
+    App -- "strategy / roadmap" --> Kfk
 
-    User --> OK
-    OK -->|"X-User-ID header"| App
-    App -->|"invoke binding"| Sidecar
-    Sidecar -->|"SQL · :6432"| PGB
-    PGB --> PG
-    MigJob -->|"DDL · :5432 direct"| PG
+    subgraph Support [Infra Support]
+        direction TB
+        Vault["Vault"] --> ESO["ESO"]
+        Obs["Observability\nOTel · Pyroscope"]
+    end
 
-    PG -->|"CDC"| Deb
-    Deb -->|"feedback.created"| Kfk
+    ESO -- "Secrets" --> Sidecar
+    App -- "Telemetry" --> Obs
 
-    Kfk -->|"solution.progress-changed"| App
-    Kfk -->|"profile.updated"| App
-    App -->|"mentor.strategy-updated"| Kfk
-    App -->|"mentor.roadmap-generated"| Kfk
-
-    Vault -->|"dynamic lease"| ESO
-    ESO -->|"K8s Secret → conn string"| Sidecar
-
-    App -->|"OTel · Pyroscope"| Obs
-
+    %% Styling
     classDef svc fill:#5b21b6,stroke:#7c3aed,color:#fff
     classDef dapr fill:#0369a1,stroke:#38bdf8,color:#fff
     classDef authCls fill:#b45309,stroke:#f59e0b,color:#fff
@@ -91,15 +83,9 @@ graph TD
     classDef obsCls fill:#134e4a,stroke:#2dd4bf,color:#fff
     classDef actorCls fill:#1e1b4b,stroke:#818cf8,color:#fff
 
-    class App svc
-    class Sidecar dapr
-    class OK authCls
-    class PGB,PG,MigJob dataCls
-    class Deb cdcCls
-    class Kfk eventCls
-    class Vault,ESO secretCls
-    class Obs obsCls
-    class User actorCls
+    class App svc; class Sidecar dapr; class OK authCls;
+    class PGB,PG,Mig dataCls; class Deb cdcCls; class Kfk eventCls;
+    class Vault,ESO secretCls; class Obs obsCls; class User actorCls;
 ```
 
 ## Development
