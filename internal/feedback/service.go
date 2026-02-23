@@ -2,6 +2,7 @@ package feedback
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/MathTrail/mentor-api/internal/clients"
@@ -15,42 +16,53 @@ type Service interface {
 
 // serviceImpl implements the Service interface
 type serviceImpl struct {
-	repo      Repository
-	llmClient clients.LLMClient
-	logger    *zap.Logger
+	repo       Repository
+	llmClient  clients.LLMClient
+	llmTimeout time.Duration
+	logger     *zap.Logger
 }
 
 // NewService creates a new feedback service
 func NewService(
 	repo Repository,
 	llmClient clients.LLMClient,
+	llmTimeout time.Duration,
 	logger *zap.Logger,
 ) Service {
 	return &serviceImpl{
-		repo:      repo,
-		llmClient: llmClient,
-		logger:    logger,
+		repo:       repo,
+		llmClient:  llmClient,
+		llmTimeout: llmTimeout,
+		logger:     logger,
 	}
 }
 
 // ProcessFeedback sends the student message to the LLM for analysis,
 // persists the resulting strategy, and returns it to the caller.
 func (s *serviceImpl) ProcessFeedback(ctx context.Context, req *FeedbackRequest) (*StrategyUpdate, error) {
-	// 1. Delegate analysis to LLM (currently a mock)
-	result, err := s.llmClient.AnalyzeFeedback(ctx, req.Message)
+	// 1. Analyse via LLM with a dedicated timeout to protect HTTP workers.
+	llmCtx, cancel := context.WithTimeout(ctx, s.llmTimeout)
+	defer cancel()
+
+	result, err := s.llmClient.AnalyzeFeedback(llmCtx, req.Message)
 	if err != nil {
-		s.logger.Error("LLM analysis failed", zap.Error(err))
-		return nil, err
+		s.logger.Error("LLM analysis failed",
+			zap.Error(err),
+			zap.Stringer("student_id", req.StudentID),
+		)
+		return nil, fmt.Errorf("analysis: %w", err)
 	}
 
 	// 2. Serialise the strategy snapshot for storage
 	snapshotJSON, err := result.MarshalSnapshot()
 	if err != nil {
 		s.logger.Error("failed to marshal strategy snapshot", zap.Error(err))
-		return nil, err
+		return nil, fmt.Errorf("marshal snapshot: %w", err)
 	}
 
-	// 3. Persist feedback + strategy to PostgreSQL
+	// 3. Persist feedback + strategy to PostgreSQL.
+	// If this fails the LLM tokens are already spent — log enough context
+	// to diagnose the issue without re-running the analysis.
 	feedback := &Feedback{
 		StudentID:           req.StudentID,
 		Message:             req.Message,
@@ -59,7 +71,11 @@ func (s *serviceImpl) ProcessFeedback(ctx context.Context, req *FeedbackRequest)
 	}
 
 	if err := s.repo.Save(ctx, feedback); err != nil {
-		s.logger.Error("failed to save feedback", zap.Error(err))
+		s.logger.Error("failed to save feedback after LLM analysis",
+			zap.Error(err),
+			zap.Stringer("student_id", req.StudentID),
+			zap.String("task_id", req.TaskID),
+		)
 		return nil, err
 	}
 
@@ -68,7 +84,7 @@ func (s *serviceImpl) ProcessFeedback(ctx context.Context, req *FeedbackRequest)
 		zap.String("perceived_difficulty", result.PerceivedDifficulty),
 	)
 
-	// 4. Build response
+	// 4. Build response using the DB-assigned timestamp for consistency.
 	return &StrategyUpdate{
 		StudentID:            req.StudentID,
 		TaskID:               req.TaskID,
@@ -76,6 +92,6 @@ func (s *serviceImpl) ProcessFeedback(ctx context.Context, req *FeedbackRequest)
 		TopicWeights:         result.TopicWeights,
 		Sentiment:            result.Sentiment,
 		StrategySnapshot:     result.StrategySnapshot,
-		Timestamp:            time.Now(),
+		Timestamp:            feedback.CreatedAt,
 	}, nil
 }

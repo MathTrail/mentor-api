@@ -27,13 +27,23 @@ type dbConfig struct {
 
 func loadDBConfig() dbConfig {
 	return dbConfig{
-		Host:     envOrDefault("DB_HOST", "postgres-postgresql"),
-		Port:     envOrDefault("DB_PORT", "5432"),
-		User:     envOrDefault("DB_USER", "postgres"),
-		Password: envOrDefault("DB_PASSWORD", "postgres"),
-		Name:     envOrDefault("DB_NAME", "mentor"),
+		Host:     requiredEnv("DB_HOST"),
+		Port:     requiredEnv("DB_PORT"),
+		User:     requiredEnv("DB_USER"),
+		Password: requiredEnv("DB_PASSWORD"),
+		Name:     requiredEnv("DB_NAME"),
 		SSLMode:  envOrDefault("DB_SSL_MODE", "disable"),
 	}
+}
+
+// requiredEnv reads an environment variable or panics if it is empty.
+// A missing variable means the K8s Job is misconfigured — fail fast.
+func requiredEnv(key string) string {
+	v := os.Getenv(key)
+	if v == "" {
+		panic(fmt.Sprintf("required environment variable %s is not set", key))
+	}
+	return v
 }
 
 func envOrDefault(key, fallback string) string {

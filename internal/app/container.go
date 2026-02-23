@@ -57,7 +57,7 @@ func NewContainer(cfg *config.Config, logger *zap.Logger) (*Container, error) {
 
 	// Initialize feedback components.
 	feedbackRepo := feedback.NewRepository(db)
-	feedbackService := feedback.NewService(feedbackRepo, llmClient, logger)
+	feedbackService := feedback.NewService(feedbackRepo, llmClient, cfg.LLMTimeout, logger)
 	feedbackController := feedback.NewController(feedbackService, logger)
 
 	// Create router.

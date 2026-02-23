@@ -25,7 +25,9 @@ type Config struct {
 	OTelEndpoint      string `mapstructure:"OTEL_ENDPOINT"`
 	PyroscopeEndpoint string `mapstructure:"PYROSCOPE_ENDPOINT"`
 
-	// Lifecycle
+	// Timeouts
+	LLMTimeoutRaw      string        `mapstructure:"LLM_TIMEOUT"` // e.g. "10s"
+	LLMTimeout         time.Duration // parsed from LLMTimeoutRaw in Load()
 	ShutdownTimeoutRaw string        `mapstructure:"SHUTDOWN_TIMEOUT"` // e.g. "5s", "10s"
 	ShutdownTimeout    time.Duration // parsed from ShutdownTimeoutRaw in Load()
 }
@@ -43,6 +45,7 @@ func Load() *Config {
 	v.SetDefault("APP_NAME", "mentor-api")
 	v.SetDefault("OTEL_ENDPOINT", "")
 	v.SetDefault("PYROSCOPE_ENDPOINT", "")
+	v.SetDefault("LLM_TIMEOUT", "10s")
 	v.SetDefault("SHUTDOWN_TIMEOUT", "5s")
 
 	cfg := &Config{}
@@ -50,13 +53,19 @@ func Load() *Config {
 		panic(fmt.Sprintf("failed to unmarshal config: %v", err))
 	}
 
-	// Parse shutdown timeout from string to time.Duration.
+	// Parse durations from strings.
 	// Kept separate because Viper cannot unmarshal time.Duration from env vars.
-	d, err := time.ParseDuration(cfg.ShutdownTimeoutRaw)
+	llmD, err := time.ParseDuration(cfg.LLMTimeoutRaw)
+	if err != nil {
+		panic(fmt.Sprintf("invalid LLM_TIMEOUT %q: %v", cfg.LLMTimeoutRaw, err))
+	}
+	cfg.LLMTimeout = llmD
+
+	shutD, err := time.ParseDuration(cfg.ShutdownTimeoutRaw)
 	if err != nil {
 		panic(fmt.Sprintf("invalid SHUTDOWN_TIMEOUT %q: %v", cfg.ShutdownTimeoutRaw, err))
 	}
-	cfg.ShutdownTimeout = d
+	cfg.ShutdownTimeout = shutD
 
 	return cfg
 }

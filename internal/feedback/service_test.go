@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/MathTrail/mentor-api/internal/clients"
 	"github.com/google/uuid"
@@ -21,6 +22,7 @@ func (m *mockRepository) Save(ctx context.Context, f *Feedback) error {
 		return m.saveFn(ctx, f)
 	}
 	f.ID = uuid.New()
+	f.CreatedAt = time.Now().UTC()
 	return nil
 }
 
@@ -31,12 +33,32 @@ func (m *mockRepository) GetLatestByStudent(ctx context.Context, studentID uuid.
 	return nil, nil
 }
 
+// mockLLMClient is a test double for clients.LLMClient that blocks until
+// the context expires — used to verify the per-call LLM timeout.
+type mockLLMClient struct {
+	delay time.Duration
+}
+
+func (m *mockLLMClient) AnalyzeFeedback(ctx context.Context, _ string) (*clients.StrategyResult, error) {
+	select {
+	case <-time.After(m.delay):
+		return &clients.StrategyResult{
+			PerceivedDifficulty: "ok",
+			Sentiment:           "neutral",
+			StrategySnapshot:    map[string]interface{}{"feedback_based": true},
+			TopicWeights:        map[string]float64{"general": 1.0},
+		}, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
 func TestProcessFeedback_Success(t *testing.T) {
 	repo := &mockRepository{}
 	llm := clients.NewLLMClient()
 	logger := zap.NewNop()
 
-	svc := NewService(repo, llm, logger)
+	svc := NewService(repo, llm, 10*time.Second, logger)
 
 	req := &FeedbackRequest{
 		StudentID: uuid.New(),
@@ -57,6 +79,9 @@ func TestProcessFeedback_Success(t *testing.T) {
 	if update.Sentiment != "neutral" {
 		t.Errorf("sentiment: got %q, want %q", update.Sentiment, "neutral")
 	}
+	if update.Timestamp.IsZero() {
+		t.Error("Timestamp should be non-zero (populated from DB CreatedAt)")
+	}
 }
 
 func TestProcessFeedback_RepoError(t *testing.T) {
@@ -67,7 +92,7 @@ func TestProcessFeedback_RepoError(t *testing.T) {
 	llm := clients.NewLLMClient()
 	logger := zap.NewNop()
 
-	svc := NewService(repo, llm, logger)
+	svc := NewService(repo, llm, 10*time.Second, logger)
 
 	_, err := svc.ProcessFeedback(context.Background(), &FeedbackRequest{
 		StudentID: uuid.New(),
@@ -79,5 +104,26 @@ func TestProcessFeedback_RepoError(t *testing.T) {
 	}
 	if !errors.Is(err, repoErr) {
 		t.Errorf("error mismatch: got %v, want %v", err, repoErr)
+	}
+}
+
+func TestProcessFeedback_LLMTimeout(t *testing.T) {
+	repo := &mockRepository{}
+	// Mock LLM that blocks for 2 seconds — well beyond the 50ms timeout.
+	llm := &mockLLMClient{delay: 2 * time.Second}
+	logger := zap.NewNop()
+
+	svc := NewService(repo, llm, 50*time.Millisecond, logger)
+
+	_, err := svc.ProcessFeedback(context.Background(), &FeedbackRequest{
+		StudentID: uuid.New(),
+		TaskID:    "task-3",
+		Message:   "slow model",
+	})
+	if err == nil {
+		t.Fatal("expected timeout error, got nil")
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("expected context.DeadlineExceeded, got: %v", err)
 	}
 }
