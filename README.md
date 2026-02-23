@@ -1,5 +1,13 @@
 # mentor-api
 
+Логично. Если эти инструменты образуют единый Data Pipeline (от БД через CDC в поток и аналитику), их стоит визуально сгруппировать в одну цепочку.
+
+Вот пересобранный блок. Я объединил их в один ряд, используя единый стиль for-the-badge, чтобы они выглядели мощно и единообразно, как и подобает ядру системы.
+
+Финальный README.md
+Markdown
+# mentor-api
+
 [![CI](https://github.com/MathTrail/mentor-api/actions/workflows/ci.yml/badge.svg)](https://github.com/MathTrail/mentor-api/actions)
 [![Latest Release](https://img.shields.io/github/v/release/MathTrail/mentor-api?style=flat-square)](https://github.com/MathTrail/mentor-api/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/MathTrail/mentor-api)](https://goreportcard.com/report/github.com/MathTrail/mentor-api)
@@ -7,18 +15,18 @@
 [![Go Version](https://img.shields.io/github/go-mod/go-version/MathTrail/mentor-api)](https://github.com/MathTrail/mentor-api/blob/main/go.mod)
 [![Go Reference](https://pkg.go.dev/badge/github.com/MathTrail/mentor-api.svg)](https://pkg.go.dev/github.com/MathTrail/mentor-api)
 
-[![Apache Kafka](https://img.shields.io/badge/Kafka-black?style=flat-square&logo=apachekafka)](https://kafka.apache.org/)
-[![Debezium](https://img.shields.io/badge/Debezium-FF6A00?style=flat-square&logo=redhat)](https://debezium.io/)
-[![Apache Flink](https://img.shields.io/badge/Flink-E6526F?style=flat-square&logo=apacheflink)](https://flink.apache.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Debezium](https://img.shields.io/badge/Debezium-FF6A00?style=for-the-badge&logo=redhat&logoColor=white)](https://debezium.io/)
+[![Apache Kafka](https://img.shields.io/badge/Kafka-000000?style=for-the-badge&logo=apachekafka&logoColor=white)](https://kafka.apache.org/)
+[![Apache Flink](https://img.shields.io/badge/Flink-E6526F?style=for-the-badge&logo=apacheflink&logoColor=white)](https://flink.apache.org/)
 
 [![Architecture: EDA](https://img.shields.io/badge/Architecture-Event--Driven-8A2BE2?style=for-the-badge&logo=eventstore)](https://aws.amazon.com/event-driven-architecture/)
-[![Kubernetes](https://img.shields.io/badge/Kubernetes-Ready-326CE5?style=for-the-badge&logo=kubernetes)](./deploy/charts)
-[![Dapr](https://img.shields.io/badge/Dapr-Enabled-007ACC?style=for-the-badge&logo=dapr)](https://dapr.io/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?style=for-the-badge&logo=postgresql)](https://www.postgresql.org/)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)](./deploy/charts)
+[![Dapr](https://img.shields.io/badge/Dapr-007ACC?style=for-the-badge&logo=dapr&logoColor=white)](https://dapr.io/)
 
-[![API Docs](https://img.shields.io/badge/API_Docs-Swagger-85EA2D?style=for-the-badge&logo=swagger)](https://MathTrail.github.io/mentor-api/)
-[![Tracing](https://img.shields.io/badge/Tracing-OTel-000000?style=for-the-badge&logo=opentelemetry)](https://opentelemetry.io/)
-[![Profiling](https://img.shields.io/badge/Profiling-Pyroscope-FF7800?style=for-the-badge&logo=pyroscope)](https://pyroscope.io/)
+[![API Docs](https://img.shields.io/badge/API_Docs-Swagger-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)](https://MathTrail.github.io/mentor-api/)
+[![Tracing](https://img.shields.io/badge/Tracing-OTel-000000?style=for-the-badge&logo=opentelemetry&logoColor=white)](https://opentelemetry.io/)
+[![Profiling](https://img.shields.io/badge/Profiling-Pyroscope-FF7800?style=for-the-badge&logo=pyroscope&logoColor=white)](https://pyroscope.io/)
 
 ---
 
