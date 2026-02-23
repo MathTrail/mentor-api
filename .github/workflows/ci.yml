@@ -3,6 +3,12 @@ name: CI
 on:
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      skip_cleanup:
+        description: "Skip namespace cleanup (for debugging)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -68,5 +74,5 @@ jobs:
           retention-days: 90
 
       - name: Cleanup namespace
-        if: always() && github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request' && inputs.skip_cleanup != true
         run: just ci-cleanup ${{ env.NAMESPACE }}
