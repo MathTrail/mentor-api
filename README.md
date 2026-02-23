@@ -1,6 +1,7 @@
 # mentor-api
 
 [![CI](https://github.com/MathTrail/mentor-api/actions/workflows/ci.yml/badge.svg)](https://github.com/MathTrail/mentor-api/actions)
+[![Latest Release](https://img.shields.io/github/v/release/MathTrail/mentor-api?style=flat-square)](https://github.com/MathTrail/mentor-api/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/MathTrail/mentor-api)](https://goreportcard.com/report/github.com/MathTrail/mentor-api)
 [![codecov](https://codecov.io/gh/MathTrail/mentor-api/branch/main/graph/badge.svg)](https://codecov.io/gh/MathTrail/mentor-api)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/MathTrail/mentor-api)](https://github.com/MathTrail/mentor-api/blob/main/go.mod)
@@ -200,6 +201,26 @@ GitHub Actions workflow runs on every PR:
 2. **Topic Extraction**: LLM identifies specific math topics (algebra, geometry) from feedback
 3. **Real-time Dashboards**: Grafana dashboards for feedback analytics
 4. **Feedback Aggregation**: Weekly/monthly reports on difficulty trends
+
+## Releases
+
+Releases are created automatically via [GoReleaser](https://goreleaser.com/) when a `v*` tag is pushed.
+
+### How to cut a new release
+
+1. Ensure all changes are merged into `main`.
+2. Optionally: update `version` in `infra/helm/mentor-api/Chart.yaml` to match the new version.
+3. Create an annotated tag and push it:
+   ```bash
+   git tag -a v0.2.0 -m "Release v0.2.0"
+   git push origin v0.2.0
+   ```
+4. GitHub Actions will automatically:
+   - Build binaries for `linux/amd64` and `linux/arm64`
+   - Generate a changelog from commits since the previous tag
+   - Publish the release to the [Releases](https://github.com/MathTrail/mentor-api/releases) page
+
+> **Note:** The Docker image used for cluster deployments is built separately in `release.yml` on every push to `main` and tagged with the commit SHA.
 
 ## References
 

@@ -11,6 +11,7 @@ import (
 	"github.com/MathTrail/mentor-api/internal/config"
 	"github.com/MathTrail/mentor-api/internal/logging"
 	"github.com/MathTrail/mentor-api/internal/observability"
+	"github.com/MathTrail/mentor-api/internal/version"
 	"go.uber.org/zap"
 
 	_ "github.com/MathTrail/mentor-api/docs"
@@ -41,6 +42,9 @@ func main() {
 	}
 
 	logger.Info("starting mentor-api server",
+		zap.String("version", version.Version),
+		zap.String("commit", version.Commit),
+		zap.String("date", version.Date),
 		zap.String("port", cfg.ServerPort),
 	)
 
