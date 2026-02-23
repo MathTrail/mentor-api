@@ -8,9 +8,9 @@ import (
 
 // Profile represents student profile data
 type Profile struct {
-	StudentID uuid.UUID       `json:"student_id"`
-	Name      string          `json:"name"`
-	Skills    map[string]int  `json:"skills"`
+	StudentID uuid.UUID      `json:"student_id"`
+	Name      string         `json:"name"`
+	Skills    map[string]int `json:"skills"`
 }
 
 // ProfileClient defines the interface for accessing student profile data
@@ -18,19 +18,19 @@ type ProfileClient interface {
 	GetProfile(ctx context.Context, studentID uuid.UUID) (*Profile, error)
 }
 
-// MockProfileClient is a mock implementation for development
-type MockProfileClient struct{}
+type profileClient struct{}
 
-// NewMockProfileClient creates a new mock profile client
-func NewMockProfileClient() ProfileClient {
-	return &MockProfileClient{}
+// NewProfileClient creates a new profile client.
+func NewProfileClient() ProfileClient {
+	return &profileClient{}
 }
 
-// GetProfile returns mock profile data
-func (m *MockProfileClient) GetProfile(ctx context.Context, studentID uuid.UUID) (*Profile, error) {
+// GetProfile returns a student profile.
+// TODO: replace with a real profile service call.
+func (c *profileClient) GetProfile(ctx context.Context, studentID uuid.UUID) (*Profile, error) {
 	return &Profile{
 		StudentID: studentID,
-		Name:      "Mock Student",
+		Name:      "Student",
 		Skills: map[string]int{
 			"algebra":  5,
 			"geometry": 3,

@@ -6,21 +6,21 @@ import (
 	"time"
 
 	dapr "github.com/dapr/go-sdk/client"
+	"github.com/gin-gonic/gin"
 
 	"github.com/MathTrail/mentor-api/internal/clients"
 	"github.com/MathTrail/mentor-api/internal/config"
 	"github.com/MathTrail/mentor-api/internal/database"
 	"github.com/MathTrail/mentor-api/internal/feedback"
-	"github.com/MathTrail/mentor-api/internal/logging"
 	"github.com/MathTrail/mentor-api/internal/server"
 	"go.uber.org/zap"
 )
 
-// Container holds all application dependencies
+// Container holds all application dependencies.
 type Container struct {
 	Config *config.Config
 	Logger *zap.Logger
-	DB     *database.DaprDB
+	DB     database.DB
 
 	// Clients
 	LLMClient clients.LLMClient
@@ -31,37 +31,17 @@ type Container struct {
 	FeedbackController *feedback.Controller
 
 	// Server
-	Router interface{}
+	Router *gin.Engine
 }
 
-// NewContainer creates and wires all application dependencies
-func NewContainer() *Container {
-	// Load configuration
-	cfg := config.Load()
-
-	// Initialize logger
-	logger := logging.NewLogger(cfg.LogLevel)
-
-	// Connect to the Dapr sidecar. NewClient() reads DAPR_GRPC_PORT from the environment
-	// (injected automatically by the Dapr sidecar into the application container).
-	// Retry because the sidecar and the app container start concurrently in Kubernetes.
-	var (
-		daprClient dapr.Client
-		err        error
-	)
-	for attempt := 1; attempt <= 10; attempt++ {
-		daprClient, err = dapr.NewClient()
-		if err == nil {
-			break
-		}
-		logger.Warn("dapr sidecar not ready, retrying",
-			zap.Int("attempt", attempt),
-			zap.Error(err),
-		)
-		time.Sleep(time.Duration(attempt) * time.Second)
-	}
+// NewContainer creates and wires all application dependencies.
+// It returns an error instead of panicking so that the caller can
+// handle failures gracefully (e.g. flush observability before exit).
+func NewContainer(cfg *config.Config, logger *zap.Logger) (*Container, error) {
+	// Connect to the Dapr sidecar with retry.
+	daprClient, err := connectDapr(context.Background(), logger, cfg)
 	if err != nil {
-		panic(fmt.Sprintf("failed to create Dapr client: %v", err))
+		return nil, fmt.Errorf("dapr client: %w", err)
 	}
 
 	// DaprDB wraps the Dapr binding so the app never handles DB credentials directly.
@@ -69,19 +49,19 @@ func NewContainer() *Container {
 
 	// Verify the binding is reachable on startup.
 	if err := db.Ping(context.Background()); err != nil {
-		logger.Fatal("database binding not reachable", zap.Error(err))
+		return nil, fmt.Errorf("database binding not reachable: %w", err)
 	}
 
-	// Initialize LLM client (mock for now, will be replaced with real implementation)
-	llmClient := clients.NewMockLLMClient()
+	// Initialize LLM client.
+	llmClient := clients.NewLLMClient()
 
-	// Initialize feedback components
+	// Initialize feedback components.
 	feedbackRepo := feedback.NewRepository(db)
-	feedbackService := feedback.NewService(feedbackRepo, llmClient, logger)
+	feedbackService := feedback.NewService(feedbackRepo, llmClient, cfg.LLMTimeout, logger)
 	feedbackController := feedback.NewController(feedbackService, logger)
 
-	// Create router
-	router := server.NewRouter(feedbackController, db, logger)
+	// Create router.
+	router := server.NewRouter(feedbackController, db, cfg, logger)
 
 	return &Container{
 		Config:             cfg,
@@ -92,16 +72,33 @@ func NewContainer() *Container {
 		FeedbackService:    feedbackService,
 		FeedbackController: feedbackController,
 		Router:             router,
-	}
+	}, nil
 }
 
-// Ready returns true if all dependencies are initialized
-func (c *Container) Ready() bool {
-	return c.Config != nil &&
-		c.Logger != nil &&
-		c.DB != nil &&
-		c.FeedbackRepository != nil &&
-		c.FeedbackService != nil &&
-		c.FeedbackController != nil &&
-		c.Router != nil
+// connectDapr attempts to connect to the Dapr sidecar with linear backoff.
+// The sidecar and the app container start concurrently in Kubernetes,
+// so the sidecar may not be ready immediately.
+func connectDapr(ctx context.Context, logger *zap.Logger, cfg *config.Config) (dapr.Client, error) {
+	var err error
+	for attempt := 1; attempt <= cfg.DaprMaxRetries; attempt++ {
+		client, connErr := dapr.NewClient()
+		if connErr == nil {
+			return client, nil
+		}
+		err = connErr
+
+		logger.Warn("dapr sidecar not ready, retrying",
+			zap.Int("attempt", attempt),
+			zap.Error(err),
+		)
+
+		// Wait for backoff or context cancellation.
+		select {
+		case <-time.After(time.Duration(attempt) * time.Second):
+			// continue
+		case <-ctx.Done():
+			return nil, fmt.Errorf("interrupted during connection: %w", ctx.Err())
+		}
+	}
+	return nil, fmt.Errorf("dapr unavailable after %d attempts: %w", cfg.DaprMaxRetries, err)
 }

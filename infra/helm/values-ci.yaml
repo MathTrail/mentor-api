@@ -1,0 +1,7 @@
+# CI overlay: ephemeral PR namespaces
+# PgBouncer is not deployed in CI — connect directly to PostgreSQL.
+# Inherits everything from values-dev.yaml, overrides only the DB host/port.
+
+dbDynamicSecret:
+  pgHost: "postgres-postgresql"
+  pgPort: "5432"

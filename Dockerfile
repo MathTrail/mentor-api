@@ -12,7 +12,6 @@ RUN apk add --no-cache ca-certificates tzdata
 RUN adduser -D -u 10001 appuser
 COPY --from=builder /app /app
 COPY --from=builder /migrate /migrate
-COPY migrations/ /migrations/
 USER 10001
 EXPOSE 8080
 ENTRYPOINT ["/app"]

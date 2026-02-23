@@ -1,0 +1,26 @@
+# codecov.io configuration
+# Docs: https://docs.codecov.com/docs/codecovyml-reference
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false
+
+coverage:
+  status:
+    project:
+      default:
+        target: 80%
+        threshold: 1%
+    patch:
+      default:
+        target: auto
+        threshold: 0%
+
+ignore:
+  - "docs"
+  - "cmd"
+  - "migrations"
+  - "tests"
+  - "**/*.pb.go"
+  - "**/mock_*.go"

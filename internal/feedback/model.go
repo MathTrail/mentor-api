@@ -34,9 +34,3 @@ type StrategyUpdate struct {
 	StrategySnapshot     map[string]interface{} `json:"strategy_snapshot"`
 	Timestamp            time.Time              `json:"timestamp"`
 }
-
-// ErrorResponse represents an HTTP error response
-type ErrorResponse struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
-}

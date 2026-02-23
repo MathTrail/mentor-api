@@ -50,11 +50,13 @@ func (d *DaprDB) Query(ctx context.Context, sql string, params ...any) ([]map[st
 	// metadata headers (which reject newlines).
 	flat := flattenSQL(sql)
 
-	// DML statements (INSERT/UPDATE/DELETE … RETURNING) cannot be used as
-	// subqueries in PostgreSQL. Wrap them with a CTE instead.
+	// Detect DML statements that cannot be used as subqueries in PostgreSQL.
+	// We compare against the trimmed, uppercased SQL to handle leading whitespace.
+	trimmed := strings.ToUpper(strings.TrimSpace(flat))
 	var wrapped string
-	upper := strings.ToUpper(flat[:6])
-	if upper == "INSERT" || upper == "UPDATE" || upper == "DELETE" {
+	if strings.HasPrefix(trimmed, "INSERT") ||
+		strings.HasPrefix(trimmed, "UPDATE") ||
+		strings.HasPrefix(trimmed, "DELETE") {
 		wrapped = fmt.Sprintf(
 			"WITH t AS (%s) SELECT COALESCE(json_agg(row_to_json(t))::text,'[]') FROM t",
 			flat,
@@ -81,14 +83,14 @@ func (d *DaprDB) Query(ctx context.Context, sql string, params ...any) ([]map[st
 		return nil, fmt.Errorf("daprdb: unmarshal outer: %w", err)
 	}
 	if len(outer) == 0 || len(outer[0]) == 0 {
-		return nil, nil
+		return []map[string]any{}, nil
 	}
 	jsonText, ok := outer[0][0].(string)
 	if !ok {
 		return nil, fmt.Errorf("daprdb: expected string from json_agg, got %T", outer[0][0])
 	}
 
-	var rows []map[string]any
+	rows := []map[string]any{}
 	if err := json.Unmarshal([]byte(jsonText), &rows); err != nil {
 		return nil, fmt.Errorf("daprdb: unmarshal rows: %w", err)
 	}

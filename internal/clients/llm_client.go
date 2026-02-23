@@ -20,17 +20,16 @@ type LLMClient interface {
 	AnalyzeFeedback(ctx context.Context, message string) (*StrategyResult, error)
 }
 
-// MockLLMClient is a stub implementation used during development.
-type MockLLMClient struct{}
+type llmClient struct{}
 
-// NewMockLLMClient creates a new mock LLM client.
-func NewMockLLMClient() LLMClient {
-	return &MockLLMClient{}
+// NewLLMClient creates a new LLM client.
+func NewLLMClient() LLMClient {
+	return &llmClient{}
 }
 
-// AnalyzeFeedback returns a hard-coded neutral strategy.
+// AnalyzeFeedback analyses student feedback and returns a strategy.
 // TODO: replace with a real LLM call.
-func (m *MockLLMClient) AnalyzeFeedback(_ context.Context, _ string) (*StrategyResult, error) {
+func (c *llmClient) AnalyzeFeedback(_ context.Context, _ string) (*StrategyResult, error) {
 	return &StrategyResult{
 		PerceivedDifficulty:  "ok",
 		DifficultyAdjustment: 0.0,

@@ -2,29 +2,30 @@ package observability
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/grafana/pyroscope-go"
-	promexporter "go.opentelemetry.io/otel/exporters/prometheus"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	promexporter "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
-	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/MathTrail/mentor-api/internal/config"
+	"go.uber.org/zap"
 )
 
-// InitTracer initialises the global OTLP gRPC trace exporter and TracerProvider.
-// It also sets the global W3C TraceContext + Baggage propagator so that
-// traceparent headers injected by the Dapr sidecar are automatically
-// extracted and the Go spans appear as children of the Dapr spans in Tempo.
-// Call the returned shutdown function during graceful shutdown to flush pending spans.
-func InitTracer(cfg *config.Config) (shutdown func(context.Context) error, err error) {
+// initTracer initialises the global OTLP gRPC trace exporter and TracerProvider.
+// It sets the global W3C TraceContext + Baggage propagator so that traceparent
+// headers injected by the Dapr sidecar are automatically extracted and the Go
+// spans appear as children of the Dapr spans in Tempo.
+func initTracer(cfg *config.Config) (shutdown func(context.Context) error, err error) {
 	conn, err := grpc.NewClient(
 		cfg.OTelEndpoint,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -51,10 +52,17 @@ func InitTracer(cfg *config.Config) (shutdown func(context.Context) error, err e
 		return nil, err
 	}
 
+	// ParentBased respects upstream Dapr sampling decisions while
+	// TraceIDRatioBased controls the rate for locally-originated root spans.
+	sampler := sdktrace.ParentBased(sdktrace.TraceIDRatioBased(cfg.OTelSampleRate))
+
 	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exporter),
+		sdktrace.WithBatcher(exporter,
+			sdktrace.WithMaxQueueSize(2048),
+			sdktrace.WithMaxExportBatchSize(512),
+		),
 		sdktrace.WithResource(res),
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithSampler(sampler),
 	)
 
 	otel.SetTracerProvider(tp)
@@ -66,11 +74,10 @@ func InitTracer(cfg *config.Config) (shutdown func(context.Context) error, err e
 	return tp.Shutdown, nil
 }
 
-// InitMetrics initialises the global Prometheus MeterProvider.
+// initMetrics initialises the global Prometheus MeterProvider.
 // The Prometheus exporter registers with prometheus.DefaultRegisterer so
 // promhttp.Handler() in the router automatically exposes all OTel metrics.
-// Call the returned shutdown function during graceful shutdown.
-func InitMetrics() (shutdown func(context.Context) error, err error) {
+func initMetrics() (shutdown func(context.Context) error, err error) {
 	exporter, err := promexporter.New()
 	if err != nil {
 		return nil, err
@@ -85,10 +92,10 @@ func InitMetrics() (shutdown func(context.Context) error, err error) {
 	return mp.Shutdown, nil
 }
 
-// InitPyroscope starts the Pyroscope continuous profiling agent.
+// initPyroscope starts the Pyroscope continuous profiling agent.
 // It collects CPU, allocation and in-use heap profiles and pushes them to the
-// Pyroscope server. Call profiler.Stop() during graceful shutdown.
-func InitPyroscope(cfg *config.Config) (*pyroscope.Profiler, error) {
+// Pyroscope server.
+func initPyroscope(cfg *config.Config) (*pyroscope.Profiler, error) {
 	return pyroscope.Start(pyroscope.Config{
 		ApplicationName: cfg.ServiceName,
 		ServerAddress:   cfg.PyroscopeEndpoint,
@@ -100,4 +107,71 @@ func InitPyroscope(cfg *config.Config) (*pyroscope.Profiler, error) {
 			pyroscope.ProfileInuseSpace,
 		},
 	})
+}
+
+// Observability manages the lifecycle of tracing, metrics, and profiling.
+type Observability struct {
+	cfg             *config.Config
+	logger          *zap.Logger
+	tracerShutdown  func(context.Context) error
+	metricsShutdown func(context.Context) error
+	profiler        interface{ Stop() error }
+}
+
+// New creates an Observability manager.
+func New(cfg *config.Config, logger *zap.Logger) *Observability {
+	return &Observability{cfg: cfg, logger: logger}
+}
+
+// Init initialises all configured observability components.
+func (o *Observability) Init() error {
+	if o.cfg.OTelEndpoint != "" {
+		shutdown, err := initTracer(o.cfg)
+		if err != nil {
+			return fmt.Errorf("init tracer: %w", err)
+		}
+		o.tracerShutdown = shutdown
+	}
+
+	metricsShutdown, err := initMetrics()
+	if err != nil {
+		return fmt.Errorf("init metrics: %w", err)
+	}
+	o.metricsShutdown = metricsShutdown
+
+	if o.cfg.PyroscopeEndpoint != "" {
+		p, err := initPyroscope(o.cfg)
+		if err != nil {
+			return fmt.Errorf("init pyroscope: %w", err)
+		}
+		o.profiler = p
+	}
+
+	o.logger.Info("observability stack initialized",
+		zap.Bool("tracing", o.cfg.OTelEndpoint != ""),
+		zap.Bool("profiling", o.cfg.PyroscopeEndpoint != ""),
+	)
+	return nil
+}
+
+// Shutdown gracefully stops all observability components.
+// The caller owns the context and its deadline.
+func (o *Observability) Shutdown(ctx context.Context) {
+	if o.tracerShutdown != nil {
+		if err := o.tracerShutdown(ctx); err != nil {
+			o.logger.Warn("tracer shutdown error", zap.Error(err))
+		}
+	}
+	if o.metricsShutdown != nil {
+		if err := o.metricsShutdown(ctx); err != nil {
+			o.logger.Warn("metrics shutdown error", zap.Error(err))
+		}
+	}
+	if o.profiler != nil {
+		if err := o.profiler.Stop(); err != nil {
+			o.logger.Warn("profiler stop error", zap.Error(err))
+		}
+	}
+
+	o.logger.Info("observability stack shut down")
 }

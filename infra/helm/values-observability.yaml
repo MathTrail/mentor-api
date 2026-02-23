@@ -12,5 +12,7 @@ podAnnotations:
 env:
   - name: OTEL_ENDPOINT
     value: "otel-collector-opentelemetry-collector.monitoring.svc.cluster.local:4317"
+  - name: OTEL_SAMPLE_RATE
+    value: "0.1"
   - name: PYROSCOPE_ENDPOINT
     value: "http://pyroscope.monitoring.svc.cluster.local:4040"
