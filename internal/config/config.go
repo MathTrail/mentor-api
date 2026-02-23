@@ -22,9 +22,10 @@ type Config struct {
 	LogFormat string `mapstructure:"LOG_FORMAT"` // "json" (default) or "console" (colored dev output)
 
 	// Observability
-	ServiceName       string `mapstructure:"APP_NAME"`
-	OTelEndpoint      string `mapstructure:"OTEL_ENDPOINT"`
-	PyroscopeEndpoint string `mapstructure:"PYROSCOPE_ENDPOINT"`
+	ServiceName       string  `mapstructure:"APP_NAME"`
+	OTelEndpoint      string  `mapstructure:"OTEL_ENDPOINT"`
+	OTelSampleRate    float64 `mapstructure:"OTEL_SAMPLE_RATE"` // 0.0–1.0; fraction of root spans sampled
+	PyroscopeEndpoint string  `mapstructure:"PYROSCOPE_ENDPOINT"`
 
 	// Timeouts
 	LLMTimeoutRaw      string        `mapstructure:"LLM_TIMEOUT"` // e.g. "10s"
@@ -46,6 +47,7 @@ func Load() *Config {
 	v.SetDefault("LOG_FORMAT", "json")
 	v.SetDefault("APP_NAME", "mentor-api")
 	v.SetDefault("OTEL_ENDPOINT", "")
+	v.SetDefault("OTEL_SAMPLE_RATE", 0.1)
 	v.SetDefault("PYROSCOPE_ENDPOINT", "")
 	v.SetDefault("LLM_TIMEOUT", "10s")
 	v.SetDefault("SHUTDOWN_TIMEOUT", "5s")
@@ -68,6 +70,10 @@ func Load() *Config {
 		panic(fmt.Sprintf("invalid SHUTDOWN_TIMEOUT %q: %v", cfg.ShutdownTimeoutRaw, err))
 	}
 	cfg.ShutdownTimeout = shutD
+
+	if cfg.OTelSampleRate < 0 || cfg.OTelSampleRate > 1 {
+		panic(fmt.Sprintf("OTEL_SAMPLE_RATE must be between 0.0 and 1.0, got %v", cfg.OTelSampleRate))
+	}
 
 	return cfg
 }
