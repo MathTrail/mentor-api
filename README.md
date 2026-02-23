@@ -14,6 +14,7 @@
 
 [![Architecture: EDA](https://img.shields.io/badge/Architecture-Event--Driven-8A2BE2?style=for-the-badge&logo=eventstore)](https://aws.amazon.com/event-driven-architecture/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)](./deploy/charts)
+[![Vault](https://img.shields.io/badge/Vault-FF3E00?style=for-the-badge&logo=hashicorpvault&logoColor=white)](https://www.vaultproject.io/)
 [![Dapr](https://img.shields.io/badge/Dapr-007ACC?style=for-the-badge&logo=dapr&logoColor=white)](https://dapr.io/)
 
 [![API Docs](https://img.shields.io/badge/API_Docs-Swagger-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)](https://MathTrail.github.io/mentor-api/)
