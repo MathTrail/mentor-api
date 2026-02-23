@@ -67,6 +67,6 @@ jobs:
           path: summary.json
           retention-days: 90
 
-      # - name: Cleanup namespace
-      #   if: always() && github.event_name == 'pull_request'
-      #   run: just ci-cleanup ${{ env.NAMESPACE }}
+      - name: Cleanup namespace
+        if: always() && github.event_name == 'pull_request'
+        run: just ci-cleanup ${{ env.NAMESPACE }}
