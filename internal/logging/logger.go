@@ -5,31 +5,29 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// NewLogger creates a zap.Logger configured for the given log level.
-// Supported levels: debug, info, warn, error. Defaults to info.
-func NewLogger(level string) *zap.Logger {
+// NewLogger creates a zap.Logger configured for the given log level and output
+// format. Supported formats: "console" (colored, dev-friendly) and "json"
+// (structured, production). Unknown levels fall back to info.
+func NewLogger(level, format string) *zap.Logger {
 	var zapLevel zapcore.Level
-	switch level {
-	case "debug":
-		zapLevel = zapcore.DebugLevel
-	case "info":
-		zapLevel = zapcore.InfoLevel
-	case "warn":
-		zapLevel = zapcore.WarnLevel
-	case "error":
-		zapLevel = zapcore.ErrorLevel
-	default:
+	if err := zapLevel.UnmarshalText([]byte(level)); err != nil {
 		zapLevel = zapcore.InfoLevel
 	}
 
-	cfg := zap.NewProductionConfig()
-	cfg.Level = zap.NewAtomicLevelAt(zapLevel)
-	cfg.EncoderConfig.TimeKey = "ts"
-	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	var cfg zap.Config
+	if format == "console" {
+		cfg = zap.NewDevelopmentConfig()
+		cfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	} else {
+		cfg = zap.NewProductionConfig()
+		cfg.EncoderConfig.TimeKey = "ts"
+		cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	}
 
-	logger, err := cfg.Build(zap.AddCallerSkip(0))
+	cfg.Level = zap.NewAtomicLevelAt(zapLevel)
+
+	logger, err := cfg.Build()
 	if err != nil {
-		// Fall back to nop logger if configuration fails (should never happen).
 		return zap.NewNop()
 	}
 	return logger

@@ -62,7 +62,7 @@ func (c dbConfig) dsn(dbname string) string {
 }
 
 func main() {
-	logger := logging.NewLogger("info")
+	logger := logging.NewLogger("info", "json")
 
 	cfg := loadDBConfig()
 

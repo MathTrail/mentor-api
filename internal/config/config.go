@@ -18,7 +18,8 @@ type Config struct {
 	DaprMaxRetries int    `mapstructure:"DAPR_MAX_RETRIES"`
 
 	// Logging
-	LogLevel string `mapstructure:"LOG_LEVEL"`
+	LogLevel  string `mapstructure:"LOG_LEVEL"`
+	LogFormat string `mapstructure:"LOG_FORMAT"` // "json" (default) or "console" (colored dev output)
 
 	// Observability
 	ServiceName       string `mapstructure:"APP_NAME"`
@@ -42,6 +43,7 @@ func Load() *Config {
 	v.SetDefault("DB_BINDING_NAME", "mentor-db")
 	v.SetDefault("DAPR_MAX_RETRIES", 10)
 	v.SetDefault("LOG_LEVEL", "info")
+	v.SetDefault("LOG_FORMAT", "json")
 	v.SetDefault("APP_NAME", "mentor-api")
 	v.SetDefault("OTEL_ENDPOINT", "")
 	v.SetDefault("PYROSCOPE_ENDPOINT", "")

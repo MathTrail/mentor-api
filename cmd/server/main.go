@@ -19,7 +19,7 @@ import (
 func main() {
 	// 1. Single point of config and logger creation.
 	cfg := config.Load()
-	logger := logging.NewLogger(cfg.LogLevel)
+	logger := logging.NewLogger(cfg.LogLevel, cfg.LogFormat)
 
 	// 2. Observability stack (tracing, metrics, profiling).
 	obs := observability.New(cfg, logger)
