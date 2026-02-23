@@ -33,8 +33,8 @@ migration:
 
 dbDynamicSecret:
   enabled: true
-  pgHost: "postgres-postgresql"
-  pgPort: "5432"
+  pgHost: "postgres-pgbouncer"
+  pgPort: "6432"
   pgDatabase: "mentor"
 
 dbBinding:

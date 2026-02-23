@@ -42,7 +42,6 @@ func main() {
 
 	logger.Info("starting mentor-api server",
 		zap.String("port", cfg.ServerPort),
-		zap.String("db_host", cfg.DBHost),
 	)
 
 	// 4. HTTP server with graceful shutdown.

@@ -32,7 +32,6 @@ func NewServer(container *Container) *Server {
 }
 
 // Run starts the HTTP listener and blocks until SIGINT/SIGTERM is received.
-// It then performs a graceful shutdown with a 15-second timeout.
 func (s *Server) Run() error {
 	errCh := make(chan error, 1)
 	go func() {

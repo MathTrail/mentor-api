@@ -14,4 +14,10 @@ spec:
       secretKeyRef:
         name: mentor-api-db-dynamic-creds
         key: connectionString
+    - name: maxConns
+      value: "10"
+    - name: maxIdleConns
+      value: "5"
+    - name: connMaxLifetime
+      value: "25m"
 {{- end }}

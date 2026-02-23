@@ -20,18 +20,16 @@ type LLMClient interface {
 	AnalyzeFeedback(ctx context.Context, message string) (*StrategyResult, error)
 }
 
-// DefaultLLMClient is a stub implementation that returns a neutral strategy.
-// Replace the body of AnalyzeFeedback with a real LLM call when ready.
-type DefaultLLMClient struct{}
+type llmClient struct{}
 
 // NewLLMClient creates a new LLM client.
 func NewLLMClient() LLMClient {
-	return &DefaultLLMClient{}
+	return &llmClient{}
 }
 
-// AnalyzeFeedback returns a hard-coded neutral strategy.
+// AnalyzeFeedback analyses student feedback and returns a strategy.
 // TODO: replace with a real LLM call.
-func (c *DefaultLLMClient) AnalyzeFeedback(_ context.Context, _ string) (*StrategyResult, error) {
+func (c *llmClient) AnalyzeFeedback(_ context.Context, _ string) (*StrategyResult, error) {
 	return &StrategyResult{
 		PerceivedDifficulty:  "ok",
 		DifficultyAdjustment: 0.0,

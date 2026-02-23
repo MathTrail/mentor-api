@@ -3,26 +3,64 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"os"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 	"go.uber.org/zap"
 
-	"github.com/MathTrail/mentor-api/internal/config"
 	"github.com/MathTrail/mentor-api/internal/logging"
 	"github.com/MathTrail/mentor-api/migrations"
 )
 
+// dbConfig holds database connection parameters read from environment variables.
+// These variables are injected only into the migration K8s Job, keeping
+// credentials out of the server binary's environment.
+type dbConfig struct {
+	Host     string
+	Port     string
+	User     string
+	Password string
+	Name     string
+	SSLMode  string
+}
+
+func loadDBConfig() dbConfig {
+	return dbConfig{
+		Host:     envOrDefault("DB_HOST", "postgres-postgresql"),
+		Port:     envOrDefault("DB_PORT", "5432"),
+		User:     envOrDefault("DB_USER", "postgres"),
+		Password: envOrDefault("DB_PASSWORD", "postgres"),
+		Name:     envOrDefault("DB_NAME", "mentor"),
+		SSLMode:  envOrDefault("DB_SSL_MODE", "disable"),
+	}
+}
+
+func envOrDefault(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
+// dsn builds a libpq connection string for the given database name.
+func (c dbConfig) dsn(dbname string) string {
+	return fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+		c.Host, c.Port, c.User, c.Password, dbname, c.SSLMode,
+	)
+}
+
 func main() {
 	logger := logging.NewLogger("info")
 
-	cfg := config.Load()
+	cfg := loadDBConfig()
 
 	// Ensure the target database exists (Goose requires it).
 	ensureDatabase(cfg, logger)
 
 	// Run Goose migrations with embedded SQL files.
-	if err := runMigrations(cfg.DSN(), logger); err != nil {
+	if err := runMigrations(cfg.dsn(cfg.Name), logger); err != nil {
 		logger.Fatal("migrations failed", zap.Error(err))
 	}
 
@@ -58,8 +96,8 @@ func runMigrations(dsn string, logger *zap.Logger) error {
 
 // ensureDatabase connects to the default "postgres" database and creates the
 // target database if it does not already exist.
-func ensureDatabase(cfg *config.Config, logger *zap.Logger) {
-	adminDSN := cfg.DSNForDB("postgres")
+func ensureDatabase(cfg dbConfig, logger *zap.Logger) {
+	adminDSN := cfg.dsn("postgres")
 
 	db, err := sql.Open("pgx", adminDSN)
 	if err != nil {
@@ -68,19 +106,19 @@ func ensureDatabase(cfg *config.Config, logger *zap.Logger) {
 	defer func() { _ = db.Close() }()
 
 	var exists bool
-	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)", cfg.DBName).Scan(&exists)
+	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)", cfg.Name).Scan(&exists)
 	if err != nil {
 		logger.Fatal("failed to check database existence", zap.Error(err))
 	}
 
 	if !exists {
 		// CREATE DATABASE cannot run inside a transaction.
-		if _, err := db.Exec(fmt.Sprintf(`CREATE DATABASE "%s"`, cfg.DBName)); err != nil {
-			logger.Fatal("failed to create database", zap.String("dbname", cfg.DBName), zap.Error(err))
+		if _, err := db.Exec(fmt.Sprintf(`CREATE DATABASE "%s"`, cfg.Name)); err != nil {
+			logger.Fatal("failed to create database", zap.String("dbname", cfg.Name), zap.Error(err))
 		}
-		logger.Info("database created", zap.String("dbname", cfg.DBName))
+		logger.Info("database created", zap.String("dbname", cfg.Name))
 	} else {
-		logger.Info("database already exists", zap.String("dbname", cfg.DBName))
+		logger.Info("database already exists", zap.String("dbname", cfg.Name))
 	}
 }
 

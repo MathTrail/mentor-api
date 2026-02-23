@@ -60,7 +60,8 @@ GET    /swagger/*any         — Swagger UI
 
 ## Architecture
 
-- **DB access:** Dapr output binding (`postgres` component) — no direct pgx connection in app code
+- **DB access:** Dapr output binding (`postgres` component) via PgBouncer (`postgres-pgbouncer:6432`) — no direct pgx connection in app code
+- **Migrations:** Direct PostgreSQL (`postgres-postgresql:5432`) — bypasses PgBouncer because DDL requires session mode
 - **CDC:** Debezium monitors the `feedback` table, publishes events to Kafka — app does NOT publish events
 - **Dapr App ID:** `mentor-api`
 - Helm chart uses `mathtrail-service-lib` library chart from `https://MathTrail.github.io/charts/charts`

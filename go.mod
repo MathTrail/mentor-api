@@ -4,7 +4,6 @@ go 1.25.7
 
 require (
 	github.com/dapr/go-sdk v1.11.0
-	github.com/exaring/otelpgx v0.10.0
 	github.com/gin-gonic/gin v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/grafana/pyroscope-go v1.2.7
