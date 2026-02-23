@@ -17,13 +17,13 @@ type Repository interface {
 	GetLatestByStudent(ctx context.Context, studentID uuid.UUID, limit int) ([]Feedback, error)
 }
 
-// repositoryImpl implements the Repository interface using a Dapr PostgreSQL binding
+// repositoryImpl implements the Repository interface.
 type repositoryImpl struct {
-	db *database.DaprDB
+	db database.DB
 }
 
-// NewRepository creates a new feedback repository backed by the given Dapr binding.
-func NewRepository(db *database.DaprDB) Repository {
+// NewRepository creates a new feedback repository backed by the given database.
+func NewRepository(db database.DB) Repository {
 	return &repositoryImpl{db: db}
 }
 

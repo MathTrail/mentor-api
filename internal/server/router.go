@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	ginSwagger "github.com/swaggo/gin-swagger"
 	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
 	"github.com/MathTrail/mentor-api/internal/database"
@@ -15,7 +15,7 @@ import (
 )
 
 // NewRouter creates and configures the Gin router with all routes and middleware
-func NewRouter(feedbackController *feedback.Controller, db *database.DaprDB, logger *zap.Logger) *gin.Engine {
+func NewRouter(feedbackController *feedback.Controller, db database.DB, logger *zap.Logger) *gin.Engine {
 	// Set Gin to release mode (disable debug logs)
 	gin.SetMode(gin.ReleaseMode)
 
@@ -66,7 +66,7 @@ func healthLiveness(c *gin.Context) {
 }
 
 // healthReady verifies DB connectivity via the Dapr binding before reporting ready.
-func healthReady(db *database.DaprDB) gin.HandlerFunc {
+func healthReady(db database.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if err := db.Ping(c.Request.Context()); err != nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not ready", "reason": "db: " + err.Error()})
