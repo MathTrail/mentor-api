@@ -39,7 +39,7 @@ type Container struct {
 // handle failures gracefully (e.g. flush observability before exit).
 func NewContainer(cfg *config.Config, logger *zap.Logger) (*Container, error) {
 	// Connect to the Dapr sidecar with retry.
-	daprClient, err := connectDapr(logger)
+	daprClient, err := connectDapr(context.Background(), logger, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("dapr client: %w", err)
 	}
@@ -52,8 +52,8 @@ func NewContainer(cfg *config.Config, logger *zap.Logger) (*Container, error) {
 		return nil, fmt.Errorf("database binding not reachable: %w", err)
 	}
 
-	// Initialize LLM client (mock for now, will be replaced with real implementation).
-	llmClient := clients.NewMockLLMClient()
+	// Initialize LLM client.
+	llmClient := clients.NewLLMClient()
 
 	// Initialize feedback components.
 	feedbackRepo := feedback.NewRepository(db)
@@ -78,21 +78,27 @@ func NewContainer(cfg *config.Config, logger *zap.Logger) (*Container, error) {
 // connectDapr attempts to connect to the Dapr sidecar with linear backoff.
 // The sidecar and the app container start concurrently in Kubernetes,
 // so the sidecar may not be ready immediately.
-func connectDapr(logger *zap.Logger) (dapr.Client, error) {
-	var (
-		daprClient dapr.Client
-		err        error
-	)
-	for attempt := 1; attempt <= 10; attempt++ {
-		daprClient, err = dapr.NewClient()
-		if err == nil {
-			return daprClient, nil
+func connectDapr(ctx context.Context, logger *zap.Logger, cfg *config.Config) (dapr.Client, error) {
+	var err error
+	for attempt := 1; attempt <= cfg.DaprMaxRetries; attempt++ {
+		client, connErr := dapr.NewClient()
+		if connErr == nil {
+			return client, nil
 		}
+		err = connErr
+
 		logger.Warn("dapr sidecar not ready, retrying",
 			zap.Int("attempt", attempt),
 			zap.Error(err),
 		)
-		time.Sleep(time.Duration(attempt) * time.Second)
+
+		// Wait for backoff or context cancellation.
+		select {
+		case <-time.After(time.Duration(attempt) * time.Second):
+			// continue
+		case <-ctx.Done():
+			return nil, fmt.Errorf("interrupted during connection: %w", ctx.Err())
+		}
 	}
-	return nil, fmt.Errorf("failed after 10 attempts: %w", err)
+	return nil, fmt.Errorf("dapr unavailable after %d attempts: %w", cfg.DaprMaxRetries, err)
 }

@@ -20,9 +20,10 @@ type Config struct {
 	DBSSLMode  string `mapstructure:"DB_SSL_MODE"`
 
 	// Dapr
-	DaprHost      string `mapstructure:"DAPR_HOST"`
-	DaprPort      string `mapstructure:"DAPR_PORT"`
-	DBBindingName string `mapstructure:"DB_BINDING_NAME"` // Dapr binding component name for DB access (server binary)
+	DaprHost       string `mapstructure:"DAPR_HOST"`
+	DaprPort       string `mapstructure:"DAPR_PORT"`
+	DBBindingName  string `mapstructure:"DB_BINDING_NAME"` // Dapr binding component name for DB access (server binary)
+	DaprMaxRetries int    `mapstructure:"DAPR_MAX_RETRIES"`
 
 	// Logging
 	LogLevel string `mapstructure:"LOG_LEVEL"`
@@ -51,6 +52,7 @@ func Load() *Config {
 	v.SetDefault("DAPR_HOST", "localhost")
 	v.SetDefault("DAPR_PORT", "3500")
 	v.SetDefault("DB_BINDING_NAME", "mentor-db")
+	v.SetDefault("DAPR_MAX_RETRIES", 10)
 	v.SetDefault("LOG_LEVEL", "info")
 	v.SetDefault("APP_NAME", "mentor-api")
 	v.SetDefault("OTEL_ENDPOINT", "")

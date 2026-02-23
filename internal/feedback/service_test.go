@@ -33,7 +33,7 @@ func (m *mockRepository) GetLatestByStudent(ctx context.Context, studentID uuid.
 
 func TestProcessFeedback_Success(t *testing.T) {
 	repo := &mockRepository{}
-	llm := clients.NewMockLLMClient()
+	llm := clients.NewLLMClient()
 	logger := zap.NewNop()
 
 	svc := NewService(repo, llm, logger)
@@ -64,7 +64,7 @@ func TestProcessFeedback_RepoError(t *testing.T) {
 	repo := &mockRepository{
 		saveFn: func(_ context.Context, _ *Feedback) error { return repoErr },
 	}
-	llm := clients.NewMockLLMClient()
+	llm := clients.NewLLMClient()
 	logger := zap.NewNop()
 
 	svc := NewService(repo, llm, logger)
