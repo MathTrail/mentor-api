@@ -34,8 +34,9 @@ Student Feedback Loop service for the MathTrail platform. Receives student feedb
 | `internal/config/config.go` | Config (Viper) |
 | `internal/database/dapr_binding.go` | PostgreSQL via Dapr output binding |
 | `internal/feedback/` | model, repository, service, controller |
+| `internal/apierror/apierror.go` | Shared HTTP error response type |
 | `internal/server/router.go` | Gin router with all routes & middleware |
-| `internal/server/middleware.go` | RequestID, ZapLogger, ZapRecovery, UserSpanAttributes |
+| `internal/server/middleware/` | RequestID (TraceID-linked), ZapLogger, ZapRecovery, UserSpanAttributes |
 | `internal/observability/observability.go` | InitTracer, InitMetrics, InitPyroscope |
 | `internal/clients/llm_client.go` | LLM client (future v2) |
 | `internal/clients/profile_client.go` | Profile service client |

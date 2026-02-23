@@ -11,6 +11,7 @@ import (
 	"github.com/MathTrail/mentor-api/internal/config"
 	"github.com/MathTrail/mentor-api/internal/database"
 	"github.com/MathTrail/mentor-api/internal/feedback"
+	"github.com/MathTrail/mentor-api/internal/server/middleware"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -26,10 +27,10 @@ func NewRouter(feedbackController *feedback.Controller, db database.DB, cfg *con
 	// Order matters: otelgin wraps everything for tracing, ZapRecovery catches
 	// panics from all downstream middleware and handlers.
 	router.Use(otelgin.Middleware("mentor-api")) // extracts traceparent from Dapr, creates child spans
-	router.Use(ZapRecovery(logger))              // must be early to catch panics in middleware below
-	router.Use(UserSpanAttributes())             // injects X-User-ID (from Oathkeeper) into active OTel span
-	router.Use(RequestID())
-	router.Use(ZapLogger(logger))
+	router.Use(middleware.ZapRecovery(logger))   // must be early to catch panics in middleware below
+	router.Use(middleware.UserSpanAttributes())  // injects X-User-ID (from Oathkeeper) into active OTel span
+	router.Use(middleware.RequestID())           // links to OTel TraceID when X-Request-ID is absent
+	router.Use(middleware.ZapLogger(logger))
 
 	// Dapr app configuration endpoint.
 	// The Dapr sidecar probes this on startup to discover pub/sub subscriptions.
