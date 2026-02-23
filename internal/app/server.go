@@ -14,14 +14,16 @@ import (
 
 // Server wraps the HTTP server with graceful shutdown.
 type Server struct {
-	httpServer *http.Server
-	logger     *zap.Logger
+	httpServer      *http.Server
+	logger          *zap.Logger
+	shutdownTimeout time.Duration
 }
 
 // NewServer creates a Server from the wired Container.
 func NewServer(container *Container) *Server {
 	return &Server{
-		logger: container.Logger,
+		logger:          container.Logger,
+		shutdownTimeout: container.Config.ShutdownTimeout,
 		httpServer: &http.Server{
 			Addr:    fmt.Sprintf(":%s", container.Config.ServerPort),
 			Handler: container.Router,
@@ -50,7 +52,7 @@ func (s *Server) Run() error {
 		s.logger.Info("received signal, shutting down", zap.String("signal", sig.String()))
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), s.shutdownTimeout)
 	defer cancel()
 
 	if err := s.httpServer.Shutdown(ctx); err != nil {

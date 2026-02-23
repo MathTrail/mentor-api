@@ -5,7 +5,7 @@
 package main
 
 import (
-	"time"
+	"context"
 
 	"github.com/MathTrail/mentor-api/internal/app"
 	"github.com/MathTrail/mentor-api/internal/config"
@@ -26,7 +26,13 @@ func main() {
 	if err := obs.Init(); err != nil {
 		logger.Fatal("failed to initialize observability", zap.Error(err))
 	}
-	defer obs.Shutdown(5 * time.Second)
+	// Shutdown context is created at exit time so the deadline starts
+	// only when the process is actually terminating.
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+		defer cancel()
+		obs.Shutdown(ctx)
+	}()
 
 	// 3. DI container (Dapr client, DB, repositories, router).
 	container, err := app.NewContainer(cfg, logger)

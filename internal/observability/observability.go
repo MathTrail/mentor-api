@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/grafana/pyroscope-go"
 	"go.opentelemetry.io/otel"
@@ -150,11 +149,9 @@ func (o *Observability) Init() error {
 	return nil
 }
 
-// Shutdown gracefully stops all observability components within the given timeout.
-func (o *Observability) Shutdown(timeout time.Duration) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
+// Shutdown gracefully stops all observability components.
+// The caller owns the context and its deadline.
+func (o *Observability) Shutdown(ctx context.Context) {
 	if o.tracerShutdown != nil {
 		if err := o.tracerShutdown(ctx); err != nil {
 			o.logger.Warn("tracer shutdown error", zap.Error(err))
