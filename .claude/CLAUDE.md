@@ -92,7 +92,7 @@ just load-test                 # Run k6 load tests
 - Follow Clean Architecture: Domain → Repository → Service → Controller
 - Handle errors explicitly — never ignore error returns
 - All comments in English
-- Middleware order: otelgin → UserSpanAttributes → RequestID → ZapLogger → ZapRecovery
+- Middleware order: otelgin → ZapRecovery → UserSpanAttributes → RequestID → ZapLogger
 - Commit convention: `feat(feedback):`, `fix(feedback):`, `test(feedback):`, `docs(feedback):`
 
 ## External Dependencies

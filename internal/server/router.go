@@ -8,6 +8,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
+	"github.com/MathTrail/mentor-api/internal/config"
 	"github.com/MathTrail/mentor-api/internal/database"
 	"github.com/MathTrail/mentor-api/internal/feedback"
 	"github.com/gin-gonic/gin"
@@ -15,18 +16,20 @@ import (
 )
 
 // NewRouter creates and configures the Gin router with all routes and middleware
-func NewRouter(feedbackController *feedback.Controller, db database.DB, logger *zap.Logger) *gin.Engine {
+func NewRouter(feedbackController *feedback.Controller, db database.DB, cfg *config.Config, logger *zap.Logger) *gin.Engine {
 	// Set Gin to release mode (disable debug logs)
 	gin.SetMode(gin.ReleaseMode)
 
 	router := gin.New()
 
-	// Global middleware
+	// Global middleware.
+	// Order matters: otelgin wraps everything for tracing, ZapRecovery catches
+	// panics from all downstream middleware and handlers.
 	router.Use(otelgin.Middleware("mentor-api")) // extracts traceparent from Dapr, creates child spans
+	router.Use(ZapRecovery(logger))              // must be early to catch panics in middleware below
 	router.Use(UserSpanAttributes())             // injects X-User-ID (from Oathkeeper) into active OTel span
 	router.Use(RequestID())
 	router.Use(ZapLogger(logger))
-	router.Use(ZapRecovery(logger))
 
 	// Dapr app configuration endpoint.
 	// The Dapr sidecar probes this on startup to discover pub/sub subscriptions.
@@ -43,8 +46,10 @@ func NewRouter(feedbackController *feedback.Controller, db database.DB, logger *
 	router.GET("/health/liveness", healthLiveness)
 	router.GET("/health/ready", healthReady(db))
 
-	// Swagger UI
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// Swagger UI (disabled in production via SWAGGER_ENABLED=false)
+	if cfg.SwaggerEnabled {
+		router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	}
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")

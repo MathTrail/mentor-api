@@ -7,10 +7,16 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/MathTrail/mentor-api/internal/config"
 	"github.com/MathTrail/mentor-api/internal/database"
 	"github.com/MathTrail/mentor-api/internal/feedback"
 	"go.uber.org/zap"
 )
+
+// testConfig returns a minimal config suitable for router tests.
+func testConfig() *config.Config {
+	return &config.Config{SwaggerEnabled: true}
+}
 
 // --- test doubles ---
 
@@ -39,7 +45,7 @@ func (m *mockService) ProcessFeedback(_ context.Context, req *feedback.FeedbackR
 
 func TestHealthStartup(t *testing.T) {
 	ctrl := feedback.NewController(&mockService{}, zap.NewNop())
-	router := NewRouter(ctrl, &mockDB{}, zap.NewNop())
+	router := NewRouter(ctrl, &mockDB{}, testConfig(), zap.NewNop())
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health/startup", nil)
@@ -52,7 +58,7 @@ func TestHealthStartup(t *testing.T) {
 
 func TestHealthLiveness(t *testing.T) {
 	ctrl := feedback.NewController(&mockService{}, zap.NewNop())
-	router := NewRouter(ctrl, &mockDB{}, zap.NewNop())
+	router := NewRouter(ctrl, &mockDB{}, testConfig(), zap.NewNop())
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health/liveness", nil)
@@ -65,7 +71,7 @@ func TestHealthLiveness(t *testing.T) {
 
 func TestHealthReady_OK(t *testing.T) {
 	ctrl := feedback.NewController(&mockService{}, zap.NewNop())
-	router := NewRouter(ctrl, &mockDB{}, zap.NewNop())
+	router := NewRouter(ctrl, &mockDB{}, testConfig(), zap.NewNop())
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health/ready", nil)
@@ -78,7 +84,7 @@ func TestHealthReady_OK(t *testing.T) {
 
 func TestHealthReady_DBDown(t *testing.T) {
 	ctrl := feedback.NewController(&mockService{}, zap.NewNop())
-	router := NewRouter(ctrl, &mockDB{pingErr: errors.New("connection refused")}, zap.NewNop())
+	router := NewRouter(ctrl, &mockDB{pingErr: errors.New("connection refused")}, testConfig(), zap.NewNop())
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health/ready", nil)

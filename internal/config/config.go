@@ -9,7 +9,8 @@ import (
 
 type Config struct {
 	// Server
-	ServerPort string `mapstructure:"SERVER_PORT"`
+	ServerPort     string `mapstructure:"SERVER_PORT"`
+	SwaggerEnabled bool   `mapstructure:"SWAGGER_ENABLED"`
 
 	// Dapr
 	DaprHost       string `mapstructure:"DAPR_HOST"`
@@ -39,6 +40,7 @@ func Load() *Config {
 	v.AutomaticEnv()
 
 	v.SetDefault("SERVER_PORT", "8080")
+	v.SetDefault("SWAGGER_ENABLED", true)
 	v.SetDefault("DAPR_HOST", "localhost")
 	v.SetDefault("DAPR_PORT", "3500")
 	v.SetDefault("DB_BINDING_NAME", "mentor-db")

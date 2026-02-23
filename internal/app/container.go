@@ -61,7 +61,7 @@ func NewContainer(cfg *config.Config, logger *zap.Logger) (*Container, error) {
 	feedbackController := feedback.NewController(feedbackService, logger)
 
 	// Create router.
-	router := server.NewRouter(feedbackController, db, logger)
+	router := server.NewRouter(feedbackController, db, cfg, logger)
 
 	return &Container{
 		Config:             cfg,
