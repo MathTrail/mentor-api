@@ -53,6 +53,14 @@ setup:
 dependencies ns=NAMESPACE:
     skaffold run -m mentor-deps --namespace="{{ ns }}" --status-check=true
 
+# Format all Go files with gofmt -s
+fmt:
+    gofmt -s -w .
+
+# Check formatting (fails if any file needs changes)
+fmt-check:
+    @test -z "$(gofmt -s -l .)" || (echo "Files not formatted:"; gofmt -s -l .; exit 1)
+
 # Build the Go binary
 build:
     go build -o bin/server ./cmd/server
@@ -159,13 +167,14 @@ status:
 
 # -- CI/CD Contract (called by self-hosted runner) ----------------------------
 
-# Lint the codebase
-ci-lint:
+# Lint the codebase (includes format check)
+ci-lint: fmt-check
     golangci-lint run ./...
 
-# Run tests
+# Run tests with coverage
 ci-test:
-    go test ./... -v -count=1
+    go test ./... -v -count=1 -coverprofile=coverage.out -covermode=atomic
+    go tool cover -func=coverage.out
 
 # Fast binary build for PR verification
 ci-build:

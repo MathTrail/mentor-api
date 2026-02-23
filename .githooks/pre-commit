@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# Check Go formatting with gofmt -s
+UNFORMATTED=$(gofmt -s -l . 2>/dev/null)
+if [ -n "$UNFORMATTED" ]; then
+    echo "❌ Go files not formatted with gofmt -s:"
+    echo "$UNFORMATTED"
+    echo ""
+    echo "Run: just fmt"
+    exit 1
+fi

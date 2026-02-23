@@ -34,5 +34,3 @@ type StrategyUpdate struct {
 	StrategySnapshot     map[string]interface{} `json:"strategy_snapshot"`
 	Timestamp            time.Time              `json:"timestamp"`
 }
-
-

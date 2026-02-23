@@ -19,6 +19,9 @@ else
     echo "Run 'just kubeconfig' in infra-local-k3s on host first"
 fi
 
+# Set up git hooks
+git config core.hooksPath .githooks
+
 # Verify cluster connection
 kubectl cluster-info 2>/dev/null && echo "Connected to cluster" \
     || echo "Cluster not accessible — check that k3d is running on host"
