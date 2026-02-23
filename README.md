@@ -68,14 +68,7 @@ graph TD
         ESO["External Secrets Operator"]
     end
 
-    subgraph obs [" Observability "]
-        OTel["OTel Collector\n:4317"]
-        Tempo["Tempo\n(traces)"]
-        Loki["Loki\n(logs)"]
-        Prom["Prometheus\n(metrics)"]
-        Pyro["Pyroscope\n(profiling)"]
-        Graf["Grafana"]
-    end
+    Obs["Observability\ntraces · logs · metrics · profiling"]
 
     User --> OK
     OK -->|"X-User-ID header"| HTTP
@@ -95,15 +88,7 @@ graph TD
     Vault -->|"dynamic lease"| ESO
     ESO -->|"K8s Secret → conn string"| Sidecar
 
-    HTTP -->|"OTLP traces + logs"| OTel
-    HTTP -.->|"scrape /metrics"| Prom
-    HTTP -->|"push profiles"| Pyro
-    OTel --> Tempo
-    OTel --> Loki
-    Tempo --> Graf
-    Loki --> Graf
-    Prom --> Graf
-    Pyro --> Graf
+    HTTP -->|"OTel · Pyroscope"| Obs
 
     classDef svc fill:#5b21b6,stroke:#7c3aed,color:#fff
     classDef dapr fill:#0369a1,stroke:#38bdf8,color:#fff
@@ -123,7 +108,7 @@ graph TD
     class Deb cdcCls
     class Kfk eventCls
     class Vault,ESO secretCls
-    class OTel,Tempo,Loki,Prom,Pyro,Graf obsCls
+    class Obs obsCls
     class LLM,ProfileSvc extCls
     class User,Validator actorCls
 ```
