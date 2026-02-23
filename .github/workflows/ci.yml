@@ -33,7 +33,6 @@ jobs:
           echo "VAULT_ROLE=mentor-api-role-ns-mentor-api-${{ github.run_id }}" >> "$GITHUB_ENV"
 
       - name: Prepare namespace
-        if: github.event_name == 'pull_request'
         run: just ci-prepare ${{ env.NAMESPACE }}
 
       - name: Lint
@@ -74,5 +73,5 @@ jobs:
           retention-days: 90
 
       - name: Cleanup namespace
-        if: always() && github.event_name == 'pull_request' && inputs.skip_cleanup != true
+        if: always() && inputs.skip_cleanup != true
         run: just ci-cleanup ${{ env.NAMESPACE }}
