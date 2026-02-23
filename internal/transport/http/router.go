@@ -1,4 +1,4 @@
-package server
+package httpserver
 
 import (
 	"net/http"
@@ -9,15 +9,22 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
 	"github.com/MathTrail/mentor-api/internal/config"
-	"github.com/MathTrail/mentor-api/internal/database"
-	"github.com/MathTrail/mentor-api/internal/feedback"
-	"github.com/MathTrail/mentor-api/internal/server/middleware"
+	"github.com/MathTrail/mentor-api/internal/domain/feedback"
+	"github.com/MathTrail/mentor-api/internal/domain/roadmap"
+	"github.com/MathTrail/mentor-api/internal/infra/postgres"
+	"github.com/MathTrail/mentor-api/internal/transport/http/middleware"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-// NewRouter creates and configures the Gin router with all routes and middleware
-func NewRouter(feedbackController *feedback.Controller, db database.DB, cfg *config.Config, logger *zap.Logger) *gin.Engine {
+// NewRouter creates and configures the Gin router with all routes and middleware.
+func NewRouter(
+	feedbackHandler *feedback.Handler,
+	roadmapHandler *roadmap.Handler,
+	db postgres.DB,
+	cfg *config.Config,
+	logger *zap.Logger,
+) *gin.Engine {
 	// Set Gin to release mode (disable debug logs)
 	gin.SetMode(gin.ReleaseMode)
 
@@ -55,7 +62,8 @@ func NewRouter(feedbackController *feedback.Controller, db database.DB, cfg *con
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{
-		v1.POST("/feedback", feedbackController.SubmitFeedback)
+		v1.POST("/feedback", feedbackHandler.SubmitFeedback)
+		v1.GET("/roadmap/recommendations", roadmapHandler.GetRecommendations)
 	}
 
 	return router
@@ -72,7 +80,7 @@ func healthLiveness(c *gin.Context) {
 }
 
 // healthReady verifies DB connectivity via the Dapr binding before reporting ready.
-func healthReady(db database.DB) gin.HandlerFunc {
+func healthReady(db postgres.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if err := db.Ping(c.Request.Context()); err != nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not ready", "reason": "db: " + err.Error()})

@@ -9,7 +9,7 @@ import (
 
 	"github.com/MathTrail/mentor-api/internal/app"
 	"github.com/MathTrail/mentor-api/internal/config"
-	"github.com/MathTrail/mentor-api/internal/logging"
+	"github.com/MathTrail/mentor-api/internal/logger"
 	"github.com/MathTrail/mentor-api/internal/observability"
 	"github.com/MathTrail/mentor-api/internal/version"
 	"go.uber.org/zap"
@@ -20,7 +20,7 @@ import (
 func main() {
 	// 1. Single point of config and logger creation.
 	cfg := config.Load()
-	logger := logging.NewLogger(cfg.LogLevel, cfg.LogFormat)
+	logger := logger.NewLogger(cfg.LogLevel, cfg.LogFormat)
 
 	// 2. Observability stack (tracing, metrics, profiling).
 	obs := observability.New(cfg, logger)

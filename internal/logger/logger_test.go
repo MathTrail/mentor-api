@@ -1,16 +1,16 @@
-package logging_test
+package logger_test
 
 import (
 	"encoding/json"
 	"testing"
 
-	"github.com/MathTrail/mentor-api/internal/logging"
+	"github.com/MathTrail/mentor-api/internal/logger"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 )
 
 func TestNewLogger_JSONFormat(t *testing.T) {
-	logger := logging.NewLogger("info", "json")
+	logger := logger.NewLogger("info", "json")
 	if logger == nil {
 		t.Fatal("expected non-nil logger")
 	}
@@ -42,7 +42,7 @@ func TestNewLogger_JSONFormat(t *testing.T) {
 }
 
 func TestNewLogger_ConsoleFormat(t *testing.T) {
-	logger := logging.NewLogger("debug", "console")
+	logger := logger.NewLogger("debug", "console")
 	if logger == nil {
 		t.Fatal("expected non-nil logger")
 	}
@@ -56,7 +56,7 @@ func TestNewLogger_ConsoleFormat(t *testing.T) {
 
 func TestNewLogger_InvalidLevel(t *testing.T) {
 	// Unknown level should fall back to info without panicking.
-	logger := logging.NewLogger("banana", "json")
+	logger := logger.NewLogger("banana", "json")
 	if logger == nil {
 		t.Fatal("expected non-nil logger for invalid level")
 	}
@@ -69,7 +69,7 @@ func TestNewLogger_InvalidLevel(t *testing.T) {
 
 func TestNewLogger_UnknownFormat(t *testing.T) {
 	// Unknown format should default to JSON (production config).
-	logger := logging.NewLogger("info", "xml")
+	logger := logger.NewLogger("info", "xml")
 	if logger == nil {
 		t.Fatal("expected non-nil logger for unknown format")
 	}
@@ -82,7 +82,7 @@ func TestNewLogger_JSONOutput(t *testing.T) {
 	// We can't easily capture zap output without custom cores,
 	// but we can verify the config produces valid JSON by checking
 	// that the production encoder emits the expected time key.
-	logger := logging.NewLogger("info", "json")
+	logger := logger.NewLogger("info", "json")
 
 	// Use zap's Check to confirm the level is enabled.
 	if ce := logger.Check(zap.InfoLevel, "check"); ce == nil {

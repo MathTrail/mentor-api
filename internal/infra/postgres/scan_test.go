@@ -1,4 +1,4 @@
-package database_test
+package postgres_test
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/MathTrail/mentor-api/internal/database"
+	"github.com/MathTrail/mentor-api/internal/infra/postgres"
 )
 
 func TestDecodeRow(t *testing.T) {
@@ -28,7 +28,7 @@ func TestDecodeRow(t *testing.T) {
 		Meta      json.RawMessage `json:"meta"`
 	}
 
-	got, err := database.DecodeRow[target](row)
+	got, err := postgres.DecodeRow[target](row)
 	if err != nil {
 		t.Fatalf("DecodeRow: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestDecodeRows(t *testing.T) {
 		Name string    `json:"name"`
 	}
 
-	got, err := database.DecodeRows[target](rows)
+	got, err := postgres.DecodeRows[target](rows)
 	if err != nil {
 		t.Fatalf("DecodeRows: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestDecodeRowsEmpty(t *testing.T) {
 		ID uuid.UUID `json:"id"`
 	}
 
-	got, err := database.DecodeRows[target]([]map[string]any{})
+	got, err := postgres.DecodeRows[target]([]map[string]any{})
 	if err != nil {
 		t.Fatalf("DecodeRows: %v", err)
 	}

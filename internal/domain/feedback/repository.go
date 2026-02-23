@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/MathTrail/mentor-api/internal/database"
+	"github.com/MathTrail/mentor-api/internal/infra/postgres"
 )
 
 // Repository defines the interface for feedback data access
@@ -18,11 +18,11 @@ type Repository interface {
 
 // repositoryImpl implements the Repository interface.
 type repositoryImpl struct {
-	db database.DB
+	db postgres.DB
 }
 
 // NewRepository creates a new feedback repository backed by the given database.
-func NewRepository(db database.DB) Repository {
+func NewRepository(db postgres.DB) Repository {
 	return &repositoryImpl{db: db}
 }
 
@@ -52,7 +52,7 @@ func (r *repositoryImpl) Save(ctx context.Context, f *Feedback) error {
 		return fmt.Errorf("feedback: save returned no rows")
 	}
 
-	res, err := database.DecodeRow[saveResult](rows[0])
+	res, err := postgres.DecodeRow[saveResult](rows[0])
 	if err != nil {
 		return fmt.Errorf("feedback: scan save result: %w", err)
 	}
@@ -75,5 +75,5 @@ func (r *repositoryImpl) GetLatestByStudent(ctx context.Context, studentID uuid.
 		return nil, fmt.Errorf("feedback: get latest: %w", err)
 	}
 
-	return database.DecodeRows[Feedback](rows)
+	return postgres.DecodeRows[Feedback](rows)
 }
