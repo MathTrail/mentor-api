@@ -1,0 +1,36 @@
+version: 2
+
+builds:
+  - id: mentor-api
+    main: ./cmd/server
+    binary: mentor-api
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+        -X github.com/MathTrail/mentor-api/internal/version.Version={{.Version}}
+        -X github.com/MathTrail/mentor-api/internal/version.Commit={{.Commit}}
+        -X github.com/MathTrail/mentor-api/internal/version.Date={{.Date}}
+
+archives:
+  - id: mentor-api
+    builds:
+      - mentor-api
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format: tar.gz
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "Merge pull request"
+      - "Merge branch"
