@@ -36,6 +36,9 @@ func runMigrations(dsn string, logger *zap.Logger) error {
 	if err != nil {
 		return fmt.Errorf("failed to open db for migrations: %w", err)
 	}
+	// Goose applies migrations sequentially.
+	// Limit the pool to one connection for predictable migration execution.
+	db.SetMaxOpenConns(1)
 	defer func() { _ = db.Close() }()
 
 	goose.SetBaseFS(migrations.FS)
