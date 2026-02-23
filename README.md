@@ -39,8 +39,8 @@ graph LR
     
     subgraph MentorService [Mentor API Platform]
         direction LR
-        App["Mentor API\n:8080"]
-        Sidecar["Dapr Sidecar\n:3500"]
+        App["Mentor API"]
+        Sidecar["Dapr Sidecar"]
         App <--> Sidecar
     end
 
@@ -48,7 +48,7 @@ graph LR
 
     subgraph Storage [Data Layer]
         direction TB
-        PGB["PgBouncer"] --> PG[("PostgreSQL")]
+        PGB["PgBouncer"] --> PG[("Postgres")]
         Mig["Migration Job"] --> PG
     end
 
@@ -66,7 +66,7 @@ graph LR
     subgraph Support [Infra Support]
         direction TB
         Vault["Vault"] --> ESO["ESO"]
-        Obs["Observability\nOTel · Pyroscope"]
+        Obs["Observability"]
     end
 
     ESO -- "Secrets" --> Sidecar
