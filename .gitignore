@@ -35,6 +35,9 @@ skaffold.env
 # .idea/
 # .vscode/
 
+# Swagger UI (CI copies swagger.json into this folder on deploy)
+docs/swagger-ui/swagger.json
+
 # esbuild output
 tests/load/dist/
 

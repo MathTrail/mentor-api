@@ -1,5 +1,7 @@
 # mentor-api
 
+[![API Docs](https://img.shields.io/badge/API_Docs-Swagger-85EA2D?style=for-the-badge&logo=swagger)](https://MathTrail.github.io/mentor-api/)
+
 Student Feedback Loop service for the MathTrail platform. Receives student feedback about task difficulty, delegates analysis to an LLM, and stores the resulting strategy in PostgreSQL.
 
 ## Mission & Responsibilities
