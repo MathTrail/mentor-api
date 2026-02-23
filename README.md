@@ -35,16 +35,97 @@ Mentor API is the intelligence hub of the MathTrail platform, responsible for ad
 
 ```mermaid
 graph TD
-    User([Student UI]) -- Feedback --> Mentor[Mentor API]
-    Mentor -- Analysis --> LLM[LLM Provider]
-    Mentor -- "Sync Data" --> DB[(Database)]
-    DB -- "Change Data Capture" --> Debezium[Debezium]
-    Debezium -- "Events" --> Kafka{Kafka Bus}
+    User([Student UI])
+    Validator([Solution Validator])
 
-    Validator[Solution Validator] -- "Progress Events" --> Kafka
-    Kafka -- "Consume Progress" --> Mentor
+    subgraph auth [" Auth "]
+        OK[Oathkeeper]
+    end
 
-    Mentor -- "Get Profile" --> Profile[Profile API]
+    subgraph app [" Mentor API "]
+        HTTP["Go Service · Gin\n:8080"]
+        Sidecar["Dapr Sidecar\n:3500"]
+    end
+
+    subgraph external [" External Services "]
+        LLM[LLM Provider]
+        ProfileSvc[Profile API]
+    end
+
+    subgraph data [" Data "]
+        PGB["PgBouncer\n:6432"]
+        PG[("PostgreSQL\n:5432")]
+        MigJob["Migration Job"]
+    end
+
+    subgraph cdc [" CDC · Events "]
+        Deb[Debezium]
+        Kfk{"Kafka"}
+    end
+
+    subgraph secrets [" Secrets "]
+        Vault["HashiCorp Vault"]
+        ESO["External Secrets Operator"]
+    end
+
+    subgraph obs [" Observability "]
+        OTel["OTel Collector\n:4317"]
+        Tempo["Tempo\n(traces)"]
+        Loki["Loki\n(logs)"]
+        Prom["Prometheus\n(metrics)"]
+        Pyro["Pyroscope\n(profiling)"]
+        Graf["Grafana"]
+    end
+
+    User --> OK
+    OK -->|"X-User-ID header"| HTTP
+    HTTP -->|"invoke binding"| Sidecar
+    Sidecar -->|"SQL · :6432"| PGB
+    PGB --> PG
+    MigJob -->|"DDL · :5432 direct"| PG
+
+    PG -->|"CDC (feedback table)"| Deb
+    Deb -->|events| Kfk
+    Validator -->|"progress events"| Kfk
+    Kfk -->|"consume"| HTTP
+
+    HTTP -->|"analyse feedback"| LLM
+    HTTP -->|"get profile"| ProfileSvc
+
+    Vault -->|"dynamic lease"| ESO
+    ESO -->|"K8s Secret → conn string"| Sidecar
+
+    HTTP -->|"OTLP traces + logs"| OTel
+    HTTP -.->|"scrape /metrics"| Prom
+    HTTP -->|"push profiles"| Pyro
+    OTel --> Tempo
+    OTel --> Loki
+    Tempo --> Graf
+    Loki --> Graf
+    Prom --> Graf
+    Pyro --> Graf
+
+    classDef svc fill:#5b21b6,stroke:#7c3aed,color:#fff
+    classDef dapr fill:#0369a1,stroke:#38bdf8,color:#fff
+    classDef authCls fill:#b45309,stroke:#f59e0b,color:#fff
+    classDef dataCls fill:#1e3a5f,stroke:#3b82f6,color:#fff
+    classDef cdcCls fill:#166534,stroke:#22c55e,color:#fff
+    classDef eventCls fill:#1c1917,stroke:#78716c,color:#fff
+    classDef secretCls fill:#7f1d1d,stroke:#ef4444,color:#fff
+    classDef obsCls fill:#134e4a,stroke:#2dd4bf,color:#fff
+    classDef extCls fill:#713f12,stroke:#f97316,color:#fff
+    classDef actorCls fill:#1e1b4b,stroke:#818cf8,color:#fff
+
+    class HTTP svc
+    class Sidecar dapr
+    class OK authCls
+    class PGB,PG,MigJob dataCls
+    class Deb cdcCls
+    class Kfk eventCls
+    class Vault,ESO secretCls
+    class OTel,Tempo,Loki,Prom,Pyro,Graf obsCls
+    class LLM,ProfileSvc extCls
+    class User,Validator actorCls
 ```
 
 ## Development
