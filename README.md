@@ -1,13 +1,5 @@
 # mentor-api
 
-Логично. Если эти инструменты образуют единый Data Pipeline (от БД через CDC в поток и аналитику), их стоит визуально сгруппировать в одну цепочку.
-
-Вот пересобранный блок. Я объединил их в один ряд, используя единый стиль for-the-badge, чтобы они выглядели мощно и единообразно, как и подобает ядру системы.
-
-Финальный README.md
-Markdown
-# mentor-api
-
 [![CI](https://github.com/MathTrail/mentor-api/actions/workflows/ci.yml/badge.svg)](https://github.com/MathTrail/mentor-api/actions)
 [![Latest Release](https://img.shields.io/github/v/release/MathTrail/mentor-api?style=flat-square)](https://github.com/MathTrail/mentor-api/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/MathTrail/mentor-api)](https://goreportcard.com/report/github.com/MathTrail/mentor-api)
