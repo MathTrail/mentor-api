@@ -1,0 +1,114 @@
+package config
+
+import (
+	"testing"
+	"time"
+)
+
+func assertPanics(t *testing.T, fn func()) {
+	t.Helper()
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic, got none")
+		}
+	}()
+	fn()
+}
+
+func TestLoad_Defaults(t *testing.T) {
+	cfg := Load()
+
+	if cfg.ServerPort != "8080" {
+		t.Errorf("ServerPort: got %q, want %q", cfg.ServerPort, "8080")
+	}
+	if !cfg.SwaggerEnabled {
+		t.Error("SwaggerEnabled: want true by default")
+	}
+	if cfg.DaprHost != "localhost" {
+		t.Errorf("DaprHost: got %q, want %q", cfg.DaprHost, "localhost")
+	}
+	if cfg.DaprPort != "3500" {
+		t.Errorf("DaprPort: got %q, want %q", cfg.DaprPort, "3500")
+	}
+	if cfg.DBBindingName != "mentor-db" {
+		t.Errorf("DBBindingName: got %q, want %q", cfg.DBBindingName, "mentor-db")
+	}
+	if cfg.DaprMaxRetries != 10 {
+		t.Errorf("DaprMaxRetries: got %d, want %d", cfg.DaprMaxRetries, 10)
+	}
+	if cfg.LogLevel != "info" {
+		t.Errorf("LogLevel: got %q, want %q", cfg.LogLevel, "info")
+	}
+	if cfg.LogFormat != "json" {
+		t.Errorf("LogFormat: got %q, want %q", cfg.LogFormat, "json")
+	}
+	if cfg.LLMTimeout != 10*time.Second {
+		t.Errorf("LLMTimeout: got %v, want %v", cfg.LLMTimeout, 10*time.Second)
+	}
+	if cfg.ShutdownTimeout != 5*time.Second {
+		t.Errorf("ShutdownTimeout: got %v, want %v", cfg.ShutdownTimeout, 5*time.Second)
+	}
+	if cfg.OTelSampleRate != 0.1 {
+		t.Errorf("OTelSampleRate: got %v, want %v", cfg.OTelSampleRate, 0.1)
+	}
+}
+
+func TestLoad_EnvOverrides(t *testing.T) {
+	t.Setenv("SERVER_PORT", "9090")
+	t.Setenv("LOG_LEVEL", "debug")
+	t.Setenv("LLM_TIMEOUT", "30s")
+	t.Setenv("SHUTDOWN_TIMEOUT", "15s")
+	t.Setenv("DB_BINDING_NAME", "custom-db")
+
+	cfg := Load()
+
+	if cfg.ServerPort != "9090" {
+		t.Errorf("ServerPort: got %q, want %q", cfg.ServerPort, "9090")
+	}
+	if cfg.LogLevel != "debug" {
+		t.Errorf("LogLevel: got %q, want %q", cfg.LogLevel, "debug")
+	}
+	if cfg.LLMTimeout != 30*time.Second {
+		t.Errorf("LLMTimeout: got %v, want %v", cfg.LLMTimeout, 30*time.Second)
+	}
+	if cfg.ShutdownTimeout != 15*time.Second {
+		t.Errorf("ShutdownTimeout: got %v, want %v", cfg.ShutdownTimeout, 15*time.Second)
+	}
+	if cfg.DBBindingName != "custom-db" {
+		t.Errorf("DBBindingName: got %q, want %q", cfg.DBBindingName, "custom-db")
+	}
+}
+
+func TestLoad_InvalidLLMTimeout_Panics(t *testing.T) {
+	t.Setenv("LLM_TIMEOUT", "not-a-duration")
+	assertPanics(t, func() { Load() })
+}
+
+func TestLoad_InvalidShutdownTimeout_Panics(t *testing.T) {
+	t.Setenv("SHUTDOWN_TIMEOUT", "bad")
+	assertPanics(t, func() { Load() })
+}
+
+func TestLoad_OTelSampleRate_TooHigh_Panics(t *testing.T) {
+	t.Setenv("OTEL_SAMPLE_RATE", "1.5")
+	assertPanics(t, func() { Load() })
+}
+
+func TestLoad_OTelSampleRate_Negative_Panics(t *testing.T) {
+	t.Setenv("OTEL_SAMPLE_RATE", "-0.1")
+	assertPanics(t, func() { Load() })
+}
+
+func TestLoad_OTelSampleRate_ValidBoundaries(t *testing.T) {
+	t.Setenv("OTEL_SAMPLE_RATE", "0.0")
+	cfg := Load()
+	if cfg.OTelSampleRate != 0.0 {
+		t.Errorf("OTelSampleRate: got %v, want 0.0", cfg.OTelSampleRate)
+	}
+
+	t.Setenv("OTEL_SAMPLE_RATE", "1.0")
+	cfg = Load()
+	if cfg.OTelSampleRate != 1.0 {
+		t.Errorf("OTelSampleRate: got %v, want 1.0", cfg.OTelSampleRate)
+	}
+}
