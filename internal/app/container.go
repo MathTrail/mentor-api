@@ -10,9 +10,10 @@ import (
 
 	"github.com/MathTrail/mentor-api/internal/clients"
 	"github.com/MathTrail/mentor-api/internal/config"
-	"github.com/MathTrail/mentor-api/internal/database"
-	"github.com/MathTrail/mentor-api/internal/feedback"
-	"github.com/MathTrail/mentor-api/internal/server"
+	"github.com/MathTrail/mentor-api/internal/domain/feedback"
+	"github.com/MathTrail/mentor-api/internal/domain/roadmap"
+	"github.com/MathTrail/mentor-api/internal/infra/postgres"
+	httpserver "github.com/MathTrail/mentor-api/internal/transport/http"
 	"go.uber.org/zap"
 )
 
@@ -20,15 +21,19 @@ import (
 type Container struct {
 	Config *config.Config
 	Logger *zap.Logger
-	DB     database.DB
+	DB     postgres.DB
 
 	// Clients
 	LLMClient clients.LLMClient
 
-	// Components
+	// Feedback components
 	FeedbackRepository feedback.Repository
 	FeedbackService    feedback.Service
-	FeedbackController *feedback.Controller
+	FeedbackHandler    *feedback.Handler
+
+	// Roadmap components
+	RoadmapService roadmap.Service
+	RoadmapHandler *roadmap.Handler
 
 	// Server
 	Router *gin.Engine
@@ -45,7 +50,7 @@ func NewContainer(cfg *config.Config, logger *zap.Logger) (*Container, error) {
 	}
 
 	// DaprDB wraps the Dapr binding so the app never handles DB credentials directly.
-	db := database.NewDaprDB(daprClient, cfg.DBBindingName)
+	db := postgres.NewDaprDB(daprClient, cfg.DBBindingName)
 
 	// Verify the binding is reachable on startup.
 	if err := db.Ping(context.Background()); err != nil {
@@ -58,10 +63,14 @@ func NewContainer(cfg *config.Config, logger *zap.Logger) (*Container, error) {
 	// Initialize feedback components.
 	feedbackRepo := feedback.NewRepository(db)
 	feedbackService := feedback.NewService(feedbackRepo, llmClient, cfg.LLMTimeout, logger)
-	feedbackController := feedback.NewController(feedbackService, logger)
+	feedbackHandler := feedback.NewHandler(feedbackService, logger)
+
+	// Initialize roadmap components.
+	roadmapService := roadmap.NewService(logger)
+	roadmapHandler := roadmap.NewHandler(roadmapService, logger)
 
 	// Create router.
-	router := server.NewRouter(feedbackController, db, cfg, logger)
+	router := httpserver.NewRouter(feedbackHandler, roadmapHandler, db, cfg, logger)
 
 	return &Container{
 		Config:             cfg,
@@ -70,7 +79,9 @@ func NewContainer(cfg *config.Config, logger *zap.Logger) (*Container, error) {
 		LLMClient:          llmClient,
 		FeedbackRepository: feedbackRepo,
 		FeedbackService:    feedbackService,
-		FeedbackController: feedbackController,
+		FeedbackHandler:    feedbackHandler,
+		RoadmapService:     roadmapService,
+		RoadmapHandler:     roadmapHandler,
 		Router:             router,
 	}, nil
 }

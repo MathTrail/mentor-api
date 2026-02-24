@@ -8,15 +8,15 @@ import (
 	"go.uber.org/zap"
 )
 
-// Controller handles HTTP requests for feedback endpoints
-type Controller struct {
+// Handler handles HTTP requests for feedback endpoints
+type Handler struct {
 	service Service
 	logger  *zap.Logger
 }
 
-// NewController creates a new feedback controller
-func NewController(service Service, logger *zap.Logger) *Controller {
-	return &Controller{
+// NewHandler creates a new feedback handler
+func NewHandler(service Service, logger *zap.Logger) *Handler {
+	return &Handler{
 		service: service,
 		logger:  logger,
 	}
@@ -33,17 +33,17 @@ func NewController(service Service, logger *zap.Logger) *Controller {
 // @Failure 400 {object} apierror.Response
 // @Failure 500 {object} apierror.Response
 // @Router /api/v1/feedback [post]
-func (c *Controller) SubmitFeedback(ctx *gin.Context) {
+func (h *Handler) SubmitFeedback(ctx *gin.Context) {
 	var req FeedbackRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		c.logger.Warn("invalid feedback request", zap.Error(err))
+		h.logger.Warn("invalid feedback request", zap.Error(err))
 		ctx.JSON(http.StatusBadRequest, apierror.Response{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
-	update, err := c.service.ProcessFeedback(ctx.Request.Context(), &req)
+	update, err := h.service.ProcessFeedback(ctx.Request.Context(), &req)
 	if err != nil {
-		c.logger.Error("failed to process feedback",
+		h.logger.Error("failed to process feedback",
 			zap.Error(err),
 			zap.Stringer("student_id", req.StudentID),
 			zap.String("task_id", req.TaskID),

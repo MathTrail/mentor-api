@@ -31,17 +31,17 @@ func (m *mockService) ProcessFeedback(ctx context.Context, req *FeedbackRequest)
 	}, nil
 }
 
-func testRouter(ctrl *Controller) *gin.Engine {
+func testRouter(h *Handler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.POST("/api/v1/feedback", ctrl.SubmitFeedback)
+	r.POST("/api/v1/feedback", h.SubmitFeedback)
 	return r
 }
 
 func TestSubmitFeedback_Success(t *testing.T) {
 	svc := &mockService{}
-	ctrl := NewController(svc, zap.NewNop())
-	router := testRouter(ctrl)
+	hdl := NewHandler(svc, zap.NewNop())
+	router := testRouter(hdl)
 
 	body, _ := json.Marshal(FeedbackRequest{
 		StudentID: uuid.New(),
@@ -66,8 +66,8 @@ func TestSubmitFeedback_Success(t *testing.T) {
 
 func TestSubmitFeedback_InvalidJSON(t *testing.T) {
 	svc := &mockService{}
-	ctrl := NewController(svc, zap.NewNop())
-	router := testRouter(ctrl)
+	hdl := NewHandler(svc, zap.NewNop())
+	router := testRouter(hdl)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/feedback", bytes.NewReader([]byte(`{invalid`)))
@@ -81,8 +81,8 @@ func TestSubmitFeedback_InvalidJSON(t *testing.T) {
 
 func TestSubmitFeedback_MissingFields(t *testing.T) {
 	svc := &mockService{}
-	ctrl := NewController(svc, zap.NewNop())
-	router := testRouter(ctrl)
+	hdl := NewHandler(svc, zap.NewNop())
+	router := testRouter(hdl)
 
 	body, _ := json.Marshal(map[string]string{"message": "hello"})
 
@@ -102,8 +102,8 @@ func TestSubmitFeedback_ServiceError(t *testing.T) {
 			return nil, errors.New("llm timeout")
 		},
 	}
-	ctrl := NewController(svc, zap.NewNop())
-	router := testRouter(ctrl)
+	hdl := NewHandler(svc, zap.NewNop())
+	router := testRouter(hdl)
 
 	body, _ := json.Marshal(FeedbackRequest{
 		StudentID: uuid.New(),

@@ -9,7 +9,7 @@ import (
 	"github.com/pressly/goose/v3"
 	"go.uber.org/zap"
 
-	"github.com/MathTrail/mentor-api/internal/logging"
+	"github.com/MathTrail/mentor-api/internal/logger"
 	"github.com/MathTrail/mentor-api/migrations"
 )
 
@@ -62,7 +62,7 @@ func (c dbConfig) dsn(dbname string) string {
 }
 
 func main() {
-	logger := logging.NewLogger("info", "json")
+	logger := logger.NewLogger("info", "json")
 
 	cfg := loadDBConfig()
 
