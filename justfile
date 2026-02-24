@@ -75,7 +75,6 @@ swagger:
 
 # Generate Swagger docs and prepare local Swagger UI preview
 swagger-ui: swagger
-    cp docs/swagger.json docs/swagger-ui/
     @echo "Open docs/swagger-ui/index.html in your browser"
 
 # Bundle k6 load test scripts (esbuild)
