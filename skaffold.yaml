@@ -29,6 +29,7 @@ deploy:
         chartPath: infra/helm/mentor-api
         createNamespace: true
         wait: true
+        skipBuildDependencies: true
         valuesFiles:
           - infra/helm/mentor-api/values.yaml
           - infra/helm/values-dev.yaml

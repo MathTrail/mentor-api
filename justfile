@@ -48,6 +48,7 @@ build-push-image tag=env("IMAGE", ""):
 setup:
     helm repo add mathtrail-charts ${CHARTS_REPO} 2>/dev/null || true
     helm repo update
+    helm dependency update infra/helm/mentor-api
 
 # Deploy service dependencies
 dependencies ns=NAMESPACE:
