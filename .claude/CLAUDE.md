@@ -64,8 +64,13 @@ GET    /swagger/*any         — Swagger UI
 
 ## Architecture
 
-- **DB access:** Dapr output binding (`postgres` component) via PgBouncer (`postgres-pgbouncer:6432`) — no direct pgx connection in app code
-- **Migrations:** Direct PostgreSQL (`postgres-postgresql:5432`) — bypasses PgBouncer because DDL requires session mode
+- **DB access:** `VaultPgPool` ([internal/infra/postgres/pool.go](internal/infra/postgres/pool.go)) — direct pgxpool via PgBouncer (`postgres-pgbouncer:6432`).
+  Credentials fetched at startup via `daprClient.GetSecret("vault-db", "creds/mentor-api-role", nil)`.
+  Background goroutine refreshes every 50 min: new pool swapped atomically, old pool closed after 30s.
+- **Migrations:** Direct PostgreSQL (`postgres-postgresql:5432`) — bypasses PgBouncer, uses Bitnami superuser K8s Secret.
+- **Secrets rule:** ONLY via `daprClient.GetSecret()`. No `envFrom.secretRef`, no env var passwords, no ESO ExternalSecrets.
+  - DB creds: `GetSecret("vault-db", "creds/mentor-api-role", nil)` → `{username, password}` (new Vault lease each call)
+  - Static secrets: `GetSecret("vault", "local/mathtrail-mentor", nil)`
 - **CDC:** Debezium monitors the `feedback` table, publishes events to Kafka — app does NOT publish events
 - **Dapr App ID:** `mentor-api`
 - Helm chart uses `mathtrail-service-lib` library chart from `https://MathTrail.github.io/charts/charts`

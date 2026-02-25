@@ -35,7 +35,7 @@ deploy:
         setValueTemplates:
           image.repository: "{{.IMAGE_REPO_mentor_api}}"
           image.tag: "{{.IMAGE_TAG_mentor_api}}"
-          dbDynamicSecret.vaultRole: "mentor-api-role-{{.NAMESPACE}}"
+          dbDynamicSecret.vaultRole: "mentor-api-role"
 
 portForward:
   - resourceType: service
@@ -57,6 +57,7 @@ profiles:
       - op: replace
         path: /deploy/helm/releases/0/setValueTemplates/dbDynamicSecret.vaultRole
         value: "{{.VAULT_ROLE}}"
+      # CI uses a shared Vault instance; role name is stable (no per-namespace suffix).
 
 ---
 apiVersion: skaffold/v4beta13
@@ -79,7 +80,6 @@ requires:
       ref: main # todo: specify concrete version
     configs:
       - postgres
-      - vault-db-init
 
 ---
 apiVersion: skaffold/v4beta13

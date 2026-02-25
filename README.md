@@ -7,6 +7,16 @@
 [![Go Version](https://img.shields.io/github/go-mod/go-version/MathTrail/mentor-api)](https://github.com/MathTrail/mentor-api/blob/main/go.mod)
 [![Go Reference](https://pkg.go.dev/badge/github.com/MathTrail/mentor-api.svg)](https://pkg.go.dev/github.com/MathTrail/mentor-api)
 
+Mentor API is the intelligence hub of the MathTrail platform, responsible for adapting the learning experience to each individual student. The service analyses feedback, tracks progress, and generates personalised learning recommendations.
+
+## Business Capabilities
+
+- **Feedback Analysis** — Interprets student feedback on task difficulty using an LLM.
+- **Learning Roadmaps** — Generates adaptive learning paths based on each student's current progress.
+- **Strategy Orchestration** — Determines the optimal teaching strategy to adjust content difficulty.
+
+## System Architecture
+
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Debezium](https://img.shields.io/badge/Debezium-FF6A00?style=for-the-badge&logo=redhat&logoColor=white)](https://debezium.io/)
 [![Apache Kafka](https://img.shields.io/badge/Kafka-000000?style=for-the-badge&logo=apachekafka&logoColor=white)](https://kafka.apache.org/)
@@ -20,18 +30,6 @@
 [![API Docs](https://img.shields.io/badge/API_Docs-Swagger-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)](https://MathTrail.github.io/mentor-api/)
 [![Tracing](https://img.shields.io/badge/Tracing-OTel-000000?style=for-the-badge&logo=opentelemetry&logoColor=white)](https://opentelemetry.io/)
 [![Profiling](https://img.shields.io/badge/Profiling-Pyroscope-FF7800?style=for-the-badge&logo=pyroscope&logoColor=white)](https://pyroscope.io/)
-
----
-
-Mentor API is the intelligence hub of the MathTrail platform, responsible for adapting the learning experience to each individual student. The service analyses feedback, tracks progress, and generates personalised learning recommendations.
-
-## Business Capabilities
-
-- **Feedback Analysis** — Interprets student feedback on task difficulty using an LLM.
-- **Learning Roadmaps** — Generates adaptive learning paths based on each student's current progress.
-- **Strategy Orchestration** — Determines the optimal teaching strategy to adjust content difficulty.
-
-## System Architecture
 
 ```mermaid
 graph LR
@@ -102,10 +100,10 @@ just k6-load
 [Telepresence](https://www.telepresence.io/) intercepts live cluster traffic and routes it to your local process, so you can debug against real dependencies without deploying.
 
 ```bash
-just tp-intercept   # deploy → connect to cluster → start intercept on port 8080
+just tp-intercept
 go run ./cmd/server/main.go
 
-just tp-stop        # leave intercept and disconnect
+just tp-stop
 ```
 
 ## Releases

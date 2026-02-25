@@ -29,6 +29,15 @@ externalSecrets:
   vaultPath: ""
   keys: []
 
+# Vault Database Config Job — creates DB connection + dynamic role in Vault.
+# When enabled, a Helm pre-install/pre-upgrade hook Job runs `vault write`
+# to register this service's DB connection and credentials role.
+vaultDbConfig:
+  enabled: false
+  connectionName: "mentor-postgres"
+  pgDatabase: "mentor"
+  roleName: "mentor-api-role"
+
 # Dynamic DB credentials via Vault Database Secrets Engine + ESO.
 # When enabled, ESO creates and rotates the K8s Secret mentor-api-db-dynamic-creds.
 dbDynamicSecret:

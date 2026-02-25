@@ -1,6 +1,6 @@
 # Dev overlay: K3s local development
-# DB credentials come from Vault via ESO (dynamic rotation), delivered through the Dapr binding.
-# No static passwords here — the app only knows the binding name.
+# DB credentials come from Vault via the Dapr sidecar ("vault-db" secret store).
+# Credentials never touch etcd — no ESO ExternalSecret for this service.
 
 env:
   - name: SERVER_PORT
@@ -9,12 +9,21 @@ env:
     value: "info"
   - name: LOG_FORMAT
     value: "console"
-  - name: DB_BINDING_NAME
-    value: "mentor-db"
+  # Non-sensitive connection params (host/port/dbname are not secrets)
+  - name: PG_HOST
+    value: "postgres-pgbouncer"
+  - name: PG_PORT
+    value: "6432"
+  - name: PG_DATABASE
+    value: "mentor"
+  # Dapr secret store component name and credential path
+  - name: DB_SECRET_STORE
+    value: "vault-db"
+  - name: DB_SECRET_KEY
+    value: "creds/mentor-api-role"
 
-# The migration Job still needs a direct DB connection with DDL privileges.
-# It inherits the shared `env` above, then these migration-specific vars are layered on top.
-# Credentials come from the Bitnami chart's auto-generated postgres-postgresql Secret.
+# The migration Job needs a direct DB connection with DDL privileges (superuser).
+# It does NOT go through Vault/Dapr — uses the Bitnami postgres-postgresql Secret.
 migration:
   env:
     - name: DB_HOST
@@ -33,12 +42,15 @@ migration:
     - name: DB_SSL_MODE
       value: "disable"
 
+# ESO ExternalSecret for dynamic DB creds is no longer needed.
+# The app fetches credentials via daprClient.GetSecret("vault-db", "creds/mentor-api-role").
 dbDynamicSecret:
-  enabled: true
-  pgHost: "postgres-pgbouncer"
-  pgPort: "6432"
-  pgDatabase: "mentor"
+  enabled: false
 
+# Dapr PostgreSQL binding is replaced by direct pgxpool + Vault credential fetch.
 dbBinding:
+  enabled: false
+
+# vault-db-config Job still runs to configure the Vault database engine (idempotent).
+vaultDbConfig:
   enabled: true
-  name: "mentor-db"

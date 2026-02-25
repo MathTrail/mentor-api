@@ -4,6 +4,8 @@
 ---
 {{ include "mathtrail-service-lib.configMap" . }}
 ---
+{{ include "mathtrail-service-lib.vaultDbConfigJob" . }}
+---
 {{ include "mathtrail-service-lib.migrationJob" . }}
 ---
 {{ include "mathtrail-service-lib.deployment" . }}

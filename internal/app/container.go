@@ -49,13 +49,33 @@ func NewContainer(cfg *config.Config, logger *zap.Logger) (*Container, error) {
 		return nil, fmt.Errorf("dapr client: %w", err)
 	}
 
-	// DaprDB wraps the Dapr binding so the app never handles DB credentials directly.
-	db := postgres.NewDaprDB(daprClient, cfg.DBBindingName)
-
-	// Verify the binding is reachable on startup.
-	if err := db.Ping(context.Background()); err != nil {
-		return nil, fmt.Errorf("database binding not reachable: %w", err)
+	// DaprPgPool fetches dynamic DB credentials from Vault via the Dapr sidecar
+	// ("vault-db" secret store component) and manages a pgxpool.Pool.
+	// Credentials never touch etcd — they live only in the sidecar and this pool.
+	pgDSNTpl := fmt.Sprintf(
+		"host=%s port=%s dbname=%s sslmode=%s",
+		cfg.PgHost, cfg.PgPort, cfg.PgDatabase, cfg.PgSSLMode,
+	)
+	db, err := postgres.NewDaprPgPool(
+		context.Background(),
+		daprClient,
+		cfg.DBSecretStore,
+		cfg.DBSecretKey,
+		pgDSNTpl,
+		logger,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("vault pg pool: %w", err)
 	}
+
+	// Verify the pool is reachable on startup.
+	if err := db.Ping(context.Background()); err != nil {
+		return nil, fmt.Errorf("database not reachable: %w", err)
+	}
+
+	// Refresh credentials 10 minutes before the Vault default_ttl (1h).
+	// Each refresh creates a new Vault lease and swaps the pool atomically.
+	db.StartRefresh(context.Background(), 50*time.Minute)
 
 	// Initialize LLM client.
 	llmClient := clients.NewLLMClient()

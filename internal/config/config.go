@@ -15,8 +15,17 @@ type Config struct {
 	// Dapr
 	DaprHost       string `mapstructure:"DAPR_HOST"`
 	DaprPort       string `mapstructure:"DAPR_PORT"`
-	DBBindingName  string `mapstructure:"DB_BINDING_NAME"` // Dapr binding component name for DB access (server binary)
 	DaprMaxRetries int    `mapstructure:"DAPR_MAX_RETRIES"`
+
+	// Dapr Secret Store
+	DBSecretStore string `mapstructure:"DB_SECRET_STORE"` // Dapr component name for DB engine, e.g. "vault-db"
+	DBSecretKey   string `mapstructure:"DB_SECRET_KEY"`   // Secret path, e.g. "creds/mentor-api-role"
+
+	// PostgreSQL connection (non-sensitive; credentials come from Vault via Dapr)
+	PgHost     string `mapstructure:"PG_HOST"`
+	PgPort     string `mapstructure:"PG_PORT"`
+	PgDatabase string `mapstructure:"PG_DATABASE"`
+	PgSSLMode  string `mapstructure:"PG_SSL_MODE"`
 
 	// Logging
 	LogLevel  string `mapstructure:"LOG_LEVEL"`
@@ -43,8 +52,13 @@ func Load() *Config {
 	v.SetDefault("SWAGGER_ENABLED", true)
 	v.SetDefault("DAPR_HOST", "localhost")
 	v.SetDefault("DAPR_PORT", "3500")
-	v.SetDefault("DB_BINDING_NAME", "mentor-db")
 	v.SetDefault("DAPR_MAX_RETRIES", 10)
+	v.SetDefault("DB_SECRET_STORE", "vault-db")
+	v.SetDefault("DB_SECRET_KEY", "creds/mentor-api-role")
+	v.SetDefault("PG_HOST", "postgres-pgbouncer")
+	v.SetDefault("PG_PORT", "6432")
+	v.SetDefault("PG_DATABASE", "mentor")
+	v.SetDefault("PG_SSL_MODE", "disable")
 	v.SetDefault("LOG_LEVEL", "info")
 	v.SetDefault("LOG_FORMAT", "json")
 	v.SetDefault("APP_NAME", "mentor-api")
