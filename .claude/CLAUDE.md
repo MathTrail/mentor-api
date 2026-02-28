@@ -4,7 +4,7 @@
 
 Student Feedback Loop service for the MathTrail platform. Receives student feedback, analyzes it (sentiment, difficulty), persists it to PostgreSQL, and exposes an AI mentor strategy update in the response.
 
-**Language:** Go 1.25.7
+**Language:** Go 1.26.0
 **Port:** 8080
 **Cluster:** k3d `mathtrail-dev`, namespace `mathtrail`
 **KUBECONFIG:** `/home/vscode/.kube/k3d-mathtrail-dev.yaml`

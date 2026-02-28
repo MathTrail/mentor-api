@@ -1,5 +1,5 @@
 # Build swag binary in a Go image (Go is not available in the base image)
-FROM golang:1.25-bookworm AS swag-builder
+FROM golang:1.26-bookworm AS swag-builder
 ARG SWAG_VERSION=v2.0.0-rc5
 RUN go install github.com/swaggo/swag/v2/cmd/swag@${SWAG_VERSION}
 

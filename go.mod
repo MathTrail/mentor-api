@@ -1,6 +1,6 @@
 module github.com/MathTrail/mentor-api
 
-go 1.25.7
+go 1.26.0
 
 require (
 	github.com/gin-gonic/gin v1.11.0
