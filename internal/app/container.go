@@ -3,9 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
-	"time"
 
-	dapr "github.com/dapr/go-sdk/client"
 	"github.com/gin-gonic/gin"
 
 	"github.com/MathTrail/mentor-api/internal/clients"
@@ -43,39 +41,23 @@ type Container struct {
 // It returns an error instead of panicking so that the caller can
 // handle failures gracefully (e.g. flush observability before exit).
 func NewContainer(cfg *config.Config, logger *zap.Logger) (*Container, error) {
-	// Connect to the Dapr sidecar with retry.
-	daprClient, err := connectDapr(context.Background(), logger, cfg)
-	if err != nil {
-		return nil, fmt.Errorf("dapr client: %w", err)
-	}
-
-	// DaprPgPool fetches dynamic DB credentials from Vault via the Dapr sidecar
-	// ("vault-db" secret store component) and manages a pgxpool.Pool.
-	// Credentials never touch etcd — they live only in the sidecar and this pool.
-	pgDSNTpl := fmt.Sprintf(
-		"host=%s port=%s dbname=%s sslmode=%s",
+	// EnvPgPool uses credentials injected by VSO via the mentor-api-db-secret
+	// K8s Secret. On lease renewal VSO triggers a rolling restart of this
+	// Deployment, so no in-process credential refresh is needed.
+	dsn := fmt.Sprintf(
+		"host=%s port=%s dbname=%s sslmode=%s user=%s password=%s",
 		cfg.PgHost, cfg.PgPort, cfg.PgDatabase, cfg.PgSSLMode,
+		cfg.PgUser, cfg.PgPassword,
 	)
-	db, err := postgres.NewDaprPgPool(
-		context.Background(),
-		daprClient,
-		cfg.DBSecretStore,
-		cfg.DBSecretKey,
-		pgDSNTpl,
-		logger,
-	)
+	db, err := postgres.NewEnvPgPool(context.Background(), dsn)
 	if err != nil {
-		return nil, fmt.Errorf("vault pg pool: %w", err)
+		return nil, fmt.Errorf("env pg pool: %w", err)
 	}
 
 	// Verify the pool is reachable on startup.
 	if err := db.Ping(context.Background()); err != nil {
 		return nil, fmt.Errorf("database not reachable: %w", err)
 	}
-
-	// Refresh credentials 10 minutes before the Vault default_ttl (1h).
-	// Each refresh creates a new Vault lease and swaps the pool atomically.
-	db.StartRefresh(context.Background(), 50*time.Minute)
 
 	// Initialize LLM client.
 	llmClient := clients.NewLLMClient()
@@ -104,32 +86,4 @@ func NewContainer(cfg *config.Config, logger *zap.Logger) (*Container, error) {
 		RoadmapHandler:     roadmapHandler,
 		Router:             router,
 	}, nil
-}
-
-// connectDapr attempts to connect to the Dapr sidecar with linear backoff.
-// The sidecar and the app container start concurrently in Kubernetes,
-// so the sidecar may not be ready immediately.
-func connectDapr(ctx context.Context, logger *zap.Logger, cfg *config.Config) (dapr.Client, error) {
-	var err error
-	for attempt := 1; attempt <= cfg.DaprMaxRetries; attempt++ {
-		client, connErr := dapr.NewClient()
-		if connErr == nil {
-			return client, nil
-		}
-		err = connErr
-
-		logger.Warn("dapr sidecar not ready, retrying",
-			zap.Int("attempt", attempt),
-			zap.Error(err),
-		)
-
-		// Wait for backoff or context cancellation.
-		select {
-		case <-time.After(time.Duration(attempt) * time.Second):
-			// continue
-		case <-ctx.Done():
-			return nil, fmt.Errorf("interrupted during connection: %w", ctx.Err())
-		}
-	}
-	return nil, fmt.Errorf("dapr unavailable after %d attempts: %w", cfg.DaprMaxRetries, err)
 }

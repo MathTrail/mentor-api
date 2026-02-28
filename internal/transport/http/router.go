@@ -33,18 +33,11 @@ func NewRouter(
 	// Global middleware.
 	// Order matters: otelgin wraps everything for tracing, ZapRecovery catches
 	// panics from all downstream middleware and handlers.
-	router.Use(otelgin.Middleware("mentor-api")) // extracts traceparent from Dapr, creates child spans
+	router.Use(otelgin.Middleware("mentor-api")) // extracts W3C traceparent, creates child spans
 	router.Use(middleware.ZapRecovery(logger))   // must be early to catch panics in middleware below
 	router.Use(middleware.UserSpanAttributes())  // injects X-User-ID (from Oathkeeper) into active OTel span
 	router.Use(middleware.RequestID())           // links to OTel TraceID when X-Request-ID is absent
 	router.Use(middleware.ZapLogger(logger))
-
-	// Dapr app configuration endpoint.
-	// The Dapr sidecar probes this on startup to discover pub/sub subscriptions.
-	// Returning 200 with an empty object signals "no subscriptions" and suppresses sidecar 404 noise.
-	router.GET("/dapr/config", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{})
-	})
 
 	// Observability endpoints
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
@@ -79,7 +72,7 @@ func healthLiveness(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
-// healthReady verifies DB connectivity via the Dapr binding before reporting ready.
+// healthReady verifies DB connectivity before reporting ready.
 func healthReady(db postgres.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if err := db.Ping(c.Request.Context()); err != nil {

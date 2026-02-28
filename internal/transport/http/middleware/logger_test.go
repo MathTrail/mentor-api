@@ -49,7 +49,6 @@ func TestIsInternalPath(t *testing.T) {
 	}{
 		{"/health/ready", true},
 		{"/health/liveness", true},
-		{"/dapr/config", true},
 		{"/metrics", true},
 		{"/api/v1/feedback", false},
 		{"/swagger/index.html", false},

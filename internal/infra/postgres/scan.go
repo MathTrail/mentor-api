@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// DecodeRow decodes a single map[string]any row (from DaprDB.Query) into a
+// DecodeRow decodes a single map[string]any row (from DB.Query) into a
 // struct T by round-tripping through JSON. T's fields must carry `json` tags
 // that match the SQL column names returned by the query.
 func DecodeRow[T any](row map[string]any) (T, error) {

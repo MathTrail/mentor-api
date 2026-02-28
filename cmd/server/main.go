@@ -35,7 +35,7 @@ func main() {
 		obs.Shutdown(ctx)
 	}()
 
-	// 3. DI container (Dapr client, DB, repositories, router).
+	// 3. DI container (DB, repositories, router).
 	container, err := app.NewContainer(cfg, logger)
 	if err != nil {
 		logger.Fatal("failed to initialize application", zap.Error(err))

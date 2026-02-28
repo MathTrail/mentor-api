@@ -15,3 +15,7 @@
 {{ include "mathtrail-service-lib.hpa" . }}
 ---
 {{ include "mathtrail-service-lib.grafanaDashboard" . }}
+---
+{{ include "mathtrail-service-lib.vaultAuth" . }}
+---
+{{ include "mathtrail-service-lib.vaultDynamicSecret" . }}

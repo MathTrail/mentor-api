@@ -23,8 +23,8 @@ import (
 
 // initTracer initialises the global OTLP gRPC trace exporter and TracerProvider.
 // It sets the global W3C TraceContext + Baggage propagator so that traceparent
-// headers injected by the Dapr sidecar are automatically extracted and the Go
-// spans appear as children of the Dapr spans in Tempo.
+// headers are automatically extracted and the Go
+// spans appear as children of upstream spans in Tempo.
 func initTracer(cfg *config.Config) (shutdown func(context.Context) error, err error) {
 	conn, err := grpc.NewClient(
 		cfg.OTelEndpoint,
@@ -52,7 +52,7 @@ func initTracer(cfg *config.Config) (shutdown func(context.Context) error, err e
 		return nil, err
 	}
 
-	// ParentBased respects upstream Dapr sampling decisions while
+	// ParentBased respects upstream sampling decisions while
 	// TraceIDRatioBased controls the rate for locally-originated root spans.
 	sampler := sdktrace.ParentBased(sdktrace.TraceIDRatioBased(cfg.OTelSampleRate))
 
@@ -67,7 +67,7 @@ func initTracer(cfg *config.Config) (shutdown func(context.Context) error, err e
 
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-		propagation.TraceContext{}, // W3C traceparent — compatible with Dapr
+		propagation.TraceContext{}, // W3C traceparent
 		propagation.Baggage{},
 	))
 

@@ -25,7 +25,6 @@ Mentor API is the intelligence hub of the MathTrail platform, responsible for ad
 [![Architecture: EDA](https://img.shields.io/badge/Architecture-Event--Driven-8A2BE2?style=for-the-badge&logo=eventstore)](https://aws.amazon.com/event-driven-architecture/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)](./infra/helm/mentor-api)
 [![Vault](https://img.shields.io/badge/Vault-FF3E00?style=for-the-badge&logo=hashicorpvault&logoColor=white)](https://www.vaultproject.io/)
-[![Dapr](https://img.shields.io/badge/Dapr-007ACC?style=for-the-badge&logo=dapr&logoColor=white)](https://dapr.io/)
 
 [![API Docs](https://img.shields.io/badge/API_Docs-Swagger-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)](https://MathTrail.github.io/mentor-api/)
 [![Tracing](https://img.shields.io/badge/Tracing-OTel-000000?style=for-the-badge&logo=opentelemetry&logoColor=white)](https://opentelemetry.io/)
@@ -38,8 +37,6 @@ graph LR
     subgraph MentorService [Mentor API Platform]
         direction LR
         App["Mentor API"]
-        Sidecar["Dapr Sidecar"]
-        App <--> Sidecar
     end
 
     OK -- "X-User-ID" --> App
@@ -50,7 +47,7 @@ graph LR
         Mig["Migration Job"] --> PG
     end
 
-    Sidecar -- "SQL" --> PGB
+    App -- "SQL" --> PGB
     PG -- "CDC" --> Deb[Debezium]
     
     subgraph Bus [Event Bus]
@@ -67,12 +64,11 @@ graph LR
         Obs["Observability"]
     end
 
-    ESO -- "Secrets" --> Sidecar
+    ESO -- "Secrets" --> App
     App -- "Telemetry" --> Obs
 
     %% Styling
     classDef svc fill:#5b21b6,stroke:#7c3aed,color:#fff
-    classDef dapr fill:#0369a1,stroke:#38bdf8,color:#fff
     classDef authCls fill:#b45309,stroke:#f59e0b,color:#fff
     classDef dataCls fill:#1e3a5f,stroke:#3b82f6,color:#fff
     classDef cdcCls fill:#166534,stroke:#22c55e,color:#fff
@@ -81,7 +77,7 @@ graph LR
     classDef obsCls fill:#134e4a,stroke:#2dd4bf,color:#fff
     classDef actorCls fill:#1e1b4b,stroke:#818cf8,color:#fff
 
-    class App svc; class Sidecar dapr; class OK authCls;
+    class App svc; class OK authCls;
     class PGB,PG,Mig dataCls; class Deb cdcCls; class Kfk eventCls;
     class Vault,ESO secretCls; class Obs obsCls; class User actorCls;
 ```

@@ -7,10 +7,6 @@ image:
 service:
   port: 8080
 
-dapr:
-  enabled: true
-  appId: "mentor-api"
-
 resources:
   requests:
     cpu: "100m"
@@ -23,15 +19,15 @@ migration:
   enabled: true
   command: ["/migrate"]
   waitTimeout: "120s"
+  ttlSecondsAfterFinished: 1800
 
 externalSecrets:
   enabled: false
   vaultPath: ""
   keys: []
 
-# Vault Database Config Job — creates DB connection + dynamic role in Vault.
-# When enabled, a Helm pre-install/pre-upgrade hook Job runs `vault write`
-# to register this service's DB connection and credentials role.
+# Vault Database Config Job — deprecated, replaced by VCO DatabaseSecretEngineConfig CR.
+# DB engine config is now managed centrally via infra/vault-config/mentor-api/.
 vaultDbConfig:
   enabled: false
   connectionName: "mentor-postgres"
@@ -39,7 +35,6 @@ vaultDbConfig:
   roleName: "mentor-api-role"
 
 # Dynamic DB credentials via Vault Database Secrets Engine + ESO.
-# When enabled, ESO creates and rotates the K8s Secret mentor-api-db-dynamic-creds.
 dbDynamicSecret:
   enabled: false
   pgHost: "postgres-pgbouncer"
@@ -47,11 +42,13 @@ dbDynamicSecret:
   pgDatabase: "mentor"
   vaultRole: "mentor-api-role"
 
-# Dapr PostgreSQL binding component.
-# When enabled, the app accesses the DB exclusively through the Dapr sidecar binding.
-dbBinding:
-  enabled: false
-  name: "mentor-db"
+# Vault Secrets Operator — creates and rotates the mentor-api-db-secret K8s Secret.
+# VSO renews credentials at 85% TTL (51min / 1h default) and restarts the Deployment.
+vso:
+  enabled: true
+  vaultRole: "mentor-api"
+  dbRole: "mentor-api-role"
+  secretName: "mentor-api-db-secret"
 
 dashboard:
   enabled: true
@@ -64,7 +61,6 @@ rollout:
 
 observability:
   # Set to true only when the infra-observability stack is deployed in the cluster.
-  # Enabling this without that stack causes Dapr Sentry to crash (PermissionDenied).
   # Use the Skaffold 'observability' profile (just dev obs=true) to activate.
   enabled: false
 

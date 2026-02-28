@@ -1,6 +1,6 @@
 # Dev overlay: K3s local development
-# DB credentials come from Vault via the Dapr sidecar ("vault-db" secret store).
-# Credentials never touch etcd — no ESO ExternalSecret for this service.
+# DB credentials injected via VSO-managed K8s Secret (mentor-api-db-secret).
+# VSO creates the Secret from Vault's Database Secrets Engine and rotates it at 85% TTL.
 
 env:
   - name: SERVER_PORT
@@ -9,21 +9,27 @@ env:
     value: "info"
   - name: LOG_FORMAT
     value: "console"
-  # Non-sensitive connection params (host/port/dbname are not secrets)
+  # Non-sensitive connection params
   - name: PG_HOST
     value: "postgres-pgbouncer"
   - name: PG_PORT
     value: "6432"
   - name: PG_DATABASE
     value: "mentor"
-  # Dapr secret store component name and credential path
-  - name: DB_SECRET_STORE
-    value: "vault-db"
-  - name: DB_SECRET_KEY
-    value: "creds/mentor-api-role"
+  # DB credentials from VSO-managed Secret (keys written by Vault: username, password)
+  - name: PG_USER
+    valueFrom:
+      secretKeyRef:
+        name: mentor-api-db-secret
+        key: username
+  - name: PG_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: mentor-api-db-secret
+        key: password
 
 # The migration Job needs a direct DB connection with DDL privileges (superuser).
-# It does NOT go through Vault/Dapr — uses the Bitnami postgres-postgresql Secret.
+# It does NOT go through Vault — uses the Bitnami postgres-postgresql Secret.
 migration:
   env:
     - name: DB_HOST
@@ -42,15 +48,8 @@ migration:
     - name: DB_SSL_MODE
       value: "disable"
 
-# ESO ExternalSecret for dynamic DB creds is no longer needed.
-# The app fetches credentials via daprClient.GetSecret("vault-db", "creds/mentor-api-role").
 dbDynamicSecret:
   enabled: false
 
-# Dapr PostgreSQL binding is replaced by direct pgxpool + Vault credential fetch.
-dbBinding:
-  enabled: false
-
-# vault-db-config Job still runs to configure the Vault database engine (idempotent).
 vaultDbConfig:
-  enabled: true
+  enabled: false

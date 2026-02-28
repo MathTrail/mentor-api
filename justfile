@@ -135,7 +135,7 @@ load-test: bundle-k6
     skaffold delete -m mentor-load-tests
 
 # Start development mode with hot-reload and port-forwarding.
-# Pass observability=true to enable Dapr observability (requires infra-observability stack in cluster).
+# Pass observability=true to enable observability (requires infra-observability stack in cluster).
 dev observability="false": setup
     #!/bin/bash
     set -euo pipefail
@@ -144,7 +144,7 @@ dev observability="false": setup
     skaffold dev -m mentor-api,mentor-deps --port-forward $EXTRA
 
 # Build and deploy to cluster.
-# Pass observability=true to enable Dapr observability (requires infra-observability stack in cluster).
+# Pass observability=true to enable observability (requires infra-observability stack in cluster).
 deploy observability="false": setup
     #!/bin/bash
     set -euo pipefail

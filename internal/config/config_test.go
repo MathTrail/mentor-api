@@ -24,18 +24,6 @@ func TestLoad_Defaults(t *testing.T) {
 	if !cfg.SwaggerEnabled {
 		t.Error("SwaggerEnabled: want true by default")
 	}
-	if cfg.DaprHost != "localhost" {
-		t.Errorf("DaprHost: got %q, want %q", cfg.DaprHost, "localhost")
-	}
-	if cfg.DaprPort != "3500" {
-		t.Errorf("DaprPort: got %q, want %q", cfg.DaprPort, "3500")
-	}
-	if cfg.DBBindingName != "mentor-db" {
-		t.Errorf("DBBindingName: got %q, want %q", cfg.DBBindingName, "mentor-db")
-	}
-	if cfg.DaprMaxRetries != 10 {
-		t.Errorf("DaprMaxRetries: got %d, want %d", cfg.DaprMaxRetries, 10)
-	}
 	if cfg.LogLevel != "info" {
 		t.Errorf("LogLevel: got %q, want %q", cfg.LogLevel, "info")
 	}
@@ -58,7 +46,6 @@ func TestLoad_EnvOverrides(t *testing.T) {
 	t.Setenv("LOG_LEVEL", "debug")
 	t.Setenv("LLM_TIMEOUT", "30s")
 	t.Setenv("SHUTDOWN_TIMEOUT", "15s")
-	t.Setenv("DB_BINDING_NAME", "custom-db")
 
 	cfg := Load()
 
@@ -73,9 +60,6 @@ func TestLoad_EnvOverrides(t *testing.T) {
 	}
 	if cfg.ShutdownTimeout != 15*time.Second {
 		t.Errorf("ShutdownTimeout: got %v, want %v", cfg.ShutdownTimeout, 15*time.Second)
-	}
-	if cfg.DBBindingName != "custom-db" {
-		t.Errorf("DBBindingName: got %q, want %q", cfg.DBBindingName, "custom-db")
 	}
 }
 
