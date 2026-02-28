@@ -1,0 +1,19 @@
+{{- if .Values.vaultConfig.enabled }}
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: KubernetesAuthEngineRole
+metadata:
+  name: {{ .Values.vaultConfig.k8sAuth.serviceAccount }}
+  namespace: vault-config-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  vaultAuthRef: vault-admin-auth
+  path: auth/kubernetes
+  policies:
+    - vso-db-policy
+  targetServiceAccounts:
+    - serviceAccount: {{ .Values.vaultConfig.k8sAuth.serviceAccount }}
+      namespaces:
+        - {{ .Values.vaultConfig.k8sAuth.namespace }}
+  TTL: 1h
+{{- end }}

@@ -1,0 +1,28 @@
+{{- if .Values.vaultConfig.enabled }}
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: DatabaseSecretEngineRole
+metadata:
+  name: {{ .Values.vaultConfig.db.roleName }}
+  namespace: vault-config-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  vaultAuthRef: vault-admin-auth
+  path: database
+  dBName: {{ .Values.vaultConfig.db.connectionName }}
+  roleName: {{ .Values.vaultConfig.db.roleName }}
+  creationStatements:
+    - >-
+      CREATE ROLE "{{`{{name}}`}}" WITH LOGIN PASSWORD '{{`{{password}}`}}'
+      VALID UNTIL '{{`{{expiration}}`}}';
+      GRANT SELECT, INSERT, UPDATE, DELETE
+      ON ALL TABLES IN SCHEMA public TO "{{`{{name}}`}}";
+      GRANT USAGE ON SCHEMA public TO "{{`{{name}}`}}";
+      GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "{{`{{name}}`}}";
+  revocationStatements:
+    - >-
+      REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM "{{`{{name}}`}}";
+      DROP ROLE IF EXISTS "{{`{{name}}`}}";
+  defaultTTL: 1h
+  maxTTL: 24h
+{{- end }}

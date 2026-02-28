@@ -26,8 +26,19 @@ externalSecrets:
   vaultPath: ""
   keys: []
 
-# Vault Database Config Job — deprecated, replaced by VCO DatabaseSecretEngineConfig CR.
-# DB engine config is now managed centrally via infra/vault-config/mentor-api/.
+# Vault Config Operator CRs — deployed as part of this Helm chart into vault-config-operator ns.
+# Configures the Vault Database Engine connection and role for dynamic credential generation.
+vaultConfig:
+  enabled: true
+  db:
+    connectionName: "mentor-postgres"
+    database: "mentor"
+    roleName: "mentor-api-role"
+  k8sAuth:
+    serviceAccount: "mentor-api"
+    namespace: "mathtrail"
+
+# Vault Database Config Job — deprecated.
 vaultDbConfig:
   enabled: false
   connectionName: "mentor-postgres"
