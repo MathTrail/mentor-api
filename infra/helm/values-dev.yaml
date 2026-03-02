@@ -32,6 +32,11 @@ volumes:
       # Must NOT use subPath — DynamicPool's fsnotify watches the whole directory
       # for the ..data symlink swap that K8s performs on Secret updates.
       secretName: mentor-api-db-secret
+      # optional: migration job inherits this volume but does not use it;
+      # optional=true lets the migration pod start before VSO creates the secret.
+      # The main Deployment will CrashLoopBackOff until VSO populates the secret
+      # (intended behaviour — see DynamicPool.NewDynamicPool godoc).
+      optional: true
 
 # The migration Job needs a direct DB connection with DDL privileges (superuser).
 # It does NOT go through Vault — uses the Bitnami postgres-postgresql Secret.
@@ -58,3 +63,4 @@ dbDynamicSecret:
 
 vaultDbConfig:
   enabled: false
+

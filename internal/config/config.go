@@ -55,6 +55,7 @@ func Load() *Config {
 	v.SetDefault("PYROSCOPE_ENDPOINT", "")
 	v.SetDefault("LLM_TIMEOUT", "10s")
 	v.SetDefault("SHUTDOWN_TIMEOUT", "5s")
+	v.SetDefault("PG_CREDENTIALS_DIR", "")
 
 	cfg := &Config{}
 	if err := v.Unmarshal(cfg); err != nil {
