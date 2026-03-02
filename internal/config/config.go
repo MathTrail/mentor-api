@@ -12,13 +12,13 @@ type Config struct {
 	ServerPort     string `mapstructure:"SERVER_PORT"`
 	SwaggerEnabled bool   `mapstructure:"SWAGGER_ENABLED"`
 
-	// PostgreSQL connection; credentials injected by VSO via K8s Secret (mentor-api-db-secret)
-	PgHost     string `mapstructure:"PG_HOST"`
-	PgPort     string `mapstructure:"PG_PORT"`
-	PgDatabase string `mapstructure:"PG_DATABASE"`
-	PgSSLMode  string `mapstructure:"PG_SSL_MODE"`
-	PgUser     string `mapstructure:"PG_USER"`
-	PgPassword string `mapstructure:"PG_PASSWORD"`
+	// PostgreSQL connection parameters (non-sensitive).
+	// Credentials are read from mounted Secret files; see PgCredentialsDir.
+	PgHost           string `mapstructure:"PG_HOST"`
+	PgPort           string `mapstructure:"PG_PORT"`
+	PgDatabase       string `mapstructure:"PG_DATABASE"`
+	PgSSLMode        string `mapstructure:"PG_SSL_MODE"`
+	PgCredentialsDir string `mapstructure:"PG_CREDENTIALS_DIR"` // directory with "username" and "password" files (VSO volume mount)
 
 	// Logging
 	LogLevel  string `mapstructure:"LOG_LEVEL"`
@@ -77,6 +77,10 @@ func Load() *Config {
 
 	if cfg.OTelSampleRate < 0 || cfg.OTelSampleRate > 1 {
 		panic(fmt.Sprintf("OTEL_SAMPLE_RATE must be between 0.0 and 1.0, got %v", cfg.OTelSampleRate))
+	}
+
+	if cfg.PgCredentialsDir == "" {
+		panic("PG_CREDENTIALS_DIR is required: set it to the directory containing the VSO-mounted username and password files")
 	}
 
 	return cfg

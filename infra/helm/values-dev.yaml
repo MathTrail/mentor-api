@@ -1,6 +1,7 @@
 # Dev overlay: K3s local development
-# DB credentials injected via VSO-managed K8s Secret (mentor-api-db-secret).
-# VSO creates the Secret from Vault's Database Secrets Engine and rotates it at 85% TTL.
+# DB credentials are mounted as files from the VSO-managed K8s Secret (mentor-api-db-secret).
+# DynamicPool reads them from the mounted directory and rotates the pool in-process
+# when VSO renews the Vault lease — no pod restart needed.
 
 env:
   - name: SERVER_PORT
@@ -16,17 +17,21 @@ env:
     value: "6432"
   - name: PG_DATABASE
     value: "mentor"
-  # DB credentials from VSO-managed Secret (keys written by Vault: username, password)
-  - name: PG_USER
-    valueFrom:
-      secretKeyRef:
-        name: mentor-api-db-secret
-        key: username
-  - name: PG_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        name: mentor-api-db-secret
-        key: password
+  # Path to the VSO-mounted Secret directory containing "username" and "password" files.
+  - name: PG_CREDENTIALS_DIR
+    value: "/etc/mentor-api-db-secret"
+
+volumeMounts:
+  - name: db-secret
+    mountPath: /etc/mentor-api-db-secret
+    readOnly: true
+
+volumes:
+  - name: db-secret
+    secret:
+      # Must NOT use subPath — DynamicPool's fsnotify watches the whole directory
+      # for the ..data symlink swap that K8s performs on Secret updates.
+      secretName: mentor-api-db-secret
 
 # The migration Job needs a direct DB connection with DDL privileges (superuser).
 # It does NOT go through Vault — uses the Bitnami postgres-postgresql Secret.

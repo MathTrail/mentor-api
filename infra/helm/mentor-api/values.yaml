@@ -54,12 +54,15 @@ dbDynamicSecret:
   vaultRole: "mentor-api-role"
 
 # Vault Secrets Operator — creates and rotates the mentor-api-db-secret K8s Secret.
-# VSO renews credentials at 85% TTL (51min / 1h default) and restarts the Deployment.
+# VSO renews credentials at 85% TTL (~51min for a 1h lease).
+# rolloutRestart is disabled: DynamicPool detects the ..data symlink swap via fsnotify
+# and rotates the pgxpool in-process — no pod restart needed.
 vso:
   enabled: true
   vaultRole: "mentor-api"
   dbRole: "mentor-api-role"
   secretName: "mentor-api-db-secret"
+  rolloutRestart: false
 
 dashboard:
   enabled: true

@@ -40,23 +40,16 @@ type Container struct {
 // NewContainer creates and wires all application dependencies.
 // It returns an error instead of panicking so that the caller can
 // handle failures gracefully (e.g. flush observability before exit).
-func NewContainer(cfg *config.Config, logger *zap.Logger) (*Container, error) {
-	// EnvPgPool uses credentials injected by VSO via the mentor-api-db-secret
-	// K8s Secret. On lease renewal VSO triggers a rolling restart of this
-	// Deployment, so no in-process credential refresh is needed.
-	dsn := fmt.Sprintf(
-		"host=%s port=%s dbname=%s sslmode=%s user=%s password=%s",
+func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (*Container, error) {
+	// DynamicPool reads credentials from VSO-mounted Secret files (cfg.PgCredentialsDir)
+	// and rotates the pool in-process when files change — no pod restart needed.
+	baseDSN := fmt.Sprintf(
+		"host=%s port=%s dbname=%s sslmode=%s",
 		cfg.PgHost, cfg.PgPort, cfg.PgDatabase, cfg.PgSSLMode,
-		cfg.PgUser, cfg.PgPassword,
 	)
-	db, err := postgres.NewEnvPgPool(context.Background(), dsn)
+	db, err := postgres.NewDynamicPool(ctx, baseDSN, cfg.PgCredentialsDir, logger)
 	if err != nil {
-		return nil, fmt.Errorf("env pg pool: %w", err)
-	}
-
-	// Verify the pool is reachable on startup.
-	if err := db.Ping(context.Background()); err != nil {
-		return nil, fmt.Errorf("database not reachable: %w", err)
+		return nil, fmt.Errorf("dynamic pg pool: %w", err)
 	}
 
 	// Initialize LLM client.

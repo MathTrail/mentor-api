@@ -36,7 +36,9 @@ func main() {
 	}()
 
 	// 3. DI container (DB, repositories, router).
-	container, err := app.NewContainer(cfg, logger)
+	// context.Background() is used here; DynamicPool's watcher goroutine runs
+	// for the lifetime of the process and is not tied to a request context.
+	container, err := app.NewContainer(context.Background(), cfg, logger)
 	if err != nil {
 		logger.Fatal("failed to initialize application", zap.Error(err))
 	}
