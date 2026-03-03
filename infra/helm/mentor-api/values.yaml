@@ -1,3 +1,8 @@
+db:
+  databases:
+    - name: mentor
+      vaultPrivileges: true
+
 replicaCount: 1
 
 image:
