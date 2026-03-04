@@ -39,7 +39,7 @@ func TestAnalyzeFeedbackStubValues(t *testing.T) {
 	}
 }
 
-func TestMarshalSnapshot_NonNil(t *testing.T) {
+func TestMarshalSnapshotNonNil(t *testing.T) {
 	result := &StrategyResult{
 		StrategySnapshot: map[string]interface{}{
 			"difficulty_weight": 1.0,
@@ -63,7 +63,7 @@ func TestMarshalSnapshot_NonNil(t *testing.T) {
 	}
 }
 
-func TestMarshalSnapshot_NilMap(t *testing.T) {
+func TestMarshalSnapshotNilMap(t *testing.T) {
 	result := &StrategyResult{StrategySnapshot: nil}
 	raw, err := result.MarshalSnapshot()
 	if err != nil {
@@ -77,14 +77,14 @@ func TestMarshalSnapshot_NilMap(t *testing.T) {
 
 // --- Profile client tests ---
 
-func TestNewProfileClient_NotNil(t *testing.T) {
+func TestNewProfileClientNotNil(t *testing.T) {
 	c := NewProfileClient()
 	if c == nil {
 		t.Error("NewProfileClient returned nil")
 	}
 }
 
-func TestGetProfile_EchoesStudentID(t *testing.T) {
+func TestGetProfileEchoesStudentID(t *testing.T) {
 	c := NewProfileClient()
 	id := uuid.New()
 	profile, err := c.GetProfile(context.Background(), id)
@@ -96,7 +96,7 @@ func TestGetProfile_EchoesStudentID(t *testing.T) {
 	}
 }
 
-func TestGetProfile_HasExpectedSkills(t *testing.T) {
+func TestGetProfileHasExpectedSkills(t *testing.T) {
 	c := NewProfileClient()
 	profile, err := c.GetProfile(context.Background(), uuid.New())
 	if err != nil {
