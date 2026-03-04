@@ -11,7 +11,8 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends buildah fuse-overlayfs \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /etc/containers \
-    && printf '[storage]\ndriver = "overlay"\n\n[storage.options.overlay]\nmount_program = "/usr/bin/fuse-overlayfs"\n' \
+    && printf '[storage]\ndriver = "overlay"\n\n' \
+       '[storage.options.overlay]\nmount_program = "/usr/bin/fuse-overlayfs"\n' \
        > /etc/containers/storage.conf
 
 # Install Skaffold
