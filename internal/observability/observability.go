@@ -21,6 +21,73 @@ import (
 	"go.uber.org/zap"
 )
 
+// Observability manages the lifecycle of tracing, metrics, and profiling.
+type Observability struct {
+	cfg             *config.Config
+	logger          *zap.Logger
+	tracerShutdown  func(context.Context) error
+	metricsShutdown func(context.Context) error
+	profiler        interface{ Stop() error }
+}
+
+// New creates an Observability manager.
+func New(cfg *config.Config, logger *zap.Logger) *Observability {
+	return &Observability{cfg: cfg, logger: logger}
+}
+
+// Init initialises all configured observability components.
+func (o *Observability) Init(ctx context.Context) error {
+	if o.cfg.OTelEndpoint != "" {
+		shutdown, err := initTracer(ctx, o.cfg)
+		if err != nil {
+			return fmt.Errorf("init tracer: %w", err)
+		}
+		o.tracerShutdown = shutdown
+	}
+
+	metricsShutdown, err := initMetrics()
+	if err != nil {
+		return fmt.Errorf("init metrics: %w", err)
+	}
+	o.metricsShutdown = metricsShutdown
+
+	if o.cfg.PyroscopeEndpoint != "" {
+		p, err := initPyroscope(o.cfg)
+		if err != nil {
+			return fmt.Errorf("init pyroscope: %w", err)
+		}
+		o.profiler = p
+	}
+
+	o.logger.Info("observability stack initialized",
+		zap.Bool("tracing", o.cfg.OTelEndpoint != ""),
+		zap.Bool("profiling", o.cfg.PyroscopeEndpoint != ""),
+	)
+	return nil
+}
+
+// Shutdown gracefully stops all observability components.
+// The caller owns the context and its deadline.
+func (o *Observability) Shutdown(ctx context.Context) {
+	if o.tracerShutdown != nil {
+		if err := o.tracerShutdown(ctx); err != nil {
+			o.logger.Warn("tracer shutdown error", zap.Error(err))
+		}
+	}
+	if o.metricsShutdown != nil {
+		if err := o.metricsShutdown(ctx); err != nil {
+			o.logger.Warn("metrics shutdown error", zap.Error(err))
+		}
+	}
+	if o.profiler != nil {
+		if err := o.profiler.Stop(); err != nil {
+			o.logger.Warn("profiler stop error", zap.Error(err))
+		}
+	}
+
+	o.logger.Info("observability stack shut down")
+}
+
 // initTracer initialises the global OTLP gRPC trace exporter and TracerProvider.
 // It sets the global W3C TraceContext + Baggage propagator so that traceparent
 // headers are automatically extracted and the Go
@@ -107,71 +174,4 @@ func initPyroscope(cfg *config.Config) (*pyroscope.Profiler, error) {
 			pyroscope.ProfileInuseSpace,
 		},
 	})
-}
-
-// Observability manages the lifecycle of tracing, metrics, and profiling.
-type Observability struct {
-	cfg             *config.Config
-	logger          *zap.Logger
-	tracerShutdown  func(context.Context) error
-	metricsShutdown func(context.Context) error
-	profiler        interface{ Stop() error }
-}
-
-// New creates an Observability manager.
-func New(cfg *config.Config, logger *zap.Logger) *Observability {
-	return &Observability{cfg: cfg, logger: logger}
-}
-
-// Init initialises all configured observability components.
-func (o *Observability) Init(ctx context.Context) error {
-	if o.cfg.OTelEndpoint != "" {
-		shutdown, err := initTracer(ctx, o.cfg)
-		if err != nil {
-			return fmt.Errorf("init tracer: %w", err)
-		}
-		o.tracerShutdown = shutdown
-	}
-
-	metricsShutdown, err := initMetrics()
-	if err != nil {
-		return fmt.Errorf("init metrics: %w", err)
-	}
-	o.metricsShutdown = metricsShutdown
-
-	if o.cfg.PyroscopeEndpoint != "" {
-		p, err := initPyroscope(o.cfg)
-		if err != nil {
-			return fmt.Errorf("init pyroscope: %w", err)
-		}
-		o.profiler = p
-	}
-
-	o.logger.Info("observability stack initialized",
-		zap.Bool("tracing", o.cfg.OTelEndpoint != ""),
-		zap.Bool("profiling", o.cfg.PyroscopeEndpoint != ""),
-	)
-	return nil
-}
-
-// Shutdown gracefully stops all observability components.
-// The caller owns the context and its deadline.
-func (o *Observability) Shutdown(ctx context.Context) {
-	if o.tracerShutdown != nil {
-		if err := o.tracerShutdown(ctx); err != nil {
-			o.logger.Warn("tracer shutdown error", zap.Error(err))
-		}
-	}
-	if o.metricsShutdown != nil {
-		if err := o.metricsShutdown(ctx); err != nil {
-			o.logger.Warn("metrics shutdown error", zap.Error(err))
-		}
-	}
-	if o.profiler != nil {
-		if err := o.profiler.Stop(); err != nil {
-			o.logger.Warn("profiler stop error", zap.Error(err))
-		}
-	}
-
-	o.logger.Info("observability stack shut down")
 }
