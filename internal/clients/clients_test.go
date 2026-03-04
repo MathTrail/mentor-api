@@ -10,14 +10,14 @@ import (
 
 // --- LLM client tests ---
 
-func TestNewLLMClient_NotNil(t *testing.T) {
+func TestNewLLMClientNotNil(t *testing.T) {
 	c := NewLLMClient()
 	if c == nil {
 		t.Error("NewLLMClient returned nil")
 	}
 }
 
-func TestAnalyzeFeedback_StubValues(t *testing.T) {
+func TestAnalyzeFeedbackStubValues(t *testing.T) {
 	c := NewLLMClient()
 	result, err := c.AnalyzeFeedback(context.Background(), "this was hard")
 	if err != nil {

@@ -29,7 +29,7 @@ func TestResponseJSONRoundTrip(t *testing.T) {
 	}
 }
 
-func TestResponse_JSONKeys(t *testing.T) {
+func TestResponseJSONKeys(t *testing.T) {
 	r := Response{Code: "NOT_FOUND", Message: "resource not found"}
 	data, _ := json.Marshal(r)
 
