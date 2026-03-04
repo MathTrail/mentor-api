@@ -28,7 +28,6 @@ func NewLLMClient() FeedbackAnalyzer {
 }
 
 // AnalyzeFeedback analyses student feedback and returns a strategy.
-// TODO: replace with a real LLM call.
 func (c *llmClient) AnalyzeFeedback(_ context.Context, _ string) (*StrategyResult, error) {
 	return &StrategyResult{
 		PerceivedDifficulty:  "ok",

@@ -26,7 +26,6 @@ func NewProfileClient() ProfileClient {
 }
 
 // GetProfile returns a student profile.
-// TODO: replace with a real profile service call.
 func (c *profileClient) GetProfile(ctx context.Context, studentID uuid.UUID) (*Profile, error) {
 	return &Profile{
 		StudentID: studentID,

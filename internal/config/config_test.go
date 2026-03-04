@@ -8,7 +8,7 @@ import (
 func assertPanics(t *testing.T, fn func()) {
 	t.Helper()
 	defer func() {
-		if r := recover(); r == nil {
+		if recover() == nil {
 			t.Errorf("expected panic, got none")
 		}
 	}()
