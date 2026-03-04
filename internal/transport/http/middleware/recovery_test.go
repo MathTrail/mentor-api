@@ -11,7 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func TestZapRecovery_ReturnsStructuredJSON(t *testing.T) {
+func TestZapRecoveryReturnsStructuredJSON(t *testing.T) {
 	r := gin.New()
 	r.Use(ZapRecovery(zap.NewNop()))
 	r.GET("/panic", func(c *gin.Context) {

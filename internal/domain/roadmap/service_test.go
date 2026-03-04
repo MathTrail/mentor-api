@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func TestGetRecommendations_Stub(t *testing.T) {
+func TestGetRecommendationsStub(t *testing.T) {
 	svc := NewService(zap.NewNop())
 
 	rec, err := svc.GetRecommendations(context.Background(), uuid.New())
@@ -29,7 +29,7 @@ func TestGetRecommendations_Stub(t *testing.T) {
 	}
 }
 
-func TestGetRecommendations_StudentIDPreserved(t *testing.T) {
+func TestGetRecommendationsStudentIDPreserved(t *testing.T) {
 	svc := NewService(zap.NewNop())
 	id := uuid.New()
 

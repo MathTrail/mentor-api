@@ -36,7 +36,7 @@ func testRouter(h *Handler) *gin.Engine {
 	return r
 }
 
-func TestGetRecommendations_Success(t *testing.T) {
+func TestGetRecommendationsSuccess(t *testing.T) {
 	svc := &mockService{}
 	hdl := NewHandler(svc, zap.NewNop())
 	router := testRouter(hdl)
@@ -59,7 +59,7 @@ func TestGetRecommendations_Success(t *testing.T) {
 	}
 }
 
-func TestGetRecommendations_MissingHeader(t *testing.T) {
+func TestGetRecommendationsMissingHeader(t *testing.T) {
 	svc := &mockService{}
 	hdl := NewHandler(svc, zap.NewNop())
 	router := testRouter(hdl)

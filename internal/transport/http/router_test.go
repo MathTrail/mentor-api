@@ -79,7 +79,7 @@ func TestHealthLiveness(t *testing.T) {
 	}
 }
 
-func TestHealthReady_OK(t *testing.T) {
+func TestHealthReadyOK(t *testing.T) {
 	fh, rh, db := testRouter()
 	router := NewRouter(fh, rh, db, testConfig(), zap.NewNop())
 

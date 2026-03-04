@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 )
 
-func TestNewLogger_JSONFormat(t *testing.T) {
+func TestNewLoggerJSONFormat(t *testing.T) {
 	logger := logger.NewLogger("info", "json")
 	if logger == nil {
 		t.Fatal("expected non-nil logger")
@@ -41,7 +41,7 @@ func TestNewLogger_JSONFormat(t *testing.T) {
 	_ = logger.Sync()
 }
 
-func TestNewLogger_ConsoleFormat(t *testing.T) {
+func TestNewLoggerConsoleFormat(t *testing.T) {
 	logger := logger.NewLogger("debug", "console")
 	if logger == nil {
 		t.Fatal("expected non-nil logger")

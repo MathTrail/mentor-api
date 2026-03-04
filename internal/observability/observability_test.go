@@ -20,14 +20,14 @@ func testConfig() *config.Config {
 	}
 }
 
-func TestNew_NotNil(t *testing.T) {
+func TestNewNotNil(t *testing.T) {
 	o := New(testConfig(), zap.NewNop())
 	if o == nil {
 		t.Error("New returned nil")
 	}
 }
 
-func TestNew_StoresCfgAndLogger(t *testing.T) {
+func TestNewStoresCfgAndLogger(t *testing.T) {
 	cfg := testConfig()
 	o := New(cfg, zap.NewNop())
 	if o.cfg != cfg {

@@ -53,7 +53,7 @@ func (m *mockFeedbackAnalyzer) AnalyzeFeedback(ctx context.Context, _ string) (*
 	}
 }
 
-func TestProcessFeedback_Success(t *testing.T) {
+func TestProcessFeedbackSuccess(t *testing.T) {
 	repo := &mockRepository{}
 	llm := clients.NewLLMClient()
 	logger := zap.NewNop()
@@ -84,7 +84,7 @@ func TestProcessFeedback_Success(t *testing.T) {
 	}
 }
 
-func TestProcessFeedback_RepoError(t *testing.T) {
+func TestProcessFeedbackRepoError(t *testing.T) {
 	repoErr := errors.New("connection refused")
 	repo := &mockRepository{
 		saveFn: func(_ context.Context, _ *Feedback) error { return repoErr },

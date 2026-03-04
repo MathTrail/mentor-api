@@ -13,7 +13,7 @@ import (
 
 func init() { gin.SetMode(gin.TestMode) }
 
-func TestRequestID_ClientProvided(t *testing.T) {
+func TestRequestIDClientProvided(t *testing.T) {
 	r := gin.New()
 	r.Use(RequestID())
 	r.GET("/test", func(c *gin.Context) {

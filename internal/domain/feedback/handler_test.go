@@ -38,7 +38,7 @@ func testRouter(h *Handler) *gin.Engine {
 	return r
 }
 
-func TestSubmitFeedback_Success(t *testing.T) {
+func TestSubmitFeedbackSuccess(t *testing.T) {
 	svc := &mockService{}
 	hdl := NewHandler(svc, zap.NewNop())
 	router := testRouter(hdl)
@@ -64,7 +64,7 @@ func TestSubmitFeedback_Success(t *testing.T) {
 	}
 }
 
-func TestSubmitFeedback_InvalidJSON(t *testing.T) {
+func TestSubmitFeedbackInvalidJSON(t *testing.T) {
 	svc := &mockService{}
 	hdl := NewHandler(svc, zap.NewNop())
 	router := testRouter(hdl)

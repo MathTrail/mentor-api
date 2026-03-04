@@ -2,7 +2,7 @@ package middleware
 
 import "testing"
 
-func TestSanitizeQuery_MasksSensitiveKeys(t *testing.T) {
+func TestSanitizeQueryMasksSensitiveKeys(t *testing.T) {
 	raw := "token=secret123&page=1&api_key=abc"
 	got := sanitizeQuery(raw)
 
