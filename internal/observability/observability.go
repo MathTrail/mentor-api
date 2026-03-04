@@ -25,7 +25,7 @@ import (
 // It sets the global W3C TraceContext + Baggage propagator so that traceparent
 // headers are automatically extracted and the Go
 // spans appear as children of upstream spans in Tempo.
-func initTracer(cfg *config.Config) (shutdown func(context.Context) error, err error) {
+func initTracer(ctx context.Context, cfg *config.Config) (shutdown func(context.Context) error, err error) {
 	conn, err := grpc.NewClient(
 		cfg.OTelEndpoint,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -34,13 +34,13 @@ func initTracer(cfg *config.Config) (shutdown func(context.Context) error, err e
 		return nil, err
 	}
 
-	exporter, err := otlptracegrpc.New(context.Background(), otlptracegrpc.WithGRPCConn(conn))
+	exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
 	if err != nil {
 		return nil, err
 	}
 
 	res, err := resource.New(
-		context.Background(),
+		ctx,
 		resource.WithAttributes(
 			semconv.ServiceName(cfg.ServiceName),
 			semconv.K8SPodName(os.Getenv("POD_NAME")),
@@ -124,9 +124,9 @@ func New(cfg *config.Config, logger *zap.Logger) *Observability {
 }
 
 // Init initialises all configured observability components.
-func (o *Observability) Init() error {
+func (o *Observability) Init(ctx context.Context) error {
 	if o.cfg.OTelEndpoint != "" {
-		shutdown, err := initTracer(o.cfg)
+		shutdown, err := initTracer(ctx, o.cfg)
 		if err != nil {
 			return fmt.Errorf("init tracer: %w", err)
 		}
