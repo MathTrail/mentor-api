@@ -54,7 +54,7 @@ func TestNewLoggerConsoleFormat(t *testing.T) {
 	_ = logger.Sync()
 }
 
-func TestNewLogger_InvalidLevel(t *testing.T) {
+func TestNewLoggerInvalidLevel(t *testing.T) {
 	// Unknown level should fall back to info without panicking.
 	logger := logger.NewLogger("banana", "json")
 	if logger == nil {
@@ -67,7 +67,7 @@ func TestNewLogger_InvalidLevel(t *testing.T) {
 	_ = logger.Sync()
 }
 
-func TestNewLogger_UnknownFormat(t *testing.T) {
+func TestNewLoggerUnknownFormat(t *testing.T) {
 	// Unknown format should default to JSON (production config).
 	logger := logger.NewLogger("info", "xml")
 	if logger == nil {
@@ -77,8 +77,8 @@ func TestNewLogger_UnknownFormat(t *testing.T) {
 	_ = logger.Sync()
 }
 
-// TestNewLogger_JSONOutput verifies the JSON logger produces parseable JSON.
-func TestNewLogger_JSONOutput(t *testing.T) {
+// TestNewLoggerJSONOutput verifies the JSON logger produces parseable JSON.
+func TestNewLoggerJSONOutput(t *testing.T) {
 	// We can't easily capture zap output without custom cores,
 	// but we can verify the config produces valid JSON by checking
 	// that the production encoder emits the expected time key.

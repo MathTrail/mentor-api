@@ -52,7 +52,7 @@ func TestUserSpanAttributesSetsAttribute(t *testing.T) {
 	}
 }
 
-func TestUserSpanAttributes_NoHeader(t *testing.T) {
+func TestUserSpanAttributesNoHeader(t *testing.T) {
 	exporter := tracetest.NewInMemoryExporter()
 	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
 	defer func() { _ = tp.Shutdown(context.Background()) }()

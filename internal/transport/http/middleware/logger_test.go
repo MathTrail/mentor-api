@@ -18,13 +18,13 @@ func TestSanitizeQueryMasksSensitiveKeys(t *testing.T) {
 	}
 }
 
-func TestSanitizeQuery_Empty(t *testing.T) {
+func TestSanitizeQueryEmpty(t *testing.T) {
 	if got := sanitizeQuery(""); got != "" {
 		t.Errorf("sanitizeQuery(\"\") = %q, want \"\"", got)
 	}
 }
 
-func TestSanitizeQuery_NoSensitiveKeys(t *testing.T) {
+func TestSanitizeQueryNoSensitiveKeys(t *testing.T) {
 	raw := "page=1&limit=10"
 	got := sanitizeQuery(raw)
 	if !contains(got, "page=1") || !contains(got, "limit=10") {
@@ -32,7 +32,7 @@ func TestSanitizeQuery_NoSensitiveKeys(t *testing.T) {
 	}
 }
 
-func TestSanitizeQuery_CaseInsensitive(t *testing.T) {
+func TestSanitizeQueryCaseInsensitive(t *testing.T) {
 	raw := "TOKEN=secret&Password=hunter2"
 	got := sanitizeQuery(raw)
 	for _, key := range []string{"TOKEN", "Password"} {

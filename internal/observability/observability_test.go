@@ -35,13 +35,13 @@ func TestNewStoresCfgAndLogger(t *testing.T) {
 	}
 }
 
-func TestShutdown_NothingInitialized(t *testing.T) {
+func TestShutdownNothingInitialized(t *testing.T) {
 	o := New(testConfig(), zap.NewNop())
 	// Must not panic when no components have been initialised.
 	o.Shutdown(context.Background())
 }
 
-func TestShutdown_CallsTracerShutdown(t *testing.T) {
+func TestShutdownCallsTracerShutdown(t *testing.T) {
 	called := false
 	o := New(testConfig(), zap.NewNop())
 	o.tracerShutdown = func(_ context.Context) error {
@@ -54,7 +54,7 @@ func TestShutdown_CallsTracerShutdown(t *testing.T) {
 	}
 }
 
-func TestShutdown_CallsMetricsShutdown(t *testing.T) {
+func TestShutdownCallsMetricsShutdown(t *testing.T) {
 	called := false
 	o := New(testConfig(), zap.NewNop())
 	o.metricsShutdown = func(_ context.Context) error {
@@ -67,7 +67,7 @@ func TestShutdown_CallsMetricsShutdown(t *testing.T) {
 	}
 }
 
-func TestShutdown_LogsTracerError(t *testing.T) {
+func TestShutdownLogsTracerError(t *testing.T) {
 	core, logs := observer.New(zapcore.WarnLevel)
 	logger := zap.New(core)
 
@@ -83,7 +83,7 @@ func TestShutdown_LogsTracerError(t *testing.T) {
 	}
 }
 
-func TestShutdown_LogsMetricsError(t *testing.T) {
+func TestShutdownLogsMetricsError(t *testing.T) {
 	core, logs := observer.New(zapcore.WarnLevel)
 	logger := zap.New(core)
 
@@ -99,7 +99,7 @@ func TestShutdown_LogsMetricsError(t *testing.T) {
 	}
 }
 
-func TestShutdown_CallsProfilerStop(t *testing.T) {
+func TestShutdownCallsProfilerStop(t *testing.T) {
 	called := false
 	o := New(testConfig(), zap.NewNop())
 	o.profiler = &stubProfiler{stopFn: func() error {
@@ -112,11 +112,11 @@ func TestShutdown_CallsProfilerStop(t *testing.T) {
 	}
 }
 
-// TestInit_NoExternalEndpoints verifies that Init succeeds when no external
+// TestInitNoExternalEndpoints verifies that Init succeeds when no external
 // observability backends are configured (only the in-process Prometheus
 // exporter is started). This test is intentionally run once per binary to
 // avoid duplicate Prometheus metric registration panics.
-func TestInit_NoExternalEndpoints(t *testing.T) {
+func TestInitNoExternalEndpoints(t *testing.T) {
 	o := New(testConfig(), zap.NewNop())
 	if err := o.Init(); err != nil {
 		t.Fatalf("Init error: %v", err)

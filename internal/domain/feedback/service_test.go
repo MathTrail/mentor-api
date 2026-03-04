@@ -107,7 +107,7 @@ func TestProcessFeedbackRepoError(t *testing.T) {
 	}
 }
 
-func TestProcessFeedback_LLMTimeout(t *testing.T) {
+func TestProcessFeedbackLLMTimeout(t *testing.T) {
 	repo := &mockRepository{}
 	// Mock LLM that blocks for 2 seconds — well beyond the 50ms timeout.
 	llm := &mockFeedbackAnalyzer{delay: 2 * time.Second}

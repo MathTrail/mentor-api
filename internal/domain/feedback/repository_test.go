@@ -44,7 +44,7 @@ var _ postgres.DB = (*mockDB)(nil)
 
 // --- Save tests ---
 
-func TestSave_Success(t *testing.T) {
+func TestSaveSuccess(t *testing.T) {
 	id := uuid.New()
 	now := time.Now().UTC().Truncate(time.Second)
 
@@ -78,7 +78,7 @@ func TestSave_Success(t *testing.T) {
 	}
 }
 
-func TestSave_DBError(t *testing.T) {
+func TestSaveDBError(t *testing.T) {
 	dbErr := errors.New("connection refused")
 	db := &mockDB{
 		queryFn: func(_ context.Context, _ string, _ ...any) ([]map[string]any, error) {
@@ -98,7 +98,7 @@ func TestSave_DBError(t *testing.T) {
 	}
 }
 
-func TestSave_EmptyRows(t *testing.T) {
+func TestSaveEmptyRows(t *testing.T) {
 	db := &mockDB{
 		queryFn: func(_ context.Context, _ string, _ ...any) ([]map[string]any, error) {
 			return []map[string]any{}, nil
@@ -119,7 +119,7 @@ func TestSave_EmptyRows(t *testing.T) {
 
 // --- GetLatestByStudent tests ---
 
-func TestGetLatestByStudent_Success(t *testing.T) {
+func TestGetLatestByStudentSuccess(t *testing.T) {
 	id1, id2 := uuid.New(), uuid.New()
 	studentID := uuid.New()
 	now := time.Now().UTC()
@@ -163,7 +163,7 @@ func TestGetLatestByStudent_Success(t *testing.T) {
 	}
 }
 
-func TestGetLatestByStudent_Empty(t *testing.T) {
+func TestGetLatestByStudentEmpty(t *testing.T) {
 	db := &mockDB{
 		queryFn: func(_ context.Context, _ string, _ ...any) ([]map[string]any, error) {
 			return []map[string]any{}, nil
@@ -180,7 +180,7 @@ func TestGetLatestByStudent_Empty(t *testing.T) {
 	}
 }
 
-func TestGetLatestByStudent_DBError(t *testing.T) {
+func TestGetLatestByStudentDBError(t *testing.T) {
 	dbErr := errors.New("timeout")
 	db := &mockDB{
 		queryFn: func(_ context.Context, _ string, _ ...any) ([]map[string]any, error) {

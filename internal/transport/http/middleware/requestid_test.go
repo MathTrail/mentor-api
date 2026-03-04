@@ -33,7 +33,7 @@ func TestRequestIDClientProvided(t *testing.T) {
 	}
 }
 
-func TestRequestID_TraceIDFallback(t *testing.T) {
+func TestRequestIDTraceIDFallback(t *testing.T) {
 	// Create a real tracer that generates valid TraceIDs.
 	tp := sdktrace.NewTracerProvider()
 	defer func() { _ = tp.Shutdown(context.Background()) }()
@@ -66,7 +66,7 @@ func TestRequestID_TraceIDFallback(t *testing.T) {
 	}
 }
 
-func TestRequestID_UUIDFallback(t *testing.T) {
+func TestRequestIDUUIDFallback(t *testing.T) {
 	r := gin.New()
 	// No otelgin — span context has no TraceID.
 	r.Use(RequestID())

@@ -79,7 +79,7 @@ func TestSubmitFeedbackInvalidJSON(t *testing.T) {
 	}
 }
 
-func TestSubmitFeedback_MissingFields(t *testing.T) {
+func TestSubmitFeedbackMissingFields(t *testing.T) {
 	svc := &mockService{}
 	hdl := NewHandler(svc, zap.NewNop())
 	router := testRouter(hdl)
@@ -96,7 +96,7 @@ func TestSubmitFeedback_MissingFields(t *testing.T) {
 	}
 }
 
-func TestSubmitFeedback_ServiceError(t *testing.T) {
+func TestSubmitFeedbackServiceError(t *testing.T) {
 	svc := &mockService{
 		processFn: func(_ context.Context, _ *FeedbackRequest) (*StrategyUpdate, error) {
 			return nil, errors.New("llm timeout")

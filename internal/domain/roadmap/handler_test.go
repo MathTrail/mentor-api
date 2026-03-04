@@ -79,7 +79,7 @@ func TestGetRecommendationsMissingHeader(t *testing.T) {
 	}
 }
 
-func TestGetRecommendations_InvalidUUID(t *testing.T) {
+func TestGetRecommendationsInvalidUUID(t *testing.T) {
 	svc := &mockService{}
 	hdl := NewHandler(svc, zap.NewNop())
 	router := testRouter(hdl)
@@ -100,7 +100,7 @@ func TestGetRecommendations_InvalidUUID(t *testing.T) {
 	}
 }
 
-func TestGetRecommendations_ServiceError(t *testing.T) {
+func TestGetRecommendationsServiceError(t *testing.T) {
 	svc := &mockService{
 		fn: func(_ context.Context, _ uuid.UUID) (*Recommendation, error) {
 			return nil, errors.New("service boom")

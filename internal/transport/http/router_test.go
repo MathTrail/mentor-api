@@ -92,7 +92,7 @@ func TestHealthReadyOK(t *testing.T) {
 	}
 }
 
-func TestHealthReady_DBDown(t *testing.T) {
+func TestHealthReadyDBDown(t *testing.T) {
 	fh, rh, _ := testRouter()
 	db := &mockDB{pingErr: errors.New("connection refused")}
 	router := NewRouter(fh, rh, db, testConfig(), zap.NewNop())
@@ -106,7 +106,7 @@ func TestHealthReady_DBDown(t *testing.T) {
 	}
 }
 
-func TestRoadmapRecommendations_Success(t *testing.T) {
+func TestRoadmapRecommendationsSuccess(t *testing.T) {
 	fh, rh, db := testRouter()
 	router := NewRouter(fh, rh, db, testConfig(), zap.NewNop())
 
@@ -128,7 +128,7 @@ func TestRoadmapRecommendations_Success(t *testing.T) {
 	}
 }
 
-func TestRoadmapRecommendations_MissingHeader(t *testing.T) {
+func TestRoadmapRecommendationsMissingHeader(t *testing.T) {
 	fh, rh, db := testRouter()
 	router := NewRouter(fh, rh, db, testConfig(), zap.NewNop())
 
