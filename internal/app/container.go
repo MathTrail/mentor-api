@@ -15,34 +15,52 @@ import (
 	"go.uber.org/zap"
 )
 
-// Container holds all application dependencies.
+// Container holds the dependencies consumed by the Server.
+// Internal wiring is kept as local, variables in NewContainer and is not exposed.
 type Container struct {
 	Config *config.Config
 	Logger *zap.Logger
-	DB     postgres.DB
-
-	// Clients
-	LLMClient clients.LLMClient
-
-	// Feedback components
-	FeedbackRepository feedback.Repository
-	FeedbackService    feedback.Service
-	FeedbackHandler    *feedback.Handler
-
-	// Roadmap components
-	RoadmapService roadmap.Service
-	RoadmapHandler *roadmap.Handler
-
-	// Server
 	Router *gin.Engine
+	stop   func()
 }
 
 // NewContainer creates and wires all application dependencies.
 // It returns an error instead of panicking so that the caller can
-// handle failures gracefully (e.g. flush observability before exit).
+// handle failures gracefully.
 func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (*Container, error) {
-	// DynamicPool reads credentials from VSO-mounted Secret files (cfg.PgCredentialsDir)
-	// and rotates the pool in-process when files change — no pod restart needed.
+	db, err := initDB(ctx, cfg, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	llmClient := clients.NewLLMClient()
+
+	feedbackRepo := feedback.NewRepository(db)
+	feedbackService := feedback.NewService(feedbackRepo, llmClient, cfg.LLMTimeout, logger)
+	feedbackHandler := feedback.NewHandler(feedbackService, logger)
+
+	roadmapService := roadmap.NewService(logger)
+	roadmapHandler := roadmap.NewHandler(roadmapService, logger)
+
+	router := httpserver.NewRouter(feedbackHandler, roadmapHandler, db, cfg, logger)
+
+	return &Container{
+		Config: cfg,
+		Logger: logger,
+		Router: router,
+		stop:   db.Close, // captures *DynamicPool — no DB interface change needed
+	}, nil
+}
+
+// Close releases resources held by the container.
+// Call once after the HTTP server has stopped accepting requests.
+func (c *Container) Close() {
+	c.stop()
+}
+
+// initDB builds the DSN and creates a DynamicPool that rotates credentials
+// in-process when VSO-mounted Secret files change.
+func initDB(ctx context.Context, cfg *config.Config, logger *zap.Logger) (*postgres.DynamicPool, error) {
 	baseDSN := fmt.Sprintf(
 		"host=%s port=%s dbname=%s sslmode=%s",
 		cfg.PgHost, cfg.PgPort, cfg.PgDatabase, cfg.PgSSLMode,
@@ -51,32 +69,5 @@ func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (
 	if err != nil {
 		return nil, fmt.Errorf("dynamic pg pool: %w", err)
 	}
-
-	// Initialize LLM client.
-	llmClient := clients.NewLLMClient()
-
-	// Initialize feedback components.
-	feedbackRepo := feedback.NewRepository(db)
-	feedbackService := feedback.NewService(feedbackRepo, llmClient, cfg.LLMTimeout, logger)
-	feedbackHandler := feedback.NewHandler(feedbackService, logger)
-
-	// Initialize roadmap components.
-	roadmapService := roadmap.NewService(logger)
-	roadmapHandler := roadmap.NewHandler(roadmapService, logger)
-
-	// Create router.
-	router := httpserver.NewRouter(feedbackHandler, roadmapHandler, db, cfg, logger)
-
-	return &Container{
-		Config:             cfg,
-		Logger:             logger,
-		DB:                 db,
-		LLMClient:          llmClient,
-		FeedbackRepository: feedbackRepo,
-		FeedbackService:    feedbackService,
-		FeedbackHandler:    feedbackHandler,
-		RoadmapService:     roadmapService,
-		RoadmapHandler:     roadmapHandler,
-		Router:             router,
-	}, nil
+	return db, nil
 }

@@ -202,3 +202,11 @@ func (p *DynamicPool) Exec(ctx context.Context, sql string, params ...any) error
 func (p *DynamicPool) Ping(ctx context.Context) error {
 	return p.ptr.Load().Ping(ctx)
 }
+
+// Close shuts down the active connection pool. Must be called once after the
+// watchCredentials goroutine has exited (i.e. after ctx is cancelled).
+func (p *DynamicPool) Close() {
+	if pool := p.ptr.Load(); pool != nil {
+		pool.Close()
+	}
+}

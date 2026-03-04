@@ -47,6 +47,7 @@ func main() {
 	if err != nil {
 		logger.Fatal("failed to initialize application", zap.Error(err))
 	}
+	defer container.Close()
 
 	logger.Info("starting mentor-api server",
 		zap.String("version", version.Version),
