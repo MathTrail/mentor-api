@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestResponse_JSONRoundTrip(t *testing.T) {
+func TestResponseJSONRoundTrip(t *testing.T) {
 	original := Response{
 		Code:    "INVALID_REQUEST",
 		Message: "field is required",
