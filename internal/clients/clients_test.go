@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const unexpectedErrorFmt = "unexpected error: %v"
+
 // --- LLM client tests ---
 
 func TestNewLLMClientNotNil(t *testing.T) {
@@ -21,7 +23,7 @@ func TestAnalyzeFeedbackStubValues(t *testing.T) {
 	c := NewLLMClient()
 	result, err := c.AnalyzeFeedback(context.Background(), "this was hard")
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFmt, err)
 	}
 	if result.Sentiment != "neutral" {
 		t.Errorf("Sentiment: got %q, want %q", result.Sentiment, "neutral")
@@ -87,7 +89,7 @@ func TestGetProfile_EchoesStudentID(t *testing.T) {
 	id := uuid.New()
 	profile, err := c.GetProfile(context.Background(), id)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFmt, err)
 	}
 	if profile.StudentID != id {
 		t.Errorf("StudentID: got %v, want %v", profile.StudentID, id)
@@ -98,7 +100,7 @@ func TestGetProfile_HasExpectedSkills(t *testing.T) {
 	c := NewProfileClient()
 	profile, err := c.GetProfile(context.Background(), uuid.New())
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFmt, err)
 	}
 	for _, skill := range []string{"algebra", "geometry", "logic"} {
 		if _, ok := profile.Skills[skill]; !ok {
