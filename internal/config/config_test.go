@@ -15,7 +15,7 @@ func assertPanics(t *testing.T, fn func()) {
 	fn()
 }
 
-func TestLoad_Defaults(t *testing.T) {
+func TestLoadDefaults(t *testing.T) {
 	cfg := Load()
 
 	if cfg.ServerPort != "8080" {
@@ -41,7 +41,7 @@ func TestLoad_Defaults(t *testing.T) {
 	}
 }
 
-func TestLoad_EnvOverrides(t *testing.T) {
+func TestLoadEnvOverrides(t *testing.T) {
 	t.Setenv("SERVER_PORT", "9090")
 	t.Setenv("LOG_LEVEL", "debug")
 	t.Setenv("LLM_TIMEOUT", "30s")
@@ -63,27 +63,27 @@ func TestLoad_EnvOverrides(t *testing.T) {
 	}
 }
 
-func TestLoad_InvalidLLMTimeout_Panics(t *testing.T) {
+func TestLoadInvalidLLMTimeoutPanics(t *testing.T) {
 	t.Setenv("LLM_TIMEOUT", "not-a-duration")
 	assertPanics(t, func() { Load() })
 }
 
-func TestLoad_InvalidShutdownTimeout_Panics(t *testing.T) {
+func TestLoadInvalidShutdownTimeoutPanics(t *testing.T) {
 	t.Setenv("SHUTDOWN_TIMEOUT", "bad")
 	assertPanics(t, func() { Load() })
 }
 
-func TestLoad_OTelSampleRate_TooHigh_Panics(t *testing.T) {
+func TestLoadOTelSampleRateTooHighPanics(t *testing.T) {
 	t.Setenv("OTEL_SAMPLE_RATE", "1.5")
 	assertPanics(t, func() { Load() })
 }
 
-func TestLoad_OTelSampleRate_Negative_Panics(t *testing.T) {
+func TestLoadOTelSampleRateNegativePanics(t *testing.T) {
 	t.Setenv("OTEL_SAMPLE_RATE", "-0.1")
 	assertPanics(t, func() { Load() })
 }
 
-func TestLoad_OTelSampleRate_ValidBoundaries(t *testing.T) {
+func TestLoadOTelSampleRateValidBoundaries(t *testing.T) {
 	t.Setenv("OTEL_SAMPLE_RATE", "0.0")
 	cfg := Load()
 	if cfg.OTelSampleRate != 0.0 {
