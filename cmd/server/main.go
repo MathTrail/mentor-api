@@ -16,7 +16,7 @@ import (
 	"github.com/MathTrail/mentor-api/internal/version"
 	"go.uber.org/zap"
 
-	_ "github.com/MathTrail/mentor-api/docs"
+	_ "github.com/MathTrail/mentor-api/docs" // registers Swagger spec via swag-generated init()
 )
 
 func main() {
