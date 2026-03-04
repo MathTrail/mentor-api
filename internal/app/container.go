@@ -58,14 +58,10 @@ func (c *Container) Close() {
 	c.stop()
 }
 
-// initDB builds the DSN and creates a DynamicPool that rotates credentials
+// initDB creates a DynamicPool that rotates credentials
 // in-process when VSO-mounted Secret files change.
 func initDB(ctx context.Context, cfg *config.Config, logger *zap.Logger) (*postgres.DynamicPool, error) {
-	baseDSN := fmt.Sprintf(
-		"host=%s port=%s dbname=%s sslmode=%s",
-		cfg.PgHost, cfg.PgPort, cfg.PgDatabase, cfg.PgSSLMode,
-	)
-	db, err := postgres.NewDynamicPool(ctx, baseDSN, cfg.PgCredentialsDir, logger)
+	db, err := postgres.NewDynamicPool(ctx, cfg.PostgresDSN(), cfg.PgCredentialsDir, logger)
 	if err != nil {
 		return nil, fmt.Errorf("dynamic pg pool: %w", err)
 	}

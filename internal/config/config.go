@@ -86,3 +86,12 @@ func Load() *Config {
 
 	return cfg
 }
+
+// PostgresDSN returns the non-sensitive part of the PostgreSQL connection string.
+// Credentials are managed separately via PgCredentialsDir.
+func (c *Config) PostgresDSN() string {
+	return fmt.Sprintf(
+		"host=%s port=%s dbname=%s sslmode=%s",
+		c.PgHost, c.PgPort, c.PgDatabase, c.PgSSLMode,
+	)
+}
