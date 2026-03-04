@@ -7,7 +7,6 @@
 [![Go Version](https://img.shields.io/github/go-mod/go-version/MathTrail/mentor-api)](https://github.com/MathTrail/mentor-api/blob/main/go.mod)
 [![Go Reference](https://pkg.go.dev/badge/github.com/MathTrail/mentor-api.svg)](https://pkg.go.dev/github.com/MathTrail/mentor-api)
 
-[![SonarQube Cloud](https://sonarcloud.io/images/project_badges/sonarcloud-light.svg)](https://sonarcloud.io/summary/new_code?id=MathTrail_mentor-api)
 [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=MathTrail_mentor-api&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=MathTrail_mentor-api)
 [![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=MathTrail_mentor-api&metric=duplicated_lines_density)](https://sonarcloud.io/summary/new_code?id=MathTrail_mentor-api)
 [![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=MathTrail_mentor-api&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=MathTrail_mentor-api)
