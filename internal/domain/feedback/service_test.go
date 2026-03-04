@@ -33,13 +33,13 @@ func (m *mockRepository) GetLatestByStudent(ctx context.Context, studentID uuid.
 	return nil, nil
 }
 
-// mockLLMClient is a test double for clients.LLMClient that blocks until
+// mockFeedbackAnalyzer is a test double for clients.FeedbackAnalyzer that blocks until
 // the context expires — used to verify the per-call LLM timeout.
-type mockLLMClient struct {
+type mockFeedbackAnalyzer struct {
 	delay time.Duration
 }
 
-func (m *mockLLMClient) AnalyzeFeedback(ctx context.Context, _ string) (*clients.StrategyResult, error) {
+func (m *mockFeedbackAnalyzer) AnalyzeFeedback(ctx context.Context, _ string) (*clients.StrategyResult, error) {
 	select {
 	case <-time.After(m.delay):
 		return &clients.StrategyResult{
@@ -110,7 +110,7 @@ func TestProcessFeedback_RepoError(t *testing.T) {
 func TestProcessFeedback_LLMTimeout(t *testing.T) {
 	repo := &mockRepository{}
 	// Mock LLM that blocks for 2 seconds — well beyond the 50ms timeout.
-	llm := &mockLLMClient{delay: 2 * time.Second}
+	llm := &mockFeedbackAnalyzer{delay: 2 * time.Second}
 	logger := zap.NewNop()
 
 	svc := NewService(repo, llm, 50*time.Millisecond, logger)

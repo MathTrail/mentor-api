@@ -17,7 +17,7 @@ type Service interface {
 // serviceImpl implements the Service interface
 type serviceImpl struct {
 	repo       Repository
-	llmClient  clients.LLMClient
+	llmClient  clients.FeedbackAnalyzer
 	llmTimeout time.Duration
 	logger     *zap.Logger
 }
@@ -25,7 +25,7 @@ type serviceImpl struct {
 // NewService creates a new feedback service
 func NewService(
 	repo Repository,
-	llmClient clients.LLMClient,
+	llmClient clients.FeedbackAnalyzer,
 	llmTimeout time.Duration,
 	logger *zap.Logger,
 ) Service {
