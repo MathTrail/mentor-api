@@ -29,10 +29,15 @@ func (m *mockService) GetRecommendations(ctx context.Context, studentID uuid.UUI
 	}, nil
 }
 
+const (
+	recommendationsPath = "/api/v1/roadmap/recommendations"
+	userIDHeader        = "X-User-ID"
+)
+
 func testRouter(h *Handler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.GET("/api/v1/roadmap/recommendations", h.GetRecommendations)
+	r.GET(recommendationsPath, h.GetRecommendations)
 	return r
 }
 
@@ -42,8 +47,8 @@ func TestGetRecommendationsSuccess(t *testing.T) {
 	router := testRouter(hdl)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/roadmap/recommendations", nil)
-	req.Header.Set("X-User-ID", uuid.New().String())
+	req := httptest.NewRequest(http.MethodGet, recommendationsPath, nil)
+	req.Header.Set(userIDHeader, uuid.New().String())
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
@@ -65,7 +70,7 @@ func TestGetRecommendationsMissingHeader(t *testing.T) {
 	router := testRouter(hdl)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/roadmap/recommendations", nil)
+	req := httptest.NewRequest(http.MethodGet, recommendationsPath, nil)
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
@@ -85,8 +90,8 @@ func TestGetRecommendationsInvalidUUID(t *testing.T) {
 	router := testRouter(hdl)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/roadmap/recommendations", nil)
-	req.Header.Set("X-User-ID", "not-a-uuid")
+	req := httptest.NewRequest(http.MethodGet, recommendationsPath, nil)
+	req.Header.Set(userIDHeader, "not-a-uuid")
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
@@ -110,8 +115,8 @@ func TestGetRecommendationsServiceError(t *testing.T) {
 	router := testRouter(hdl)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/roadmap/recommendations", nil)
-	req.Header.Set("X-User-ID", uuid.New().String())
+	req := httptest.NewRequest(http.MethodGet, recommendationsPath, nil)
+	req.Header.Set(userIDHeader, uuid.New().String())
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusInternalServerError {
