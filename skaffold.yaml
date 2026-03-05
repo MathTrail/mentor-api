@@ -86,6 +86,7 @@ requires:
       ref: main # todo: specify concrete version
     configs:
       - postgres
+      - pgbouncer
 
 ---
 apiVersion: skaffold/v4beta13
