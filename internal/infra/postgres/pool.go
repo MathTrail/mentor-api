@@ -32,28 +32,7 @@ func (p *EnvPgPool) Query(ctx context.Context, sql string, params ...any) ([]map
 	if err != nil {
 		return nil, fmt.Errorf("pgxpool query: %w", err)
 	}
-	defer rows.Close()
-
-	fieldDescs := rows.FieldDescriptions()
-	var result []map[string]any
-	for rows.Next() {
-		values, err := rows.Values()
-		if err != nil {
-			return nil, fmt.Errorf("pgxpool scan row: %w", err)
-		}
-		row := make(map[string]any, len(fieldDescs))
-		for i, fd := range fieldDescs {
-			row[fd.Name] = values[i]
-		}
-		result = append(result, row)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("pgxpool rows: %w", err)
-	}
-	if result == nil {
-		result = []map[string]any{}
-	}
-	return result, nil
+	return scanRows(rows)
 }
 
 // Exec executes a SQL statement that produces no result rows.

@@ -11,7 +11,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const testClientID = testClientID
+const testClientID = "client-id-123"
 
 func init() { gin.SetMode(gin.TestMode) }
 
