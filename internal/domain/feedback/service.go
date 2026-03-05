@@ -10,7 +10,7 @@ import (
 )
 
 // FeedbackService defines the interface for feedback processing
-// NOSONAR: interface will be extended with additional methods
+// NOSONAR: S8196 — interface is part of a larger client contract to be implemented.
 type FeedbackService interface {
 	ProcessFeedback(ctx context.Context, req *FeedbackRequest) (*StrategyUpdate, error)
 }
