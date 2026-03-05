@@ -31,10 +31,12 @@ func (m *mockService) ProcessFeedback(ctx context.Context, req *FeedbackRequest)
 	}, nil
 }
 
+const feedbackPath = "/api/v1/feedback"
+
 func testRouter(h *Handler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.POST("/api/v1/feedback", h.SubmitFeedback)
+	r.POST(feedbackPath, h.SubmitFeedback)
 	return r
 }
 
@@ -50,7 +52,7 @@ func TestSubmitFeedbackSuccess(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/feedback", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, feedbackPath, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -70,7 +72,7 @@ func TestSubmitFeedbackInvalidJSON(t *testing.T) {
 	router := testRouter(hdl)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/feedback", bytes.NewReader([]byte(`{invalid`)))
+	req := httptest.NewRequest(http.MethodPost, feedbackPath, bytes.NewReader([]byte(`{invalid`)))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -87,7 +89,7 @@ func TestSubmitFeedbackMissingFields(t *testing.T) {
 	body, _ := json.Marshal(map[string]string{"message": "hello"})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/feedback", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, feedbackPath, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -112,7 +114,7 @@ func TestSubmitFeedbackServiceError(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/feedback", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, feedbackPath, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
