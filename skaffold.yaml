@@ -58,7 +58,12 @@ profiles:
       - op: replace
         path: /deploy/helm/releases/0/setValueTemplates/dbDynamicSecret.vaultRole
         value: "{{.VAULT_ROLE}}"
-      # CI uses a shared Vault instance; role name is stable (no per-namespace suffix).
+      - op: add
+        path: /deploy/helm/releases/0/setValueTemplates/vso.vaultRole
+        value: "mentor-api-{{.NAMESPACE}}"
+      - op: add
+        path: /deploy/helm/releases/0/setValueTemplates/vso.dbRole
+        value: "mentor-api-role-{{.NAMESPACE}}"
 
 ---
 apiVersion: skaffold/v4beta13

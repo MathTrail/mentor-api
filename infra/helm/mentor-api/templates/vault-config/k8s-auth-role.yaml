@@ -2,7 +2,7 @@
 apiVersion: redhatcop.redhat.io/v1alpha1
 kind: KubernetesAuthEngineRole
 metadata:
-  name: {{ .Values.vaultConfig.k8sAuth.serviceAccount }}
+  name: {{ .Values.vso.vaultRole }}
   namespace: vault-config-operator
   annotations:
     argocd.argoproj.io/sync-wave: "2"
@@ -23,6 +23,6 @@ spec:
     - {{ .Values.vaultConfig.k8sAuth.serviceAccount }}
   targetNamespaces:
     targetNamespaces:
-      - {{ .Values.vaultConfig.k8sAuth.namespace }}
+      - {{ .Release.Namespace }}
   tokenTTL: 3600
 {{- end }}

@@ -33,15 +33,17 @@ externalSecrets:
 
 # Vault Config Operator CRs — deployed as part of this Helm chart into vault-config-operator ns.
 # Configures the Vault Database Engine connection and role for dynamic credential generation.
+# CR names and targetNamespaces are scoped to .Release.Namespace automatically.
 vaultConfig:
   enabled: true
   db:
     connectionName: "mentor-postgres"
     database: "mentor"
-    roleName: "mentor-api-role"
+    pgHost: "postgres-postgresql"
+    rootSecret: "postgres-root-credentials"
+    rootPasswordKey: "password"
   k8sAuth:
     serviceAccount: "mentor-api"
-    namespace: "mathtrail"
 
 # Vault Database Config Job — deprecated.
 vaultDbConfig:

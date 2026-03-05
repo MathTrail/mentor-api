@@ -1,6 +1,15 @@
 # CI overlay: ephemeral PR namespaces
 # PgBouncer is not deployed in CI — connect directly to PostgreSQL.
 # Inherits everything from values-dev.yaml, overrides only the DB host/port.
+#
+# VCO CRs are automatically scoped to .Release.Namespace (no collision with
+# local dev). CI-specific Vault role names are injected via skaffold
+# setValueTemplates (vso.vaultRole, vso.dbRole).
+
+vaultConfig:
+  db:
+    rootSecret: "postgres-postgresql"
+    rootPasswordKey: "postgres-password"
 
 dbDynamicSecret:
   pgHost: "postgres-postgresql"

@@ -2,7 +2,7 @@
 apiVersion: redhatcop.redhat.io/v1alpha1
 kind: DatabaseSecretEngineConfig
 metadata:
-  name: {{ .Values.vaultConfig.db.connectionName }}
+  name: {{ .Values.vaultConfig.db.connectionName }}-{{ .Release.Namespace }}
   namespace: vault-config-operator
   annotations:
     argocd.argoproj.io/sync-wave: "1"
@@ -19,11 +19,11 @@ spec:
   path: database
   pluginName: postgresql-database-plugin
   allowedRoles:
-    - {{ .Values.vaultConfig.db.roleName }}
-  connectionURL: "postgresql://{{ `{{username}}` }}:{{ `{{password}}` }}@postgres-postgresql.mathtrail.svc.cluster.local:5432/{{ .Values.vaultConfig.db.database }}?sslmode=disable"
+    - {{ .Values.vso.dbRole }}
+  connectionURL: "postgresql://{{ `{{username}}` }}:{{ `{{password}}` }}@{{ .Values.vaultConfig.db.pgHost }}.{{ .Release.Namespace }}.svc.cluster.local:5432/{{ .Values.vaultConfig.db.database }}?sslmode=disable"
   username: postgres
   rootCredentials:
     secret:
-      name: postgres-root-credentials
-    passwordKey: password
+      name: {{ .Values.vaultConfig.db.rootSecret }}
+    passwordKey: {{ .Values.vaultConfig.db.rootPasswordKey }}
 {{- end }}
