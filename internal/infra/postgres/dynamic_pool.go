@@ -130,6 +130,10 @@ func (p *DynamicPool) watchCredentials(ctx context.Context) {
 	p.logger.Info("watching credentials directory for rotation",
 		zap.String("dir", p.credsDir))
 
+	p.processCredentialEvents(ctx, watcher)
+}
+
+func (p *DynamicPool) processCredentialEvents(ctx context.Context, watcher *fsnotify.Watcher) {
 	var debounceTimer *time.Timer
 	for {
 		select {

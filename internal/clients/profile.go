@@ -14,7 +14,8 @@ type Profile struct {
 }
 
 // ProfileClient defines the interface for accessing student profile data
-type ProfileClient interface { // NOSONAR: interface will be extended with additional methods
+// NOSONAR: interface will be extended with additional methods
+type ProfileClient interface {
 	GetProfile(ctx context.Context, studentID uuid.UUID) (*Profile, error)
 }
 
