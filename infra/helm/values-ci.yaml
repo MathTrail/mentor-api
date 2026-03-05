@@ -6,11 +6,6 @@
 # local dev). CI-specific Vault role names are injected via skaffold
 # setValueTemplates (vso.vaultRole, vso.dbRole).
 
-vaultConfig:
-  db:
-    rootSecret: "postgres-postgresql"
-    rootPasswordKey: "postgres-password"
-
 dbDynamicSecret:
   pgHost: "postgres-postgresql"
   pgPort: "5432"

@@ -40,8 +40,6 @@ vaultConfig:
     connectionName: "mentor-postgres"
     database: "mentor"
     pgHost: "postgres-postgresql"
-    rootSecret: "postgres-root-credentials"
-    rootPasswordKey: "password"
   k8sAuth:
     serviceAccount: "mentor-api"
 

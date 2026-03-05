@@ -24,6 +24,6 @@ spec:
   username: postgres
   rootCredentials:
     secret:
-      name: {{ .Values.vaultConfig.db.rootSecret }}
-    passwordKey: {{ .Values.vaultConfig.db.rootPasswordKey }}
+      name: postgres-root-credentials-{{ .Release.Namespace }}
+    passwordKey: password
 {{- end }}
