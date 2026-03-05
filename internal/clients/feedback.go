@@ -18,7 +18,6 @@ type StrategyResult struct {
 // The implementation will call an external LLM (OpenAI / Claude / etc.).
 type FeedbackClient interface {
 	AnalyzeFeedback(ctx context.Context, message string) (*StrategyResult, error)
-	// PendingExtension()
 }
 
 type feedbackClient struct{}

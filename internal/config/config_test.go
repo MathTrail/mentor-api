@@ -16,6 +16,7 @@ func assertPanics(t *testing.T, fn func()) {
 }
 
 func TestLoadDefaults(t *testing.T) {
+	t.Setenv("PG_CREDENTIALS_DIR", t.TempDir())
 	cfg := Load()
 
 	if cfg.ServerPort != "8080" {
@@ -42,6 +43,7 @@ func TestLoadDefaults(t *testing.T) {
 }
 
 func TestLoadEnvOverrides(t *testing.T) {
+	t.Setenv("PG_CREDENTIALS_DIR", t.TempDir())
 	t.Setenv("SERVER_PORT", "9090")
 	t.Setenv("LOG_LEVEL", "debug")
 	t.Setenv("LLM_TIMEOUT", "30s")
@@ -84,6 +86,7 @@ func TestLoadOTelSampleRateNegativePanics(t *testing.T) {
 }
 
 func TestLoadOTelSampleRateValidBoundaries(t *testing.T) {
+	t.Setenv("PG_CREDENTIALS_DIR", t.TempDir())
 	t.Setenv("OTEL_SAMPLE_RATE", "0.0")
 	cfg := Load()
 	if cfg.OTelSampleRate != 0.0 {

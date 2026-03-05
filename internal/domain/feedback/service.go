@@ -12,7 +12,6 @@ import (
 // FeedbackService defines the interface for feedback processing
 type FeedbackService interface {
 	ProcessFeedback(ctx context.Context, req *FeedbackRequest) (*StrategyUpdate, error)
-	// PendingExtension()
 }
 
 // serviceImpl implements the FeedbackService interface

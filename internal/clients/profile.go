@@ -16,7 +16,6 @@ type Profile struct {
 // ProfileClient defines the interface for accessing student profile data
 type ProfileClient interface {
 	GetProfile(ctx context.Context, studentID uuid.UUID) (*Profile, error)
-	// PendingExtension()
 }
 
 type profileClient struct{}
