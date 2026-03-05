@@ -32,6 +32,8 @@ func (m *mockService) GetRecommendations(ctx context.Context, studentID uuid.UUI
 const (
 	recommendationsPath = "/api/v1/roadmap/recommendations"
 	userIDHeader        = "X-User-ID"
+	statusFmt           = "status: got %d, want %d"
+	codeFmt             = "code: got %q, want %q"
 )
 
 func testRouter(h *Handler) *gin.Engine {
@@ -52,7 +54,7 @@ func TestGetRecommendationsSuccess(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("status: got %d, want %d", w.Code, http.StatusOK)
+		t.Errorf(statusFmt, w.Code, http.StatusOK)
 	}
 
 	var rec Recommendation
@@ -74,7 +76,7 @@ func TestGetRecommendationsMissingHeader(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("status: got %d, want %d", w.Code, http.StatusBadRequest)
+		t.Errorf(statusFmt, w.Code, http.StatusBadRequest)
 	}
 
 	var body map[string]string
@@ -95,7 +97,7 @@ func TestGetRecommendationsInvalidUUID(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("status: got %d, want %d", w.Code, http.StatusBadRequest)
+		t.Errorf(statusFmt, w.Code, http.StatusBadRequest)
 	}
 
 	var body map[string]string
@@ -120,7 +122,7 @@ func TestGetRecommendationsServiceError(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusInternalServerError {
-		t.Errorf("status: got %d, want %d", w.Code, http.StatusInternalServerError)
+		t.Errorf(statusFmt, w.Code, http.StatusInternalServerError)
 	}
 
 	var body map[string]string
