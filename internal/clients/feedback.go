@@ -16,7 +16,7 @@ type StrategyResult struct {
 
 // FeedbackClient defines the interface for LLM-based feedback analysis.
 // The implementation will call an external LLM (OpenAI / Claude / etc.).
-type FeedbackClient interface {
+type FeedbackClient interface { // NOSONAR: interface will be extended with additional methods
 	AnalyzeFeedback(ctx context.Context, message string) (*StrategyResult, error)
 }
 
