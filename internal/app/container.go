@@ -33,7 +33,7 @@ func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (
 		return nil, err
 	}
 
-	llmClient := clients.NewLLMClient()
+	llmClient := clients.NewFeedbackClient()
 
 	feedbackRepo := feedback.NewRepository(db)
 	feedbackService := feedback.NewService(feedbackRepo, llmClient, cfg.LLMTimeout, logger)

@@ -9,15 +9,15 @@ import (
 	"go.uber.org/zap"
 )
 
-// Service defines the interface for feedback processing
-type Service interface {
+// FeedbackService defines the interface for feedback processing
+type FeedbackService interface {
 	ProcessFeedback(ctx context.Context, req *FeedbackRequest) (*StrategyUpdate, error)
 }
 
-// serviceImpl implements the Service interface
+// serviceImpl implements the FeedbackService interface
 type serviceImpl struct {
 	repo       Repository
-	llmClient  clients.FeedbackAnalyzer
+	llmClient  clients.FeedbackClient
 	llmTimeout time.Duration
 	logger     *zap.Logger
 }
@@ -25,10 +25,10 @@ type serviceImpl struct {
 // NewService creates a new feedback service
 func NewService(
 	repo Repository,
-	llmClient clients.FeedbackAnalyzer,
+	llmClient clients.FeedbackClient,
 	llmTimeout time.Duration,
 	logger *zap.Logger,
-) Service {
+) FeedbackService {
 	return &serviceImpl{
 		repo:       repo,
 		llmClient:  llmClient,

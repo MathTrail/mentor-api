@@ -33,13 +33,13 @@ func (m *mockRepository) GetLatestByStudent(ctx context.Context, studentID uuid.
 	return nil, nil
 }
 
-// mockFeedbackAnalyzer is a test double for clients.FeedbackAnalyzer that blocks until
+// mockFeedbackClient is a test double for clients.FeedbackClient that blocks until
 // the context expires — used to verify the per-call LLM timeout.
-type mockFeedbackAnalyzer struct {
+type mockFeedbackClient struct {
 	delay time.Duration
 }
 
-func (m *mockFeedbackAnalyzer) AnalyzeFeedback(ctx context.Context, _ string) (*clients.StrategyResult, error) {
+func (m *mockFeedbackClient) AnalyzeFeedback(ctx context.Context, _ string) (*clients.StrategyResult, error) {
 	select {
 	case <-time.After(m.delay):
 		return &clients.StrategyResult{
@@ -55,7 +55,7 @@ func (m *mockFeedbackAnalyzer) AnalyzeFeedback(ctx context.Context, _ string) (*
 
 func TestProcessFeedbackSuccess(t *testing.T) {
 	repo := &mockRepository{}
-	llm := clients.NewLLMClient()
+	llm := clients.NewFeedbackClient()
 	logger := zap.NewNop()
 
 	svc := NewService(repo, llm, 10*time.Second, logger)
@@ -89,7 +89,7 @@ func TestProcessFeedbackRepoError(t *testing.T) {
 	repo := &mockRepository{
 		saveFn: func(_ context.Context, _ *Feedback) error { return repoErr },
 	}
-	llm := clients.NewLLMClient()
+	llm := clients.NewFeedbackClient()
 	logger := zap.NewNop()
 
 	svc := NewService(repo, llm, 10*time.Second, logger)
@@ -110,7 +110,7 @@ func TestProcessFeedbackRepoError(t *testing.T) {
 func TestProcessFeedbackLLMTimeout(t *testing.T) {
 	repo := &mockRepository{}
 	// Mock LLM that blocks for 2 seconds — well beyond the 50ms timeout.
-	llm := &mockFeedbackAnalyzer{delay: 2 * time.Second}
+	llm := &mockFeedbackClient{delay: 2 * time.Second}
 	logger := zap.NewNop()
 
 	svc := NewService(repo, llm, 50*time.Millisecond, logger)

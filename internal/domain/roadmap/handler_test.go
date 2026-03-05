@@ -82,7 +82,7 @@ func TestGetRecommendationsMissingHeader(t *testing.T) {
 	var body map[string]string
 	_ = json.Unmarshal(w.Body.Bytes(), &body)
 	if body["code"] != "MISSING_USER_ID" {
-		t.Errorf("code: got %q, want %q", body["code"], "MISSING_USER_ID")
+		t.Errorf(codeFmt, body["code"], "MISSING_USER_ID")
 	}
 }
 
@@ -103,7 +103,7 @@ func TestGetRecommendationsInvalidUUID(t *testing.T) {
 	var body map[string]string
 	_ = json.Unmarshal(w.Body.Bytes(), &body)
 	if body["code"] != "INVALID_USER_ID" {
-		t.Errorf("code: got %q, want %q", body["code"], "INVALID_USER_ID")
+		t.Errorf(codeFmt, body["code"], "INVALID_USER_ID")
 	}
 }
 
@@ -128,6 +128,6 @@ func TestGetRecommendationsServiceError(t *testing.T) {
 	var body map[string]string
 	_ = json.Unmarshal(w.Body.Bytes(), &body)
 	if body["code"] != "INTERNAL_ERROR" {
-		t.Errorf("code: got %q, want %q", body["code"], "INTERNAL_ERROR")
+		t.Errorf(codeFmt, body["code"], "INTERNAL_ERROR")
 	}
 }

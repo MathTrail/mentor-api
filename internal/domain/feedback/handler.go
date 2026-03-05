@@ -10,12 +10,12 @@ import (
 
 // Handler handles HTTP requests for feedback endpoints
 type Handler struct {
-	service Service
+	service FeedbackService
 	logger  *zap.Logger
 }
 
 // NewHandler creates a new feedback handler
-func NewHandler(service Service, logger *zap.Logger) *Handler {
+func NewHandler(service FeedbackService, logger *zap.Logger) *Handler {
 	return &Handler{
 		service: service,
 		logger:  logger,

@@ -15,7 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// mockService is a test double for feedback.Service.
+// mockService is a test double for feedback.FeedbackService.
 type mockService struct {
 	processFn func(ctx context.Context, req *FeedbackRequest) (*StrategyUpdate, error)
 }

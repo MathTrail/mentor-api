@@ -4,23 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
-
-	"github.com/google/uuid"
 )
 
 const unexpectedErrorFmt = "unexpected error: %v"
 
-// --- LLM client tests ---
-
-func TestNewLLMClientNotNil(t *testing.T) {
-	c := NewLLMClient()
+func TestNewFeedbackClientNotNil(t *testing.T) {
+	c := NewFeedbackClient()
 	if c == nil {
-		t.Error("NewLLMClient returned nil")
+		t.Error("NewFeedbackClient returned nil")
 	}
 }
 
 func TestAnalyzeFeedbackStubValues(t *testing.T) {
-	c := NewLLMClient()
+	c := NewFeedbackClient()
 	result, err := c.AnalyzeFeedback(context.Background(), "this was hard")
 	if err != nil {
 		t.Fatalf(unexpectedErrorFmt, err)
@@ -72,39 +68,5 @@ func TestMarshalSnapshotNilMap(t *testing.T) {
 	// json.Marshal(nil map) produces "null"
 	if string(raw) != "null" {
 		t.Errorf("expected %q, got %q", "null", string(raw))
-	}
-}
-
-// --- Profile client tests ---
-
-func TestNewProfileClientNotNil(t *testing.T) {
-	c := NewProfileClient()
-	if c == nil {
-		t.Error("NewProfileClient returned nil")
-	}
-}
-
-func TestGetProfileEchoesStudentID(t *testing.T) {
-	c := NewProfileClient()
-	id := uuid.New()
-	profile, err := c.GetProfile(context.Background(), id)
-	if err != nil {
-		t.Fatalf(unexpectedErrorFmt, err)
-	}
-	if profile.StudentID != id {
-		t.Errorf("StudentID: got %v, want %v", profile.StudentID, id)
-	}
-}
-
-func TestGetProfileHasExpectedSkills(t *testing.T) {
-	c := NewProfileClient()
-	profile, err := c.GetProfile(context.Background(), uuid.New())
-	if err != nil {
-		t.Fatalf(unexpectedErrorFmt, err)
-	}
-	for _, skill := range []string{"algebra", "geometry", "logic"} {
-		if _, ok := profile.Skills[skill]; !ok {
-			t.Errorf("expected skill %q in profile", skill)
-		}
 	}
 }

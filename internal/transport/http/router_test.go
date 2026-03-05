@@ -36,7 +36,7 @@ func (m *mockDB) Ping(_ context.Context) error                     { return m.pi
 // Compile-time interface check.
 var _ postgres.DB = (*mockDB)(nil)
 
-// mockFeedbackService implements feedback.Service for handler construction.
+// mockFeedbackService implements feedback.FeedbackService for handler construction.
 type mockFeedbackService struct{}
 
 func (m *mockFeedbackService) ProcessFeedback(_ context.Context, req *feedback.FeedbackRequest) (*feedback.StrategyUpdate, error) {
