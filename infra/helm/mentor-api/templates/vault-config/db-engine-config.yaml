@@ -20,7 +20,7 @@ spec:
   pluginName: postgresql-database-plugin
   allowedRoles:
     - {{ .Values.vaultConfig.db.roleName }}
-  connectionURL: "postgresql://{{`{{username}}`}}:{{`{{password}}`}}@postgres-postgresql.mathtrail.svc.cluster.local:5432/{{ .Values.vaultConfig.db.database }}?sslmode=disable"
+  connectionURL: "postgresql://{{ `{{username}}` }}:{{ `{{password}}` }}@postgres-postgresql.mathtrail.svc.cluster.local:5432/{{ .Values.vaultConfig.db.database }}?sslmode=disable"
   username: postgres
   rootCredentials:
     secret:

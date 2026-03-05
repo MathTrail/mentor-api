@@ -47,7 +47,7 @@ func (s *Server) Run(ctx context.Context) error {
 	}
 
 	// Fresh context so the shutdown deadline starts now, not at signal time.
-	shutCtx, cancel := context.WithTimeout(context.Background(), s.shutdownTimeout)
+	shutCtx, cancel := context.WithTimeout(context.Background(), s.shutdownTimeout) // NOSONAR: intentional fresh context — parent ctx is already cancelled at this point
 	defer cancel()
 
 	if err := s.httpServer.Shutdown(shutCtx); err != nil {

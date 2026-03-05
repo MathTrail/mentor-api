@@ -118,7 +118,7 @@ func TestShutdownCallsProfilerStop(t *testing.T) {
 // avoid duplicate Prometheus metric registration panics.
 func TestInitNoExternalEndpoints(t *testing.T) {
 	o := New(testConfig(), zap.NewNop())
-	if err := o.Init(); err != nil {
+	if err := o.Init(context.Background()); err != nil {
 		t.Fatalf("Init error: %v", err)
 	}
 	// Tracer and profiler should be nil since endpoints are empty.

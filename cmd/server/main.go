@@ -37,7 +37,7 @@ func main() {
 	// Shutdown context is created at exit time so the deadline starts
 	// only when the process is actually terminating.
 	defer func() {
-		shutCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+		shutCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout) // NOSONAR: intentional fresh context — parent ctx is already cancelled at this point
 		defer cancel()
 		obs.Shutdown(shutCtx)
 	}()
