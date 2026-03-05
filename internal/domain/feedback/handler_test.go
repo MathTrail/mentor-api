@@ -15,7 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// mockService is a test double for feedback.Service.
+// mockService is a test double for feedback.FeedbackService.
 type mockService struct {
 	processFn func(ctx context.Context, req *FeedbackRequest) (*StrategyUpdate, error)
 }
@@ -31,14 +31,20 @@ func (m *mockService) ProcessFeedback(ctx context.Context, req *FeedbackRequest)
 	}, nil
 }
 
+const (
+	feedbackPath      = "/api/v1/feedback"
+	contentTypeJSON   = "application/json"
+	contentTypeHeader = "Content-Type"
+)
+
 func testRouter(h *Handler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.POST("/api/v1/feedback", h.SubmitFeedback)
+	r.POST(feedbackPath, h.SubmitFeedback)
 	return r
 }
 
-func TestSubmitFeedback_Success(t *testing.T) {
+func TestSubmitFeedbackSuccess(t *testing.T) {
 	svc := &mockService{}
 	hdl := NewHandler(svc, zap.NewNop())
 	router := testRouter(hdl)
@@ -50,8 +56,8 @@ func TestSubmitFeedback_Success(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/feedback", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
+	req := httptest.NewRequest(http.MethodPost, feedbackPath, bytes.NewReader(body))
+	req.Header.Set(contentTypeHeader, contentTypeJSON)
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
@@ -64,14 +70,14 @@ func TestSubmitFeedback_Success(t *testing.T) {
 	}
 }
 
-func TestSubmitFeedback_InvalidJSON(t *testing.T) {
+func TestSubmitFeedbackInvalidJSON(t *testing.T) {
 	svc := &mockService{}
 	hdl := NewHandler(svc, zap.NewNop())
 	router := testRouter(hdl)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/feedback", bytes.NewReader([]byte(`{invalid`)))
-	req.Header.Set("Content-Type", "application/json")
+	req := httptest.NewRequest(http.MethodPost, feedbackPath, bytes.NewReader([]byte(`{invalid`)))
+	req.Header.Set(contentTypeHeader, contentTypeJSON)
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
@@ -79,7 +85,7 @@ func TestSubmitFeedback_InvalidJSON(t *testing.T) {
 	}
 }
 
-func TestSubmitFeedback_MissingFields(t *testing.T) {
+func TestSubmitFeedbackMissingFields(t *testing.T) {
 	svc := &mockService{}
 	hdl := NewHandler(svc, zap.NewNop())
 	router := testRouter(hdl)
@@ -87,8 +93,8 @@ func TestSubmitFeedback_MissingFields(t *testing.T) {
 	body, _ := json.Marshal(map[string]string{"message": "hello"})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/feedback", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
+	req := httptest.NewRequest(http.MethodPost, feedbackPath, bytes.NewReader(body))
+	req.Header.Set(contentTypeHeader, contentTypeJSON)
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
@@ -96,7 +102,7 @@ func TestSubmitFeedback_MissingFields(t *testing.T) {
 	}
 }
 
-func TestSubmitFeedback_ServiceError(t *testing.T) {
+func TestSubmitFeedbackServiceError(t *testing.T) {
 	svc := &mockService{
 		processFn: func(_ context.Context, _ *FeedbackRequest) (*StrategyUpdate, error) {
 			return nil, errors.New("llm timeout")
@@ -112,8 +118,8 @@ func TestSubmitFeedback_ServiceError(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/feedback", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
+	req := httptest.NewRequest(http.MethodPost, feedbackPath, bytes.NewReader(body))
+	req.Header.Set(contentTypeHeader, contentTypeJSON)
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusInternalServerError {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib" // registers the "pgx" driver for database/sql used by Goose
 	"github.com/pressly/goose/v3"
 	"go.uber.org/zap"
 

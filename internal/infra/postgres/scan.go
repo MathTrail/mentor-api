@@ -3,9 +3,45 @@ package postgres
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// DecodeRow decodes a single map[string]any row (from DaprDB.Query) into a
+// scanRows reads all rows from a pgx.Rows into a slice of maps keyed by column
+// name. It closes the rows and checks for iteration errors before returning.
+func scanRows(rows pgx.Rows) ([]map[string]any, error) {
+	defer rows.Close()
+	fieldDescs := rows.FieldDescriptions()
+	var result []map[string]any
+	for rows.Next() {
+		values, err := rows.Values()
+		if err != nil {
+			return nil, fmt.Errorf("pgxpool scan row: %w", err)
+		}
+		row := make(map[string]any, len(fieldDescs))
+		for i, fd := range fieldDescs {
+			v := values[i]
+			if fd.DataTypeOID == pgtype.UUIDOID {
+				if b, ok := v.([16]byte); ok {
+					v = uuid.UUID(b)
+				}
+			}
+			row[fd.Name] = v
+		}
+		result = append(result, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("pgxpool rows: %w", err)
+	}
+	if result == nil {
+		result = []map[string]any{}
+	}
+	return result, nil
+}
+
+// DecodeRow decodes a single map[string]any row (from DB.Query) into a
 // struct T by round-tripping through JSON. T's fields must carry `json` tags
 // that match the SQL column names returned by the query.
 func DecodeRow[T any](row map[string]any) (T, error) {

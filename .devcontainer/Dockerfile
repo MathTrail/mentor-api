@@ -1,5 +1,5 @@
 # Build swag binary in a Go image (Go is not available in the base image)
-FROM golang:1.25-bookworm AS swag-builder
+FROM golang:1.26-bookworm AS swag-builder
 ARG SWAG_VERSION=v2.0.0-rc5
 RUN go install github.com/swaggo/swag/v2/cmd/swag@${SWAG_VERSION}
 
@@ -11,7 +11,8 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends buildah fuse-overlayfs \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /etc/containers \
-    && printf '[storage]\ndriver = "overlay"\n\n[storage.options.overlay]\nmount_program = "/usr/bin/fuse-overlayfs"\n' \
+    && printf '[storage]\ndriver = "overlay"\n\n' \
+       '[storage.options.overlay]\nmount_program = "/usr/bin/fuse-overlayfs"\n' \
        > /etc/containers/storage.conf
 
 # Install Skaffold

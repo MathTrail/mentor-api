@@ -1,13 +1,9 @@
-# Observability overlay: Dapr tracing via the mathtrail-observability Configuration CRD.
+# Observability overlay: connects the service to the infra-observability stack.
 # Requires the infra-observability stack to be deployed in the cluster.
 # Applied automatically when using: just dev observability=true  |  just deploy observability=true
 
 observability:
   enabled: true
-
-podAnnotations:
-  # Connect the Dapr sidecar to the tracing Configuration CRD deployed by infra-observability.
-  dapr.io/config: "mathtrail-observability"
 
 env:
   - name: OTEL_ENDPOINT

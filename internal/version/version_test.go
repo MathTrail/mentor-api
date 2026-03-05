@@ -2,7 +2,7 @@ package version
 
 import "testing"
 
-func TestVersion_Defaults(t *testing.T) {
+func TestVersionDefaults(t *testing.T) {
 	if Version != "dev" {
 		t.Errorf("Version: got %q, want %q", Version, "dev")
 	}

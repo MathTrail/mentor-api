@@ -1,4 +1,4 @@
-FROM golang:1.25.7-alpine AS builder
+FROM golang:1.26.0-alpine AS builder
 RUN apk add --no-cache git
 WORKDIR /build
 COPY go.mod go.sum ./
@@ -8,8 +8,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app ./cmd/server
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /migrate ./cmd/migrate
 
 FROM alpine:3.21
-RUN apk add --no-cache ca-certificates tzdata
-RUN adduser -D -u 10001 appuser
+RUN apk add --no-cache ca-certificates tzdata \
+    && adduser -D -u 10001 appuser
 COPY --from=builder /app /app
 COPY --from=builder /migrate /migrate
 USER 10001

@@ -4,9 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"go.uber.org/zap"
@@ -31,8 +28,9 @@ func NewServer(container *Container) *Server {
 	}
 }
 
-// Run starts the HTTP listener and blocks until SIGINT/SIGTERM is received.
-func (s *Server) Run() error {
+// Run starts the HTTP listener and blocks until ctx is cancelled or the server
+// fails. Shutdown is triggered by ctx cancellation, not by OS signals directly.
+func (s *Server) Run(ctx context.Context) error {
 	errCh := make(chan error, 1)
 	go func() {
 		s.logger.Info("listening", zap.String("addr", s.httpServer.Addr))
@@ -41,20 +39,18 @@ func (s *Server) Run() error {
 		}
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-
 	select {
 	case err := <-errCh:
 		return fmt.Errorf("server failed: %w", err)
-	case sig := <-quit:
-		s.logger.Info("received signal, shutting down", zap.String("signal", sig.String()))
+	case <-ctx.Done():
+		s.logger.Info("shutdown signal received", zap.String("reason", ctx.Err().Error()))
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), s.shutdownTimeout)
+	// Fresh context so the shutdown deadline starts now, not at signal time.
+	shutCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), s.shutdownTimeout)
 	defer cancel()
 
-	if err := s.httpServer.Shutdown(ctx); err != nil {
+	if err := s.httpServer.Shutdown(shutCtx); err != nil {
 		return fmt.Errorf("graceful shutdown failed: %w", err)
 	}
 

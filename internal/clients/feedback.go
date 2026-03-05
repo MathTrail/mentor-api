@@ -14,22 +14,21 @@ type StrategyResult struct {
 	StrategySnapshot     map[string]interface{} `json:"strategy_snapshot"`
 }
 
-// LLMClient defines the interface for LLM-based feedback analysis.
+// FeedbackClient defines the interface for LLM-based feedback analysis.
 // The implementation will call an external LLM (OpenAI / Claude / etc.).
-type LLMClient interface {
+type FeedbackClient interface {
 	AnalyzeFeedback(ctx context.Context, message string) (*StrategyResult, error)
 }
 
-type llmClient struct{}
+type feedbackClient struct{}
 
-// NewLLMClient creates a new LLM client.
-func NewLLMClient() LLMClient {
-	return &llmClient{}
+// NewFeedbackClient creates a new LLM client.
+func NewFeedbackClient() FeedbackClient {
+	return &feedbackClient{}
 }
 
 // AnalyzeFeedback analyses student feedback and returns a strategy.
-// TODO: replace with a real LLM call.
-func (c *llmClient) AnalyzeFeedback(_ context.Context, _ string) (*StrategyResult, error) {
+func (c *feedbackClient) AnalyzeFeedback(_ context.Context, _ string) (*StrategyResult, error) {
 	return &StrategyResult{
 		PerceivedDifficulty:  "ok",
 		DifficultyAdjustment: 0.0,

@@ -36,7 +36,7 @@ func (m *mockDB) Ping(_ context.Context) error                     { return m.pi
 // Compile-time interface check.
 var _ postgres.DB = (*mockDB)(nil)
 
-// mockFeedbackService implements feedback.Service for handler construction.
+// mockFeedbackService implements feedback.FeedbackService for handler construction.
 type mockFeedbackService struct{}
 
 func (m *mockFeedbackService) ProcessFeedback(_ context.Context, req *feedback.FeedbackRequest) (*feedback.StrategyUpdate, error) {
@@ -79,7 +79,7 @@ func TestHealthLiveness(t *testing.T) {
 	}
 }
 
-func TestHealthReady_OK(t *testing.T) {
+func TestHealthReadyOK(t *testing.T) {
 	fh, rh, db := testRouter()
 	router := NewRouter(fh, rh, db, testConfig(), zap.NewNop())
 
@@ -92,7 +92,7 @@ func TestHealthReady_OK(t *testing.T) {
 	}
 }
 
-func TestHealthReady_DBDown(t *testing.T) {
+func TestHealthReadyDBDown(t *testing.T) {
 	fh, rh, _ := testRouter()
 	db := &mockDB{pingErr: errors.New("connection refused")}
 	router := NewRouter(fh, rh, db, testConfig(), zap.NewNop())
@@ -106,7 +106,7 @@ func TestHealthReady_DBDown(t *testing.T) {
 	}
 }
 
-func TestRoadmapRecommendations_Success(t *testing.T) {
+func TestRoadmapRecommendationsSuccess(t *testing.T) {
 	fh, rh, db := testRouter()
 	router := NewRouter(fh, rh, db, testConfig(), zap.NewNop())
 
@@ -128,7 +128,7 @@ func TestRoadmapRecommendations_Success(t *testing.T) {
 	}
 }
 
-func TestRoadmapRecommendations_MissingHeader(t *testing.T) {
+func TestRoadmapRecommendationsMissingHeader(t *testing.T) {
 	fh, rh, db := testRouter()
 	router := NewRouter(fh, rh, db, testConfig(), zap.NewNop())
 

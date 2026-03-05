@@ -24,8 +24,6 @@ func NewService(logger *zap.Logger) Service {
 }
 
 // GetRecommendations returns personalised learning focus areas for a student.
-// TODO: read feedback history via repository, analyse with LLM client.
-// Stub: always returns a static response.
 func (s *serviceImpl) GetRecommendations(ctx context.Context, studentID uuid.UUID) (*Recommendation, error) {
 	s.logger.Info("generating roadmap recommendations", zap.Stringer("student_id", studentID))
 

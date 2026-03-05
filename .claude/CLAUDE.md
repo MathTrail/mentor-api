@@ -2,9 +2,9 @@
 
 ## Overview
 
-Student Feedback Loop service for the MathTrail platform. Receives student feedback, analyzes it (sentiment, difficulty), persists it to PostgreSQL via Dapr binding, and exposes an AI mentor strategy update in the response.
+Student Feedback Loop service for the MathTrail platform. Receives student feedback, analyzes it (sentiment, difficulty), persists it to PostgreSQL, and exposes an AI mentor strategy update in the response.
 
-**Language:** Go 1.25.7
+**Language:** Go 1.26.0
 **Port:** 8080
 **Cluster:** k3d `mathtrail-dev`, namespace `mathtrail`
 **KUBECONFIG:** `/home/vscode/.kube/k3d-mathtrail-dev.yaml`
@@ -14,13 +14,12 @@ Student Feedback Loop service for the MathTrail platform. Receives student feedb
 | Layer | Library |
 |-------|---------|
 | HTTP | `github.com/gin-gonic/gin` |
-| Database | `github.com/jackc/pgx/v5` via Dapr binding (`internal/infra/postgres/dapr_binding.go`) |
+| Database | `github.com/jackc/pgx/v5` via VaultPgPool (`internal/infra/postgres/pool.go`) |
 | Config | `github.com/spf13/viper` |
 | Logging | `go.uber.org/zap` |
 | Tracing | OpenTelemetry OTLP gRPC → Tempo |
 | Metrics | OpenTelemetry → Prometheus exporter (`/metrics`) |
 | Profiling | Pyroscope (`github.com/grafana/pyroscope-go`) |
-| Dapr | `github.com/dapr/go-sdk` — DB binding + sidecar config |
 | Swagger | `github.com/swaggo/gin-swagger` — served at `/swagger/*any` |
 
 ## Key Files
@@ -32,7 +31,6 @@ Student Feedback Loop service for the MathTrail platform. Receives student feedb
 | `migrations/001_init.sql` | Initial schema |
 | `internal/app/container.go` | Dependency injection container |
 | `internal/config/config.go` | Config (Viper) |
-| `internal/infra/postgres/dapr_binding.go` | PostgreSQL via Dapr output binding |
 | `internal/domain/feedback/` | model, repository, service, handler — feedback domain |
 | `internal/domain/roadmap/` | model, service, handler — learning roadmap (stub) |
 | `internal/apierror/apierror.go` | Shared HTTP error response type |
@@ -56,18 +54,21 @@ POST   /api/v1/feedback                  — submit student feedback → returns
 GET    /api/v1/roadmap/recommendations   — get personalised learning focus areas (X-User-ID header required)
 GET    /health/startup       — Kubernetes startup probe
 GET    /health/liveness      — Kubernetes liveness probe
-GET    /health/ready         — readiness probe (checks DB via Dapr binding)
+GET    /health/ready         — readiness probe (checks DB)
 GET    /metrics              — Prometheus metrics
-GET    /dapr/config          — Dapr sidecar config (returns {}, suppresses 404s)
 GET    /swagger/*any         — Swagger UI
 ```
 
 ## Architecture
 
-- **DB access:** Dapr output binding (`postgres` component) via PgBouncer (`postgres-pgbouncer:6432`) — no direct pgx connection in app code
-- **Migrations:** Direct PostgreSQL (`postgres-postgresql:5432`) — bypasses PgBouncer because DDL requires session mode
+- **DB access:** `VaultPgPool` ([internal/infra/postgres/pool.go](internal/infra/postgres/pool.go)) — direct pgxpool via PgBouncer (`postgres-pgbouncer:6432`).
+  Credentials fetched at startup via Vault Kubernetes auth.
+  Background goroutine refreshes every 50 min: new pool swapped atomically, old pool closed after 30s.
+- **Migrations:** Direct PostgreSQL (`postgres-postgresql:5432`) — bypasses PgBouncer, uses Bitnami superuser K8s Secret.
+- **Secrets rule:** ONLY via Vault Kubernetes auth. No `envFrom.secretRef`, no env var passwords, no ESO ExternalSecrets.
+  - DB creds: Vault Database Secrets Engine `creds/mentor-api-role` → `{username, password}` (new Vault lease each call)
+  - Static secrets: Vault KV `local/mathtrail-mentor`
 - **CDC:** Debezium monitors the `feedback` table, publishes events to Kafka — app does NOT publish events
-- **Dapr App ID:** `mentor-api`
 - Helm chart uses `mathtrail-service-lib` library chart from `https://MathTrail.github.io/charts/charts`
 - The service-lib provides: ServiceAccount, RBAC, ConfigMap, Migration Job, Deployment, Service, HPA
 

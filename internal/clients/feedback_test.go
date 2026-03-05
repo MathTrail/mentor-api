@@ -4,24 +4,22 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
-
-	"github.com/google/uuid"
 )
 
-// --- LLM client tests ---
+const unexpectedErrorFmt = "unexpected error: %v"
 
-func TestNewLLMClient_NotNil(t *testing.T) {
-	c := NewLLMClient()
+func TestNewFeedbackClientNotNil(t *testing.T) {
+	c := NewFeedbackClient()
 	if c == nil {
-		t.Error("NewLLMClient returned nil")
+		t.Error("NewFeedbackClient returned nil")
 	}
 }
 
-func TestAnalyzeFeedback_StubValues(t *testing.T) {
-	c := NewLLMClient()
+func TestAnalyzeFeedbackStubValues(t *testing.T) {
+	c := NewFeedbackClient()
 	result, err := c.AnalyzeFeedback(context.Background(), "this was hard")
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFmt, err)
 	}
 	if result.Sentiment != "neutral" {
 		t.Errorf("Sentiment: got %q, want %q", result.Sentiment, "neutral")
@@ -37,7 +35,7 @@ func TestAnalyzeFeedback_StubValues(t *testing.T) {
 	}
 }
 
-func TestMarshalSnapshot_NonNil(t *testing.T) {
+func TestMarshalSnapshotNonNil(t *testing.T) {
 	result := &StrategyResult{
 		StrategySnapshot: map[string]interface{}{
 			"difficulty_weight": 1.0,
@@ -61,7 +59,7 @@ func TestMarshalSnapshot_NonNil(t *testing.T) {
 	}
 }
 
-func TestMarshalSnapshot_NilMap(t *testing.T) {
+func TestMarshalSnapshotNilMap(t *testing.T) {
 	result := &StrategyResult{StrategySnapshot: nil}
 	raw, err := result.MarshalSnapshot()
 	if err != nil {
@@ -70,39 +68,5 @@ func TestMarshalSnapshot_NilMap(t *testing.T) {
 	// json.Marshal(nil map) produces "null"
 	if string(raw) != "null" {
 		t.Errorf("expected %q, got %q", "null", string(raw))
-	}
-}
-
-// --- Profile client tests ---
-
-func TestNewProfileClient_NotNil(t *testing.T) {
-	c := NewProfileClient()
-	if c == nil {
-		t.Error("NewProfileClient returned nil")
-	}
-}
-
-func TestGetProfile_EchoesStudentID(t *testing.T) {
-	c := NewProfileClient()
-	id := uuid.New()
-	profile, err := c.GetProfile(context.Background(), id)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if profile.StudentID != id {
-		t.Errorf("StudentID: got %v, want %v", profile.StudentID, id)
-	}
-}
-
-func TestGetProfile_HasExpectedSkills(t *testing.T) {
-	c := NewProfileClient()
-	profile, err := c.GetProfile(context.Background(), uuid.New())
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	for _, skill := range []string{"algebra", "geometry", "logic"} {
-		if _, ok := profile.Skills[skill]; !ok {
-			t.Errorf("expected skill %q in profile", skill)
-		}
 	}
 }

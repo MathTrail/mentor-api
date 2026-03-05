@@ -33,7 +33,7 @@ func ZapLogger(logger *zap.Logger) gin.HandlerFunc {
 
 		status := c.Writer.Status()
 
-		// Skip logging for successful health probes and Dapr sidecar calls.
+		// Skip logging for successful health probes and internal sidecar calls.
 		if status < 400 && isInternalPath(path) {
 			return
 		}
@@ -71,7 +71,7 @@ func ZapLogger(logger *zap.Logger) gin.HandlerFunc {
 }
 
 // internalPrefixes lists path prefixes that are only logged on errors.
-var internalPrefixes = []string{"/health/", "/dapr/", "/metrics"}
+var internalPrefixes = []string{"/health/", "/metrics"}
 
 // isInternalPath reports whether the path matches a probe or sidecar prefix.
 func isInternalPath(path string) bool {

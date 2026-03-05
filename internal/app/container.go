@@ -3,9 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
-	"time"
 
-	dapr "github.com/dapr/go-sdk/client"
 	"github.com/gin-gonic/gin"
 
 	"github.com/MathTrail/mentor-api/internal/clients"
@@ -17,99 +15,55 @@ import (
 	"go.uber.org/zap"
 )
 
-// Container holds all application dependencies.
+// Container holds the dependencies consumed by the Server.
+// Internal wiring is kept as local, variables in NewContainer and is not exposed.
 type Container struct {
 	Config *config.Config
 	Logger *zap.Logger
-	DB     postgres.DB
-
-	// Clients
-	LLMClient clients.LLMClient
-
-	// Feedback components
-	FeedbackRepository feedback.Repository
-	FeedbackService    feedback.Service
-	FeedbackHandler    *feedback.Handler
-
-	// Roadmap components
-	RoadmapService roadmap.Service
-	RoadmapHandler *roadmap.Handler
-
-	// Server
 	Router *gin.Engine
+	stop   func()
 }
 
 // NewContainer creates and wires all application dependencies.
 // It returns an error instead of panicking so that the caller can
-// handle failures gracefully (e.g. flush observability before exit).
-func NewContainer(cfg *config.Config, logger *zap.Logger) (*Container, error) {
-	// Connect to the Dapr sidecar with retry.
-	daprClient, err := connectDapr(context.Background(), logger, cfg)
+// handle failures gracefully.
+func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (*Container, error) {
+	db, err := initDB(ctx, cfg, logger)
 	if err != nil {
-		return nil, fmt.Errorf("dapr client: %w", err)
+		return nil, err
 	}
 
-	// DaprDB wraps the Dapr binding so the app never handles DB credentials directly.
-	db := postgres.NewDaprDB(daprClient, cfg.DBBindingName)
+	llmClient := clients.NewFeedbackClient()
 
-	// Verify the binding is reachable on startup.
-	if err := db.Ping(context.Background()); err != nil {
-		return nil, fmt.Errorf("database binding not reachable: %w", err)
-	}
-
-	// Initialize LLM client.
-	llmClient := clients.NewLLMClient()
-
-	// Initialize feedback components.
 	feedbackRepo := feedback.NewRepository(db)
 	feedbackService := feedback.NewService(feedbackRepo, llmClient, cfg.LLMTimeout, logger)
 	feedbackHandler := feedback.NewHandler(feedbackService, logger)
 
-	// Initialize roadmap components.
 	roadmapService := roadmap.NewService(logger)
 	roadmapHandler := roadmap.NewHandler(roadmapService, logger)
 
-	// Create router.
 	router := httpserver.NewRouter(feedbackHandler, roadmapHandler, db, cfg, logger)
 
 	return &Container{
-		Config:             cfg,
-		Logger:             logger,
-		DB:                 db,
-		LLMClient:          llmClient,
-		FeedbackRepository: feedbackRepo,
-		FeedbackService:    feedbackService,
-		FeedbackHandler:    feedbackHandler,
-		RoadmapService:     roadmapService,
-		RoadmapHandler:     roadmapHandler,
-		Router:             router,
+		Config: cfg,
+		Logger: logger,
+		Router: router,
+		stop:   db.Close, // captures *DynamicPool — no DB interface change needed
 	}, nil
 }
 
-// connectDapr attempts to connect to the Dapr sidecar with linear backoff.
-// The sidecar and the app container start concurrently in Kubernetes,
-// so the sidecar may not be ready immediately.
-func connectDapr(ctx context.Context, logger *zap.Logger, cfg *config.Config) (dapr.Client, error) {
-	var err error
-	for attempt := 1; attempt <= cfg.DaprMaxRetries; attempt++ {
-		client, connErr := dapr.NewClient()
-		if connErr == nil {
-			return client, nil
-		}
-		err = connErr
+// Close releases resources held by the container.
+// Call once after the HTTP server has stopped accepting requests.
+func (c *Container) Close() {
+	c.stop()
+}
 
-		logger.Warn("dapr sidecar not ready, retrying",
-			zap.Int("attempt", attempt),
-			zap.Error(err),
-		)
-
-		// Wait for backoff or context cancellation.
-		select {
-		case <-time.After(time.Duration(attempt) * time.Second):
-			// continue
-		case <-ctx.Done():
-			return nil, fmt.Errorf("interrupted during connection: %w", ctx.Err())
-		}
+// initDB creates a DynamicPool that rotates credentials
+// in-process when VSO-mounted Secret files change.
+func initDB(ctx context.Context, cfg *config.Config, logger *zap.Logger) (*postgres.DynamicPool, error) {
+	db, err := postgres.NewDynamicPool(ctx, cfg.PostgresDSN(), cfg.PgCredentialsDir, logger)
+	if err != nil {
+		return nil, fmt.Errorf("dynamic pg pool: %w", err)
 	}
-	return nil, fmt.Errorf("dapr unavailable after %d attempts: %w", cfg.DaprMaxRetries, err)
+	return db, nil
 }

@@ -1,3 +1,8 @@
+db:
+  databases:
+    - name: mentor
+      vaultPrivileges: true
+
 replicaCount: 1
 
 image:
@@ -6,10 +11,6 @@ image:
 
 service:
   port: 8080
-
-dapr:
-  enabled: true
-  appId: "mentor-api"
 
 resources:
   requests:
@@ -23,14 +24,33 @@ migration:
   enabled: true
   command: ["/migrate"]
   waitTimeout: "120s"
+  ttlSecondsAfterFinished: 1800
 
 externalSecrets:
   enabled: false
   vaultPath: ""
   keys: []
 
+# Vault Config Operator CRs — deployed as part of this Helm chart into vault-config-operator ns.
+# Configures the Vault Database Engine connection and role for dynamic credential generation.
+# CR names and targetNamespaces are scoped to .Release.Namespace automatically.
+vaultConfig:
+  enabled: true
+  db:
+    connectionName: "mentor-postgres"
+    database: "mentor"
+    pgHost: "postgres-postgresql"
+  k8sAuth:
+    serviceAccount: "mentor-api"
+
+# Vault Database Config Job — deprecated.
+vaultDbConfig:
+  enabled: false
+  connectionName: "mentor-postgres"
+  pgDatabase: "mentor"
+  roleName: "mentor-api-role"
+
 # Dynamic DB credentials via Vault Database Secrets Engine + ESO.
-# When enabled, ESO creates and rotates the K8s Secret mentor-api-db-dynamic-creds.
 dbDynamicSecret:
   enabled: false
   pgHost: "postgres-pgbouncer"
@@ -38,11 +58,16 @@ dbDynamicSecret:
   pgDatabase: "mentor"
   vaultRole: "mentor-api-role"
 
-# Dapr PostgreSQL binding component.
-# When enabled, the app accesses the DB exclusively through the Dapr sidecar binding.
-dbBinding:
-  enabled: false
-  name: "mentor-db"
+# Vault Secrets Operator — creates and rotates the mentor-api-db-secret K8s Secret.
+# VSO renews credentials at 85% TTL (~51min for a 1h lease).
+# rolloutRestart is disabled: DynamicPool detects the ..data symlink swap via fsnotify
+# and rotates the pgxpool in-process — no pod restart needed.
+vso:
+  enabled: true
+  vaultRole: "mentor-api"
+  dbRole: "mentor-api-role"
+  secretName: "mentor-api-db-secret"
+  rolloutRestart: false
 
 dashboard:
   enabled: true
@@ -55,7 +80,6 @@ rollout:
 
 observability:
   # Set to true only when the infra-observability stack is deployed in the cluster.
-  # Enabling this without that stack causes Dapr Sentry to crash (PermissionDenied).
   # Use the Skaffold 'observability' profile (just dev obs=true) to activate.
   enabled: false
 

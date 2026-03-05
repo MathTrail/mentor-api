@@ -29,25 +29,32 @@ func (m *mockService) GetRecommendations(ctx context.Context, studentID uuid.UUI
 	}, nil
 }
 
+const (
+	recommendationsPath = "/api/v1/roadmap/recommendations"
+	userIDHeader        = "X-User-ID"
+	statusFmt           = "status: got %d, want %d"
+	codeFmt             = "code: got %q, want %q"
+)
+
 func testRouter(h *Handler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.GET("/api/v1/roadmap/recommendations", h.GetRecommendations)
+	r.GET(recommendationsPath, h.GetRecommendations)
 	return r
 }
 
-func TestGetRecommendations_Success(t *testing.T) {
+func TestGetRecommendationsSuccess(t *testing.T) {
 	svc := &mockService{}
 	hdl := NewHandler(svc, zap.NewNop())
 	router := testRouter(hdl)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/roadmap/recommendations", nil)
-	req.Header.Set("X-User-ID", uuid.New().String())
+	req := httptest.NewRequest(http.MethodGet, recommendationsPath, nil)
+	req.Header.Set(userIDHeader, uuid.New().String())
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("status: got %d, want %d", w.Code, http.StatusOK)
+		t.Errorf(statusFmt, w.Code, http.StatusOK)
 	}
 
 	var rec Recommendation
@@ -59,48 +66,48 @@ func TestGetRecommendations_Success(t *testing.T) {
 	}
 }
 
-func TestGetRecommendations_MissingHeader(t *testing.T) {
+func TestGetRecommendationsMissingHeader(t *testing.T) {
 	svc := &mockService{}
 	hdl := NewHandler(svc, zap.NewNop())
 	router := testRouter(hdl)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/roadmap/recommendations", nil)
+	req := httptest.NewRequest(http.MethodGet, recommendationsPath, nil)
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("status: got %d, want %d", w.Code, http.StatusBadRequest)
+		t.Errorf(statusFmt, w.Code, http.StatusBadRequest)
 	}
 
 	var body map[string]string
 	_ = json.Unmarshal(w.Body.Bytes(), &body)
 	if body["code"] != "MISSING_USER_ID" {
-		t.Errorf("code: got %q, want %q", body["code"], "MISSING_USER_ID")
+		t.Errorf(codeFmt, body["code"], "MISSING_USER_ID")
 	}
 }
 
-func TestGetRecommendations_InvalidUUID(t *testing.T) {
+func TestGetRecommendationsInvalidUUID(t *testing.T) {
 	svc := &mockService{}
 	hdl := NewHandler(svc, zap.NewNop())
 	router := testRouter(hdl)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/roadmap/recommendations", nil)
-	req.Header.Set("X-User-ID", "not-a-uuid")
+	req := httptest.NewRequest(http.MethodGet, recommendationsPath, nil)
+	req.Header.Set(userIDHeader, "not-a-uuid")
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("status: got %d, want %d", w.Code, http.StatusBadRequest)
+		t.Errorf(statusFmt, w.Code, http.StatusBadRequest)
 	}
 
 	var body map[string]string
 	_ = json.Unmarshal(w.Body.Bytes(), &body)
 	if body["code"] != "INVALID_USER_ID" {
-		t.Errorf("code: got %q, want %q", body["code"], "INVALID_USER_ID")
+		t.Errorf(codeFmt, body["code"], "INVALID_USER_ID")
 	}
 }
 
-func TestGetRecommendations_ServiceError(t *testing.T) {
+func TestGetRecommendationsServiceError(t *testing.T) {
 	svc := &mockService{
 		fn: func(_ context.Context, _ uuid.UUID) (*Recommendation, error) {
 			return nil, errors.New("service boom")
@@ -110,17 +117,17 @@ func TestGetRecommendations_ServiceError(t *testing.T) {
 	router := testRouter(hdl)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/roadmap/recommendations", nil)
-	req.Header.Set("X-User-ID", uuid.New().String())
+	req := httptest.NewRequest(http.MethodGet, recommendationsPath, nil)
+	req.Header.Set(userIDHeader, uuid.New().String())
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusInternalServerError {
-		t.Errorf("status: got %d, want %d", w.Code, http.StatusInternalServerError)
+		t.Errorf(statusFmt, w.Code, http.StatusInternalServerError)
 	}
 
 	var body map[string]string
 	_ = json.Unmarshal(w.Body.Bytes(), &body)
 	if body["code"] != "INTERNAL_ERROR" {
-		t.Errorf("code: got %q, want %q", body["code"], "INTERNAL_ERROR")
+		t.Errorf(codeFmt, body["code"], "INTERNAL_ERROR")
 	}
 }

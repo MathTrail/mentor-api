@@ -2,8 +2,8 @@ package middleware
 
 import "testing"
 
-func TestSanitizeQuery_MasksSensitiveKeys(t *testing.T) {
-	raw := "token=secret123&page=1&api_key=abc"
+func TestSanitizeQueryMasksSensitiveKeys(t *testing.T) {
+	raw := "token=REDACTED&page=1&api_key=REDACTED"
 	got := sanitizeQuery(raw)
 
 	// Verify sensitive keys are masked.
@@ -18,13 +18,13 @@ func TestSanitizeQuery_MasksSensitiveKeys(t *testing.T) {
 	}
 }
 
-func TestSanitizeQuery_Empty(t *testing.T) {
+func TestSanitizeQueryEmpty(t *testing.T) {
 	if got := sanitizeQuery(""); got != "" {
 		t.Errorf("sanitizeQuery(\"\") = %q, want \"\"", got)
 	}
 }
 
-func TestSanitizeQuery_NoSensitiveKeys(t *testing.T) {
+func TestSanitizeQueryNoSensitiveKeys(t *testing.T) {
 	raw := "page=1&limit=10"
 	got := sanitizeQuery(raw)
 	if !contains(got, "page=1") || !contains(got, "limit=10") {
@@ -32,8 +32,8 @@ func TestSanitizeQuery_NoSensitiveKeys(t *testing.T) {
 	}
 }
 
-func TestSanitizeQuery_CaseInsensitive(t *testing.T) {
-	raw := "TOKEN=secret&Password=hunter2"
+func TestSanitizeQueryCaseInsensitive(t *testing.T) {
+	raw := "TOKEN=REDACTED&Password=REDACTED"
 	got := sanitizeQuery(raw)
 	for _, key := range []string{"TOKEN", "Password"} {
 		if !contains(got, key+"=%2A%2A%2A") && !contains(got, key+"=***") {
@@ -49,7 +49,6 @@ func TestIsInternalPath(t *testing.T) {
 	}{
 		{"/health/ready", true},
 		{"/health/liveness", true},
-		{"/dapr/config", true},
 		{"/metrics", true},
 		{"/api/v1/feedback", false},
 		{"/swagger/index.html", false},

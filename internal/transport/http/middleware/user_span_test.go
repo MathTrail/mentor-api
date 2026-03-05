@@ -11,7 +11,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
-func TestUserSpanAttributes_SetsAttribute(t *testing.T) {
+func TestUserSpanAttributesSetsAttribute(t *testing.T) {
 	exporter := tracetest.NewInMemoryExporter()
 	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
 	defer func() { _ = tp.Shutdown(context.Background()) }()
@@ -52,7 +52,7 @@ func TestUserSpanAttributes_SetsAttribute(t *testing.T) {
 	}
 }
 
-func TestUserSpanAttributes_NoHeader(t *testing.T) {
+func TestUserSpanAttributesNoHeader(t *testing.T) {
 	exporter := tracetest.NewInMemoryExporter()
 	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
 	defer func() { _ = tp.Shutdown(context.Background()) }()

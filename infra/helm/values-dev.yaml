@@ -1,6 +1,7 @@
 # Dev overlay: K3s local development
-# DB credentials come from Vault via ESO (dynamic rotation), delivered through the Dapr binding.
-# No static passwords here — the app only knows the binding name.
+# DB credentials are mounted as files from the VSO-managed K8s Secret (mentor-api-db-secret).
+# DynamicPool reads them from the mounted directory and rotates the pool in-process
+# when VSO renews the Vault lease — no pod restart needed.
 
 env:
   - name: SERVER_PORT
@@ -9,12 +10,36 @@ env:
     value: "info"
   - name: LOG_FORMAT
     value: "console"
-  - name: DB_BINDING_NAME
-    value: "mentor-db"
+  # Non-sensitive connection params
+  - name: PG_HOST
+    value: "postgres-pgbouncer"
+  - name: PG_PORT
+    value: "6432"
+  - name: PG_DATABASE
+    value: "mentor"
+  # Path to the VSO-mounted Secret directory containing "username" and "password" files.
+  - name: PG_CREDENTIALS_DIR
+    value: "/etc/mentor-api-db-secret"
 
-# The migration Job still needs a direct DB connection with DDL privileges.
-# It inherits the shared `env` above, then these migration-specific vars are layered on top.
-# Credentials come from the Bitnami chart's auto-generated postgres-postgresql Secret.
+volumeMounts:
+  - name: db-secret
+    mountPath: /etc/mentor-api-db-secret
+    readOnly: true
+
+volumes:
+  - name: db-secret
+    secret:
+      # Must NOT use subPath — DynamicPool's fsnotify watches the whole directory
+      # for the ..data symlink swap that K8s performs on Secret updates.
+      secretName: mentor-api-db-secret
+      # optional: migration job inherits this volume but does not use it;
+      # optional=true lets the migration pod start before VSO creates the secret.
+      # The main Deployment will CrashLoopBackOff until VSO populates the secret
+      # (intended behaviour — see DynamicPool.NewDynamicPool godoc).
+      optional: true
+
+# The migration Job needs a direct DB connection with DDL privileges (superuser).
+# It does NOT go through Vault — uses the Bitnami postgres-postgresql Secret.
 migration:
   env:
     - name: DB_HOST
@@ -34,11 +59,8 @@ migration:
       value: "disable"
 
 dbDynamicSecret:
-  enabled: true
-  pgHost: "postgres-pgbouncer"
-  pgPort: "6432"
-  pgDatabase: "mentor"
+  enabled: false
 
-dbBinding:
-  enabled: true
-  name: "mentor-db"
+vaultDbConfig:
+  enabled: false
+

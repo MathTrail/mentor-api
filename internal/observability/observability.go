@@ -21,94 +21,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// initTracer initialises the global OTLP gRPC trace exporter and TracerProvider.
-// It sets the global W3C TraceContext + Baggage propagator so that traceparent
-// headers injected by the Dapr sidecar are automatically extracted and the Go
-// spans appear as children of the Dapr spans in Tempo.
-func initTracer(cfg *config.Config) (shutdown func(context.Context) error, err error) {
-	conn, err := grpc.NewClient(
-		cfg.OTelEndpoint,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	exporter, err := otlptracegrpc.New(context.Background(), otlptracegrpc.WithGRPCConn(conn))
-	if err != nil {
-		return nil, err
-	}
-
-	res, err := resource.New(
-		context.Background(),
-		resource.WithAttributes(
-			semconv.ServiceName(cfg.ServiceName),
-			semconv.K8SPodName(os.Getenv("POD_NAME")),
-			semconv.K8SNamespaceName(os.Getenv("NAMESPACE")),
-		),
-		resource.WithFromEnv(), // picks up OTEL_RESOURCE_ATTRIBUTES if set
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	// ParentBased respects upstream Dapr sampling decisions while
-	// TraceIDRatioBased controls the rate for locally-originated root spans.
-	sampler := sdktrace.ParentBased(sdktrace.TraceIDRatioBased(cfg.OTelSampleRate))
-
-	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exporter,
-			sdktrace.WithMaxQueueSize(2048),
-			sdktrace.WithMaxExportBatchSize(512),
-		),
-		sdktrace.WithResource(res),
-		sdktrace.WithSampler(sampler),
-	)
-
-	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-		propagation.TraceContext{}, // W3C traceparent — compatible with Dapr
-		propagation.Baggage{},
-	))
-
-	return tp.Shutdown, nil
-}
-
-// initMetrics initialises the global Prometheus MeterProvider.
-// The Prometheus exporter registers with prometheus.DefaultRegisterer so
-// promhttp.Handler() in the router automatically exposes all OTel metrics.
-func initMetrics() (shutdown func(context.Context) error, err error) {
-	exporter, err := promexporter.New()
-	if err != nil {
-		return nil, err
-	}
-
-	mp := metric.NewMeterProvider(
-		metric.WithReader(exporter),
-	)
-
-	otel.SetMeterProvider(mp)
-
-	return mp.Shutdown, nil
-}
-
-// initPyroscope starts the Pyroscope continuous profiling agent.
-// It collects CPU, allocation and in-use heap profiles and pushes them to the
-// Pyroscope server.
-func initPyroscope(cfg *config.Config) (*pyroscope.Profiler, error) {
-	return pyroscope.Start(pyroscope.Config{
-		ApplicationName: cfg.ServiceName,
-		ServerAddress:   cfg.PyroscopeEndpoint,
-		ProfileTypes: []pyroscope.ProfileType{
-			pyroscope.ProfileCPU,
-			pyroscope.ProfileAllocObjects,
-			pyroscope.ProfileAllocSpace,
-			pyroscope.ProfileInuseObjects,
-			pyroscope.ProfileInuseSpace,
-		},
-	})
-}
-
 // Observability manages the lifecycle of tracing, metrics, and profiling.
 type Observability struct {
 	cfg             *config.Config
@@ -124,9 +36,9 @@ func New(cfg *config.Config, logger *zap.Logger) *Observability {
 }
 
 // Init initialises all configured observability components.
-func (o *Observability) Init() error {
+func (o *Observability) Init(ctx context.Context) error {
 	if o.cfg.OTelEndpoint != "" {
-		shutdown, err := initTracer(o.cfg)
+		shutdown, err := initTracer(ctx, o.cfg)
 		if err != nil {
 			return fmt.Errorf("init tracer: %w", err)
 		}
@@ -174,4 +86,92 @@ func (o *Observability) Shutdown(ctx context.Context) {
 	}
 
 	o.logger.Info("observability stack shut down")
+}
+
+// initTracer initialises the global OTLP gRPC trace exporter and TracerProvider.
+// It sets the global W3C TraceContext + Baggage propagator so that traceparent
+// headers are automatically extracted and the Go
+// spans appear as children of upstream spans in Tempo.
+func initTracer(ctx context.Context, cfg *config.Config) (shutdown func(context.Context) error, err error) {
+	conn, err := grpc.NewClient(
+		cfg.OTelEndpoint,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := resource.New(
+		ctx,
+		resource.WithAttributes(
+			semconv.ServiceName(cfg.ServiceName),
+			semconv.K8SPodName(os.Getenv("POD_NAME")),
+			semconv.K8SNamespaceName(os.Getenv("NAMESPACE")),
+		),
+		resource.WithFromEnv(), // picks up OTEL_RESOURCE_ATTRIBUTES if set
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// ParentBased respects upstream sampling decisions while
+	// TraceIDRatioBased controls the rate for locally-originated root spans.
+	sampler := sdktrace.ParentBased(sdktrace.TraceIDRatioBased(cfg.OTelSampleRate))
+
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exporter,
+			sdktrace.WithMaxQueueSize(2048),
+			sdktrace.WithMaxExportBatchSize(512),
+		),
+		sdktrace.WithResource(res),
+		sdktrace.WithSampler(sampler),
+	)
+
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{}, // W3C traceparent
+		propagation.Baggage{},
+	))
+
+	return tp.Shutdown, nil
+}
+
+// initMetrics initialises the global Prometheus MeterProvider.
+// The Prometheus exporter registers with prometheus.DefaultRegisterer so
+// promhttp.Handler() in the router automatically exposes all OTel metrics.
+func initMetrics() (shutdown func(context.Context) error, err error) {
+	exporter, err := promexporter.New()
+	if err != nil {
+		return nil, err
+	}
+
+	mp := metric.NewMeterProvider(
+		metric.WithReader(exporter),
+	)
+
+	otel.SetMeterProvider(mp)
+
+	return mp.Shutdown, nil
+}
+
+// initPyroscope starts the Pyroscope continuous profiling agent.
+// It collects CPU, allocation and in-use heap profiles and pushes them to the
+// Pyroscope server.
+func initPyroscope(cfg *config.Config) (*pyroscope.Profiler, error) {
+	return pyroscope.Start(pyroscope.Config{
+		ApplicationName: cfg.ServiceName,
+		ServerAddress:   cfg.PyroscopeEndpoint,
+		ProfileTypes: []pyroscope.ProfileType{
+			pyroscope.ProfileCPU,
+			pyroscope.ProfileAllocObjects,
+			pyroscope.ProfileAllocSpace,
+			pyroscope.ProfileInuseObjects,
+			pyroscope.ProfileInuseSpace,
+		},
+	})
 }

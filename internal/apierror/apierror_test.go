@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestResponse_JSONRoundTrip(t *testing.T) {
+func TestResponseJSONRoundTrip(t *testing.T) {
 	original := Response{
 		Code:    "INVALID_REQUEST",
 		Message: "field is required",
@@ -29,7 +29,7 @@ func TestResponse_JSONRoundTrip(t *testing.T) {
 	}
 }
 
-func TestResponse_JSONKeys(t *testing.T) {
+func TestResponseJSONKeys(t *testing.T) {
 	r := Response{Code: "NOT_FOUND", Message: "resource not found"}
 	data, _ := json.Marshal(r)
 

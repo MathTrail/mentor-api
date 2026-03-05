@@ -33,13 +33,13 @@ func (m *mockRepository) GetLatestByStudent(ctx context.Context, studentID uuid.
 	return nil, nil
 }
 
-// mockLLMClient is a test double for clients.LLMClient that blocks until
+// mockFeedbackClient is a test double for clients.FeedbackClient that blocks until
 // the context expires — used to verify the per-call LLM timeout.
-type mockLLMClient struct {
+type mockFeedbackClient struct {
 	delay time.Duration
 }
 
-func (m *mockLLMClient) AnalyzeFeedback(ctx context.Context, _ string) (*clients.StrategyResult, error) {
+func (m *mockFeedbackClient) AnalyzeFeedback(ctx context.Context, _ string) (*clients.StrategyResult, error) {
 	select {
 	case <-time.After(m.delay):
 		return &clients.StrategyResult{
@@ -53,9 +53,9 @@ func (m *mockLLMClient) AnalyzeFeedback(ctx context.Context, _ string) (*clients
 	}
 }
 
-func TestProcessFeedback_Success(t *testing.T) {
+func TestProcessFeedbackSuccess(t *testing.T) {
 	repo := &mockRepository{}
-	llm := clients.NewLLMClient()
+	llm := clients.NewFeedbackClient()
 	logger := zap.NewNop()
 
 	svc := NewService(repo, llm, 10*time.Second, logger)
@@ -68,7 +68,7 @@ func TestProcessFeedback_Success(t *testing.T) {
 
 	update, err := svc.ProcessFeedback(context.Background(), req)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFmt, err)
 	}
 	if update.StudentID != req.StudentID {
 		t.Errorf("student_id mismatch: got %v, want %v", update.StudentID, req.StudentID)
@@ -84,12 +84,12 @@ func TestProcessFeedback_Success(t *testing.T) {
 	}
 }
 
-func TestProcessFeedback_RepoError(t *testing.T) {
+func TestProcessFeedbackRepoError(t *testing.T) {
 	repoErr := errors.New("connection refused")
 	repo := &mockRepository{
 		saveFn: func(_ context.Context, _ *Feedback) error { return repoErr },
 	}
-	llm := clients.NewLLMClient()
+	llm := clients.NewFeedbackClient()
 	logger := zap.NewNop()
 
 	svc := NewService(repo, llm, 10*time.Second, logger)
@@ -100,17 +100,17 @@ func TestProcessFeedback_RepoError(t *testing.T) {
 		Message:   "test",
 	})
 	if err == nil {
-		t.Fatal("expected error, got nil")
+		t.Fatal(expectedErrNilFmt)
 	}
 	if !errors.Is(err, repoErr) {
 		t.Errorf("error mismatch: got %v, want %v", err, repoErr)
 	}
 }
 
-func TestProcessFeedback_LLMTimeout(t *testing.T) {
+func TestProcessFeedbackLLMTimeout(t *testing.T) {
 	repo := &mockRepository{}
 	// Mock LLM that blocks for 2 seconds — well beyond the 50ms timeout.
-	llm := &mockLLMClient{delay: 2 * time.Second}
+	llm := &mockFeedbackClient{delay: 2 * time.Second}
 	logger := zap.NewNop()
 
 	svc := NewService(repo, llm, 50*time.Millisecond, logger)
