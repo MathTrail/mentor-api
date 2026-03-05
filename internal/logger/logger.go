@@ -10,7 +10,7 @@ import (
 // (structured, production). Unknown levels fall back to info.
 func NewLogger(level, format string) *zap.Logger {
 	var zapLevel zapcore.Level
-	if err := zapLevel.UnmarshalText([]byte(level)); err != nil {
+	if zapLevel.UnmarshalText([]byte(level)) != nil {
 		zapLevel = zapcore.InfoLevel
 	}
 

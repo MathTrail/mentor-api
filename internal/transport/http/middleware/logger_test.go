@@ -3,7 +3,7 @@ package middleware
 import "testing"
 
 func TestSanitizeQueryMasksSensitiveKeys(t *testing.T) {
-	raw := "token=secret123&page=1&api_key=abc"
+	raw := "token=REDACTED&page=1&api_key=REDACTED"
 	got := sanitizeQuery(raw)
 
 	// Verify sensitive keys are masked.
@@ -33,7 +33,7 @@ func TestSanitizeQueryNoSensitiveKeys(t *testing.T) {
 }
 
 func TestSanitizeQueryCaseInsensitive(t *testing.T) {
-	raw := "TOKEN=secret&Password=hunter2"
+	raw := "TOKEN=REDACTED&Password=REDACTED"
 	got := sanitizeQuery(raw)
 	for _, key := range []string{"TOKEN", "Password"} {
 		if !contains(got, key+"=%2A%2A%2A") && !contains(got, key+"=***") {

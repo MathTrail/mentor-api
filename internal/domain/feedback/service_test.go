@@ -68,7 +68,7 @@ func TestProcessFeedbackSuccess(t *testing.T) {
 
 	update, err := svc.ProcessFeedback(context.Background(), req)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFmt, err)
 	}
 	if update.StudentID != req.StudentID {
 		t.Errorf("student_id mismatch: got %v, want %v", update.StudentID, req.StudentID)
@@ -100,7 +100,7 @@ func TestProcessFeedbackRepoError(t *testing.T) {
 		Message:   "test",
 	})
 	if err == nil {
-		t.Fatal("expected error, got nil")
+		t.Fatal(expectedErrNilFmt)
 	}
 	if !errors.Is(err, repoErr) {
 		t.Errorf("error mismatch: got %v, want %v", err, repoErr)

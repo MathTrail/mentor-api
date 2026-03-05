@@ -85,10 +85,10 @@ func TestNewLoggerJSONOutput(t *testing.T) {
 	logger := logger.NewLogger("info", "json")
 
 	// Use zap's Check to confirm the level is enabled.
-	if ce := logger.Check(zap.InfoLevel, "check"); ce == nil {
+	if logger.Check(zap.InfoLevel, "check") == nil {
 		t.Error("expected info level to be enabled")
 	}
-	if ce := logger.Check(zap.DebugLevel, "check"); ce != nil {
+	if logger.Check(zap.DebugLevel, "check") != nil {
 		t.Error("expected debug level to be disabled for info logger")
 	}
 

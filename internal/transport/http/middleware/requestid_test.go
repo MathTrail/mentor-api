@@ -11,6 +11,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+const testClientID = testClientID
+
 func init() { gin.SetMode(gin.TestMode) }
 
 func TestRequestIDClientProvided(t *testing.T) {
@@ -22,14 +24,14 @@ func TestRequestIDClientProvided(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Set(RequestIDHeader, "client-id-123")
+	req.Header.Set(RequestIDHeader, testClientID)
 	r.ServeHTTP(w, req)
 
-	if w.Body.String() != "client-id-123" {
-		t.Errorf("body = %q, want %q", w.Body.String(), "client-id-123")
+	if w.Body.String() != testClientID {
+		t.Errorf("body = %q, want %q", w.Body.String(), testClientID)
 	}
-	if got := w.Header().Get(RequestIDHeader); got != "client-id-123" {
-		t.Errorf("response header = %q, want %q", got, "client-id-123")
+	if got := w.Header().Get(RequestIDHeader); got != testClientID {
+		t.Errorf("response header = %q, want %q", got, testClientID)
 	}
 }
 

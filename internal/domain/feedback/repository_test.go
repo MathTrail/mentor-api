@@ -11,6 +11,11 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	unexpectedErrorFmt = "unexpected error: %v"
+	expectedErrNilFmt  = "expected error, got nil"
+)
+
 // mockDB implements postgres.DB for repository tests.
 type mockDB struct {
 	queryFn func(ctx context.Context, sql string, params ...any) ([]map[string]any, error)
@@ -91,7 +96,7 @@ func TestSaveDBError(t *testing.T) {
 
 	err := repo.Save(context.Background(), f)
 	if err == nil {
-		t.Fatal("expected error, got nil")
+		t.Fatal(expectedErrNilFmt)
 	}
 	if !errors.Is(err, dbErr) {
 		t.Errorf("error chain: got %v, want to contain %v", err, dbErr)
@@ -150,7 +155,7 @@ func TestGetLatestByStudentSuccess(t *testing.T) {
 	repo := NewRepository(db)
 	results, err := repo.GetLatestByStudent(context.Background(), studentID, 10)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFmt, err)
 	}
 	if len(results) != 2 {
 		t.Errorf("len: got %d, want 2", len(results))
@@ -173,7 +178,7 @@ func TestGetLatestByStudentEmpty(t *testing.T) {
 	repo := NewRepository(db)
 	results, err := repo.GetLatestByStudent(context.Background(), uuid.New(), 10)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFmt, err)
 	}
 	if len(results) != 0 {
 		t.Errorf("expected empty slice, got len %d", len(results))
@@ -191,7 +196,7 @@ func TestGetLatestByStudentDBError(t *testing.T) {
 	repo := NewRepository(db)
 	_, err := repo.GetLatestByStudent(context.Background(), uuid.New(), 5)
 	if err == nil {
-		t.Fatal("expected error, got nil")
+		t.Fatal(expectedErrNilFmt)
 	}
 	if !errors.Is(err, dbErr) {
 		t.Errorf("error chain: got %v, want to contain %v", err, dbErr)
