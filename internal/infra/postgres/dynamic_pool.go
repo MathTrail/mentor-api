@@ -115,7 +115,11 @@ func (p *DynamicPool) watchCredentials(ctx context.Context) {
 		p.logger.Error("failed to create fsnotify watcher", zap.Error(err))
 		return
 	}
-	defer watcher.Close()
+	defer func() {
+		if err := watcher.Close(); err != nil {
+			p.logger.Warn("failed to close fsnotify watcher", zap.Error(err))
+		}
+	}()
 
 	if err := watcher.Add(p.credsDir); err != nil {
 		p.logger.Error("failed to watch credentials directory",
