@@ -14,9 +14,9 @@ type Profile struct {
 }
 
 // ProfileClient defines the interface for accessing student profile data
-// NOSONAR: S8196 — interface is part of a larger client contract to be implemented.
 type ProfileClient interface {
 	GetProfile(ctx context.Context, studentID uuid.UUID) (*Profile, error)
+	// PendingExtension()
 }
 
 type profileClient struct{}
