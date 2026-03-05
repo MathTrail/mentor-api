@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // scanRows reads all rows from a pgx.Rows into a slice of maps keyed by column
@@ -20,7 +22,13 @@ func scanRows(rows pgx.Rows) ([]map[string]any, error) {
 		}
 		row := make(map[string]any, len(fieldDescs))
 		for i, fd := range fieldDescs {
-			row[fd.Name] = values[i]
+			v := values[i]
+			if fd.DataTypeOID == pgtype.UUIDOID {
+				if b, ok := v.([16]byte); ok {
+					v = uuid.UUID(b)
+				}
+			}
+			row[fd.Name] = v
 		}
 		result = append(result, row)
 	}
