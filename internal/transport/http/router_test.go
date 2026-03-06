@@ -12,6 +12,7 @@ import (
 	"github.com/MathTrail/mentor-api/internal/domain/feedback"
 	"github.com/MathTrail/mentor-api/internal/domain/roadmap"
 	"github.com/MathTrail/mentor-api/internal/infra/postgres"
+	"github.com/MathTrail/mentor-api/internal/transport/http/middleware"
 	"go.uber.org/zap"
 )
 
@@ -36,7 +37,7 @@ func (m *mockDB) Ping(_ context.Context) error                     { return m.pi
 // Compile-time interface check.
 var _ postgres.DB = (*mockDB)(nil)
 
-// mockFeedbackService implements feedback.FeedbackService for handler construction.
+// mockFeedbackService implements feedback.Service for handler construction.
 type mockFeedbackService struct{}
 
 func (m *mockFeedbackService) ProcessFeedback(_ context.Context, req *feedback.FeedbackRequest) (*feedback.StrategyUpdate, error) {
@@ -112,7 +113,7 @@ func TestRoadmapRecommendationsSuccess(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/roadmap/recommendations", nil)
-	req.Header.Set("X-User-ID", "00000000-0000-0000-0000-000000000001")
+	req.Header.Set(middleware.UserIDHeader, "00000000-0000-0000-0000-000000000001")
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {

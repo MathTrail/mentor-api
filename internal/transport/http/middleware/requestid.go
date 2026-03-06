@@ -26,7 +26,11 @@ func RequestID() gin.HandlerFunc {
 			if sc := span.SpanContext(); sc.HasTraceID() {
 				id = sc.TraceID().String()
 			} else {
-				id = uuid.New().String()
+				if v7, err := uuid.NewV7(); err == nil {
+					id = v7.String()
+				} else {
+					id = uuid.New().String()
+				}
 			}
 		}
 		c.Set(RequestIDKey, id)

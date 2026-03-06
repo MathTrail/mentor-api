@@ -13,18 +13,18 @@ type Service interface {
 	GetRecommendations(ctx context.Context, studentID uuid.UUID) (*Recommendation, error)
 }
 
-// serviceImpl implements the Service interface.
-type serviceImpl struct {
+// service implements the Service interface.
+type service struct {
 	logger *zap.Logger
 }
 
 // NewService creates a new roadmap service.
 func NewService(logger *zap.Logger) Service {
-	return &serviceImpl{logger: logger}
+	return &service{logger: logger}
 }
 
 // GetRecommendations returns personalised learning focus areas for a student.
-func (s *serviceImpl) GetRecommendations(ctx context.Context, studentID uuid.UUID) (*Recommendation, error) {
+func (s *service) GetRecommendations(ctx context.Context, studentID uuid.UUID) (*Recommendation, error) {
 	s.logger.Info("generating roadmap recommendations", zap.Stringer("student_id", studentID))
 
 	return &Recommendation{

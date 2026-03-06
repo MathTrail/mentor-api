@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/MathTrail/mentor-api/internal/apierror"
+	"github.com/MathTrail/mentor-api/internal/transport/http/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -31,7 +32,7 @@ func NewHandler(service Service, logger *zap.Logger) *Handler {
 // @Failure 500 {object} apierror.Response
 // @Router /api/v1/roadmap/recommendations [get]
 func (h *Handler) GetRecommendations(ctx *gin.Context) {
-	rawID := ctx.GetHeader("X-User-ID")
+	rawID := ctx.GetHeader(middleware.UserIDHeader)
 	if rawID == "" {
 		ctx.JSON(http.StatusBadRequest, apierror.Response{
 			Code:    "MISSING_USER_ID",
