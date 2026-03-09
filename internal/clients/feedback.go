@@ -7,11 +7,11 @@ import (
 
 // StrategyResult holds the LLM-determined strategy for a student.
 type StrategyResult struct {
-	PerceivedDifficulty  string                 `json:"perceived_difficulty"`
-	DifficultyAdjustment float64                `json:"difficulty_adjustment"`
-	TopicWeights         map[string]float64     `json:"topic_weights"`
-	Sentiment            string                 `json:"sentiment"`
-	StrategySnapshot     map[string]interface{} `json:"strategy_snapshot"`
+	PerceivedDifficulty  string             `json:"perceived_difficulty"`
+	DifficultyAdjustment float64            `json:"difficulty_adjustment"`
+	TopicWeights         map[string]float64 `json:"topic_weights"`
+	Sentiment            string             `json:"sentiment"`
+	StrategySnapshot     map[string]any     `json:"strategy_snapshot"`
 }
 
 // FeedbackClient defines the interface for LLM-based feedback analysis.
@@ -34,7 +34,7 @@ func (c *feedbackClient) AnalyzeFeedback(_ context.Context, _ string) (*Strategy
 		DifficultyAdjustment: 0.0,
 		TopicWeights:         map[string]float64{"general": 1.0},
 		Sentiment:            "neutral",
-		StrategySnapshot: map[string]interface{}{
+		StrategySnapshot: map[string]any{
 			"difficulty_weight": 1.0,
 			"feedback_based":    true,
 			"sentiment":         "neutral",

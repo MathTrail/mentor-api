@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/MathTrail/mentor-api/internal/transport/http/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -31,7 +32,6 @@ func (m *mockService) GetRecommendations(ctx context.Context, studentID uuid.UUI
 
 const (
 	recommendationsPath = "/api/v1/roadmap/recommendations"
-	userIDHeader        = "X-User-ID"
 	statusFmt           = "status: got %d, want %d"
 	codeFmt             = "code: got %q, want %q"
 )
@@ -50,7 +50,7 @@ func TestGetRecommendationsSuccess(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, recommendationsPath, nil)
-	req.Header.Set(userIDHeader, uuid.New().String())
+	req.Header.Set(middleware.UserIDHeader, uuid.New().String())
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
@@ -93,7 +93,7 @@ func TestGetRecommendationsInvalidUUID(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, recommendationsPath, nil)
-	req.Header.Set(userIDHeader, "not-a-uuid")
+	req.Header.Set(middleware.UserIDHeader, "not-a-uuid")
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
@@ -118,7 +118,7 @@ func TestGetRecommendationsServiceError(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, recommendationsPath, nil)
-	req.Header.Set(userIDHeader, uuid.New().String())
+	req.Header.Set(middleware.UserIDHeader, uuid.New().String())
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusInternalServerError {

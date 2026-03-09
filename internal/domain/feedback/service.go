@@ -9,42 +9,42 @@ import (
 	"go.uber.org/zap"
 )
 
-// FeedbackService defines the interface for feedback processing
-type FeedbackService interface {
+// Service defines the interface for feedback processing
+type Service interface {
 	ProcessFeedback(ctx context.Context, req *FeedbackRequest) (*StrategyUpdate, error)
 }
 
-// serviceImpl implements the FeedbackService interface
-type serviceImpl struct {
-	repo       Repository
-	llmClient  clients.FeedbackClient
-	llmTimeout time.Duration
-	logger     *zap.Logger
+// service implements the Service interface
+type service struct {
+	repo    Repository
+	client  clients.FeedbackClient
+	timeout time.Duration
+	logger  *zap.Logger
 }
 
 // NewService creates a new feedback service
 func NewService(
 	repo Repository,
-	llmClient clients.FeedbackClient,
-	llmTimeout time.Duration,
+	client clients.FeedbackClient,
+	timeout time.Duration,
 	logger *zap.Logger,
-) FeedbackService {
-	return &serviceImpl{
-		repo:       repo,
-		llmClient:  llmClient,
-		llmTimeout: llmTimeout,
-		logger:     logger,
+) Service {
+	return &service{
+		repo:    repo,
+		client:  client,
+		timeout: timeout,
+		logger:  logger,
 	}
 }
 
 // ProcessFeedback sends the student message to the LLM for analysis,
 // persists the resulting strategy, and returns it to the caller.
-func (s *serviceImpl) ProcessFeedback(ctx context.Context, req *FeedbackRequest) (*StrategyUpdate, error) {
+func (s *service) ProcessFeedback(ctx context.Context, req *FeedbackRequest) (*StrategyUpdate, error) {
 	// 1. Analyse via LLM with a dedicated timeout to protect HTTP workers.
-	llmCtx, cancel := context.WithTimeout(ctx, s.llmTimeout)
+	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
-	result, err := s.llmClient.AnalyzeFeedback(llmCtx, req.Message)
+	result, err := s.client.AnalyzeFeedback(ctx, req.Message)
 	if err != nil {
 		s.logger.Error("LLM analysis failed",
 			zap.Error(err),

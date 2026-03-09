@@ -34,12 +34,19 @@ type saveResult struct {
 
 // Save inserts a new feedback record and populates ID and CreatedAt from the RETURNING clause.
 func (r *repositoryImpl) Save(ctx context.Context, f *Feedback) error {
+	id, err := uuid.NewV7()
+	if err != nil {
+		return fmt.Errorf("feedback: generate id: %w", err)
+	}
+	f.ID = id
+
 	const query = `
-		INSERT INTO feedback (student_id, message, perceived_difficulty, strategy_snapshot)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO feedback (id, student_id, message, perceived_difficulty, strategy_snapshot)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, created_at`
 
 	rows, err := r.db.Query(ctx, query,
+		f.ID,
 		f.StudentID.String(),
 		f.Message,
 		f.PerceivedDifficulty,

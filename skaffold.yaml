@@ -103,7 +103,7 @@ deploy:
   helm:
     releases:
       - name: k6-operator
-        namespace: k6-operator
+        namespace: k6-operator-system
         repo: "{{.CHARTS_REPO}}"
         remoteChart: k6-operator
         createNamespace: true

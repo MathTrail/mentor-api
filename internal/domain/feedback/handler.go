@@ -10,15 +10,15 @@ import (
 
 // Handler handles HTTP requests for feedback endpoints
 type Handler struct {
-	service FeedbackService
-	logger  *zap.Logger
+	feedbacks Service
+	logger    *zap.Logger
 }
 
 // NewHandler creates a new feedback handler
-func NewHandler(service FeedbackService, logger *zap.Logger) *Handler {
+func NewHandler(svc Service, logger *zap.Logger) *Handler {
 	return &Handler{
-		service: service,
-		logger:  logger,
+		feedbacks: svc,
+		logger:    logger,
 	}
 }
 
@@ -41,7 +41,7 @@ func (h *Handler) SubmitFeedback(ctx *gin.Context) {
 		return
 	}
 
-	update, err := h.service.ProcessFeedback(ctx.Request.Context(), &req)
+	update, err := h.feedbacks.ProcessFeedback(ctx.Request.Context(), &req)
 	if err != nil {
 		h.logger.Error("failed to process feedback",
 			zap.Error(err),
