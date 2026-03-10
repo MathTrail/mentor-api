@@ -2,6 +2,9 @@ db:
   databases:
     - name: mentor
       vaultPrivileges: true
+  # Local dev: points to dedicated mentor-postgres instance.
+  # In staging/prod this is overridden by the external postgres host.
+  postgresHost: postgres-postgresql
 
 replicaCount: 1
 

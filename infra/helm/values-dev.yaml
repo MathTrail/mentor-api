@@ -12,7 +12,7 @@ env:
     value: "console"
   # Non-sensitive connection params
   - name: PG_HOST
-    value: "postgres-pgbouncer"
+    value: "mentor-postgres-pgbouncer"
   - name: PG_PORT
     value: "6432"
   - name: PG_DATABASE
@@ -43,7 +43,7 @@ volumes:
 migration:
   env:
     - name: DB_HOST
-      value: "postgres-postgresql"
+      value: "mentor-postgres-postgresql"
     - name: DB_PORT
       value: "5432"
     - name: DB_USER
@@ -51,7 +51,7 @@ migration:
     - name: DB_PASSWORD
       valueFrom:
         secretKeyRef:
-          name: postgres-postgresql
+          name: mentor-postgres-postgresql
           key: postgres-password
     - name: DB_NAME
       value: "mentor"
@@ -64,3 +64,5 @@ dbDynamicSecret:
 vaultDbConfig:
   enabled: false
 
+db:
+  postgresHost: mentor-postgres-postgresql

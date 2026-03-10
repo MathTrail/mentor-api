@@ -1,0 +1,48 @@
+# PostgreSQL local development values for mentor-api.
+# Bitnami PostgreSQL 18.5.5
+# wal_level=logical is required for Debezium CDC (pre-configured for future use).
+
+postgresql:
+  architecture: standalone
+
+  auth:
+    postgresPassword: "mathtrail"
+    username: "mathtrail"
+    password: "mathtrail"
+    database: "mentor"
+
+  primary:
+    persistence:
+      enabled: true
+      size: 1Gi
+    resourcesPreset: "nano"
+
+    extendedConfiguration: |
+      wal_level = logical
+
+    initdb:
+      scripts:
+        init.sql: |
+          -- Run as postgres superuser (required for CREATEROLE, SECURITY DEFINER).
+          SET SESSION AUTHORIZATION postgres;
+
+          -- Create pgbouncer_auth role (idempotent).
+          DO $$
+          BEGIN
+            IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'pgbouncer_auth') THEN
+              CREATE ROLE pgbouncer_auth WITH LOGIN PASSWORD 'pgbouncer_auth_pass';
+            END IF;
+          END $$;
+
+          -- PostgreSQL 15+: grant CREATE on public schema to app user.
+          GRANT CREATE ON SCHEMA public TO mathtrail;
+
+          -- pgbouncer lookup_user function (reads pg_shadow via SECURITY DEFINER).
+          \connect mentor
+          CREATE OR REPLACE FUNCTION public.lookup_user(p_user TEXT)
+            RETURNS TABLE(usename name, passwd text)
+            LANGUAGE sql SECURITY DEFINER AS
+            'SELECT usename, passwd FROM pg_shadow WHERE usename = p_user';
+          ALTER FUNCTION public.lookup_user(TEXT) OWNER TO postgres;
+          GRANT EXECUTE ON FUNCTION public.lookup_user(TEXT) TO pgbouncer_auth;
+          GRANT CREATE ON SCHEMA public TO mathtrail;

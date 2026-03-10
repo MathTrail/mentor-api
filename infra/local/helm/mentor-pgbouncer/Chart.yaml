@@ -1,0 +1,4 @@
+apiVersion: v2
+name: mentor-pgbouncer
+description: PgBouncer for mentor-api (local dev only)
+version: 0.1.0

@@ -1,0 +1,8 @@
+apiVersion: v2
+name: mentor-postgres
+description: PostgreSQL for mentor-api (local dev only)
+version: 0.1.0
+dependencies:
+  - name: postgresql
+    version: "18.5.5"
+    repository: "https://MathTrail.github.io/charts/charts"

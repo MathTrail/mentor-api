@@ -71,22 +71,26 @@ kind: Config
 metadata:
   name: mentor-deps
 
-manifests:
-  rawYaml:
-    - infra/k8s/deps-anchor.yaml
+build:
+  artifacts: []
 
 deploy:
-  kubectl:
-    defaultNamespace: "{{.NAMESPACE}}"
+  statusCheck: true
+  helm:
+    releases:
+      - name: mentor-postgres
+        namespace: "{{.NAMESPACE}}"
+        chartPath: infra/local/helm/mentor-postgres
+        createNamespace: true
+        wait: true
+        skipBuildDependencies: true
 
-requires:
-  - git:
-      repo: https://github.com/MathTrail/infra-local
-      path: skaffold.yaml
-      ref: main # todo: specify concrete version
-    configs:
-      - postgres
-      - pgbouncer
+      - name: mentor-pgbouncer
+        namespace: "{{.NAMESPACE}}"
+        chartPath: infra/local/helm/mentor-pgbouncer
+        createNamespace: true
+        wait: true
+        skipBuildDependencies: true
 
 ---
 apiVersion: skaffold/v4beta13
