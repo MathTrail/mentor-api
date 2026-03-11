@@ -19,7 +19,13 @@ build:
           dockerfile:
             path: Dockerfile
 
+manifests:
+  rawYaml:
+    - manifests/network-policies.yaml
+
 deploy:
+  kubectl:
+    defaultNamespace: "{{.NAMESPACE}}"
   statusCheck: true
   statusCheckDeadlineSeconds: 150
   helm:
