@@ -30,6 +30,11 @@ type Config struct {
 	OTelSampleRate    float64 `mapstructure:"OTEL_SAMPLE_RATE"` // 0.0–1.0; fraction of root spans sampled
 	PyroscopeEndpoint string  `mapstructure:"PYROSCOPE_ENDPOINT"`
 
+	// Kafka (students.onboarding.ready consumer)
+	KafkaBootstrapServers string `mapstructure:"KAFKA_BOOTSTRAP_SERVERS"`
+	KafkaConsumerGroup    string `mapstructure:"KAFKA_CONSUMER_GROUP"`
+	KafkaCertDir          string `mapstructure:"KAFKA_CERT_DIR"` // dir with user.crt, user.key, ca.crt
+
 	// Timeouts
 	LLMTimeoutRaw      string        `mapstructure:"LLM_TIMEOUT"` // e.g. "10s"
 	LLMTimeout         time.Duration // parsed from LLMTimeoutRaw in Load()
@@ -55,6 +60,9 @@ func Load() *Config {
 	v.SetDefault("PYROSCOPE_ENDPOINT", "")
 	v.SetDefault("LLM_TIMEOUT", "10s")
 	v.SetDefault("SHUTDOWN_TIMEOUT", "5s")
+	v.SetDefault("KAFKA_BOOTSTRAP_SERVERS", "kafka-kafka-tls-bootstrap:9093")
+	v.SetDefault("KAFKA_CONSUMER_GROUP", "mentor-api")
+	v.SetDefault("KAFKA_CERT_DIR", "/etc/kafka-certs")
 	v.SetDefault("PG_CREDENTIALS_DIR", "")
 
 	cfg := &Config{}

@@ -20,6 +20,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.40.0
 	go.opentelemetry.io/otel/sdk/metric v1.40.0
 	go.opentelemetry.io/otel/trace v1.40.0
+	github.com/twmb/franz-go v1.18.1
 	go.uber.org/zap v1.27.1
 	google.golang.org/grpc v1.79.1
 )

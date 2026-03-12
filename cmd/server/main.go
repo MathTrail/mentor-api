@@ -56,7 +56,11 @@ func main() {
 		zap.String("port", cfg.ServerPort),
 	)
 
-	// 5. HTTP server with graceful shutdown driven by ctx.
+	// 5. Start Kafka consumer in background (students.onboarding.ready → recommendations).
+	// Consumer.Start blocks; it exits when ctx is cancelled and performs a graceful LeaveGroup.
+	go container.OnboardingConsumer.Start(ctx)
+
+	// 6. HTTP server with graceful shutdown driven by ctx.
 	srv := app.NewServer(container)
 	if err := srv.Run(ctx); err != nil {
 		logger.Fatal("server runtime error", zap.Error(err))

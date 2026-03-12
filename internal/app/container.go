@@ -3,13 +3,18 @@ package app
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/twmb/franz-go/pkg/kgo"
 
 	"github.com/MathTrail/mentor-api/internal/clients"
 	"github.com/MathTrail/mentor-api/internal/config"
 	"github.com/MathTrail/mentor-api/internal/domain/feedback"
+	"github.com/MathTrail/mentor-api/internal/domain/onboarding"
 	"github.com/MathTrail/mentor-api/internal/domain/roadmap"
+	kafkainfra "github.com/MathTrail/mentor-api/internal/infra/kafka"
 	"github.com/MathTrail/mentor-api/internal/infra/postgres"
 	httpserver "github.com/MathTrail/mentor-api/internal/transport/http"
 	"go.uber.org/zap"
@@ -18,10 +23,11 @@ import (
 // Container holds the dependencies consumed by the Server.
 // Internal wiring is kept as local, variables in NewContainer and is not exposed.
 type Container struct {
-	Config *config.Config
-	Logger *zap.Logger
-	Router *gin.Engine
-	stop   func()
+	Config             *config.Config
+	Logger             *zap.Logger
+	Router             *gin.Engine
+	OnboardingConsumer *onboarding.Consumer
+	stop               func()
 }
 
 // NewContainer creates and wires all application dependencies.
@@ -44,11 +50,21 @@ func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (
 
 	router := httpserver.NewRouter(feedbackHandler, roadmapHandler, db, cfg, logger)
 
+	// Kafka consumer: students.onboarding.ready → recommendations table
+	kafkaClient, err := initKafkaClient(cfg)
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("kafka client: %w", err)
+	}
+	onboardingRepo := onboarding.NewRepository(db)
+	onboardingConsumer := onboarding.NewConsumer(kafkaClient, onboardingRepo, logger)
+
 	return &Container{
-		Config: cfg,
-		Logger: logger,
-		Router: router,
-		stop:   db.Close, // captures *DynamicPool — no DB interface change needed
+		Config:             cfg,
+		Logger:             logger,
+		Router:             router,
+		OnboardingConsumer: onboardingConsumer,
+		stop:               db.Close,
 	}, nil
 }
 
@@ -66,4 +82,19 @@ func initDB(ctx context.Context, cfg *config.Config, logger *zap.Logger) (*postg
 		return nil, fmt.Errorf("dynamic pg pool: %w", err)
 	}
 	return db, nil
+}
+
+// initKafkaClient creates a franz-go Kafka client for the onboarding consumer.
+func initKafkaClient(cfg *config.Config) (*kgo.Client, error) {
+	brokers := strings.Split(cfg.KafkaBootstrapServers, ",")
+	podName := os.Getenv("POD_NAME")
+	if podName == "" {
+		podName = "mentor-api-local"
+	}
+	return kafkainfra.NewClient(kafkainfra.ClientConfig{
+		BootstrapServers: brokers,
+		ConsumerGroup:    cfg.KafkaConsumerGroup,
+		InstanceID:       podName,
+		TLSCertDir:       cfg.KafkaCertDir,
+	})
 }

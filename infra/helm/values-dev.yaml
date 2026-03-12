@@ -6,6 +6,17 @@
 env:
   - name: SERVER_PORT
     value: "8080"
+  # Kafka consumer (students.onboarding.ready → recommendations)
+  - name: KAFKA_BOOTSTRAP_SERVERS
+    value: "kafka-kafka-tls-bootstrap:9093"
+  - name: KAFKA_CONSUMER_GROUP
+    value: "mentor-api"
+  - name: KAFKA_CERT_DIR
+    value: "/etc/kafka-certs"
+  - name: POD_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.name
   - name: LOG_LEVEL
     value: "info"
   - name: LOG_FORMAT
@@ -25,8 +36,15 @@ volumeMounts:
   - name: db-secret
     mountPath: /etc/mentor-api-db-secret
     readOnly: true
+  # Strimzi KafkaUser "mentor-api" secret — contains user.crt, user.key, ca.crt
+  - name: kafka-certs
+    mountPath: /etc/kafka-certs
+    readOnly: true
 
 volumes:
+  - name: kafka-certs
+    secret:
+      secretName: mentor-api  # created by Strimzi UserOperator for KafkaUser "mentor-api"
   - name: db-secret
     secret:
       # Must NOT use subPath — DynamicPool's fsnotify watches the whole directory
