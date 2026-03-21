@@ -91,3 +91,30 @@ podAnnotations:
   prometheus.io/scrape: "true"
   prometheus.io/path: "/metrics"
   prometheus.io/port: "8080"
+
+# Flink SQL streaming jobs owned by mentor-api.
+# FlinkDeployment runs in the same namespace as mentor-api (mathtrail).
+# Flink operator (in streaming ns) watches all namespaces — no extra config needed.
+flink:
+  enabled: true
+  image: k3d-mathtrail-registry:5000/flink-sql-runner:1.20
+
+  kafka:
+    # Full FQDN required: FlinkDeployment runs in mathtrail ns, Kafka is in streaming ns
+    bootstrapServers: kafka-kafka-bootstrap.streaming.svc.cluster.local:9093
+    # Strimzi KafkaUser "flink" secret (user.crt, user.key, ca.crt) — must exist in mathtrail ns
+    tlsSecretName: flink
+    jksTruststorePassword: changeit
+    jksKeystorePassword: changeit
+
+  seaweedfs:
+    endpoint: http://mathtrail-seaweedfs-s3.streaming.svc.cluster.local:8333
+    accessKey: flinkaccess
+    secretKey: flinksecret
+
+  apicurio:
+    url: http://mathtrail-apicurio-apicurio-registry.streaming.svc.cluster.local:8080/apis/ccompat/v7
+
+  checkpoints:
+    dir: s3://flink/checkpoints/mentor-api
+    savepointsDir: s3://flink/savepoints/mentor-api

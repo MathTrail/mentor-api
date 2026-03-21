@@ -1,0 +1,11 @@
+{{- if .Values.flink.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-flink-sql
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}-flink
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+data:
+  V1__user_enrichment.sql: {{ .Files.Get "sql-migrations/V1__user_enrichment.sql" | quote }}
+{{- end }}

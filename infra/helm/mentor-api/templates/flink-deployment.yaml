@@ -1,0 +1,153 @@
+{{- if .Values.flink.enabled }}
+# FlinkDeployment: user-enrichment streaming job.
+# Owned by mentor-api — SQL migration is managed alongside the service.
+#
+# Trigger: checksum/sql annotation changes when V1__user_enrichment.sql changes,
+# causing ArgoCD to update the FlinkDeployment and Flink to restart the job.
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: {{ .Release.Name }}-user-enrichment
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}-flink
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  annotations:
+    checksum/sql: {{ .Files.Get "sql-migrations/V1__user_enrichment.sql" | sha256sum }}
+spec:
+  image: {{ .Values.flink.image }}
+  flinkVersion: v1_20
+  # ServiceAccount created by the Flink operator in each watched namespace
+  serviceAccount: flink
+
+  flinkConfiguration:
+    taskmanager.numberOfTaskSlots: "1"
+
+    # Explicit memory sizing: process - overhead(192m) - metaspace(256m) = flink memory
+    # With 1Gi (1024m): 1024 - 192 - 256 = 576m for Flink (> 128m off-heap min)
+    jobmanager.memory.process.size: "1024m"
+    taskmanager.memory.process.size: "1024m"
+
+    # RocksDB state backend: local for hot data, S3 for checkpoint durability
+    state.backend: rocksdb
+    state.backend.rocksdb.localdir: /tmp/rocksdb
+    state.checkpoints.dir: {{ .Values.flink.checkpoints.dir }}
+    state.savepoints.dir: {{ .Values.flink.checkpoints.savepointsDir }}
+
+    # SeaweedFS S3 endpoint (path-style required for SeaweedFS)
+    s3.endpoint: {{ .Values.flink.seaweedfs.endpoint }}
+    s3.path.style.access: "true"
+    s3.access-key: {{ .Values.flink.seaweedfs.accessKey }}
+    s3.secret-key: {{ .Values.flink.seaweedfs.secretKey }}
+
+    execution.checkpointing.interval: "60000"
+    execution.checkpointing.mode: EXACTLY_ONCE
+
+  podTemplate:
+    spec:
+      initContainers:
+        # Copy S3 filesystem plugin so Flink understands s3:// checkpoint paths
+        - name: s3-plugin-init
+          image: {{ .Values.flink.image }}
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /plugins/s3-fs-hadoop
+              cp /opt/flink/opt/flink-s3-fs-hadoop-*.jar /plugins/s3-fs-hadoop/
+              echo "S3 plugin copied."
+          volumeMounts:
+            - name: flink-plugins
+              mountPath: /plugins
+
+        # Convert Strimzi KafkaUser PEM certs to JKS format for Kafka SSL
+        - name: jks-init
+          image: eclipse-temurin:17-jre
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              echo "Creating JKS truststore from Kafka CA cert..."
+              keytool -importcert -noprompt -alias kafka-ca \
+                -file /certs/ca.crt \
+                -keystore /jks/truststore.jks \
+                -storepass {{ .Values.flink.kafka.jksTruststorePassword }}
+
+              echo "Creating JKS keystore from Flink mTLS cert..."
+              openssl pkcs12 -export \
+                -in /certs/user.crt \
+                -inkey /certs/user.key \
+                -out /tmp/keystore.p12 \
+                -passout pass:{{ .Values.flink.kafka.jksKeystorePassword }}
+              keytool -importkeystore -noprompt \
+                -srckeystore /tmp/keystore.p12 -srcstoretype pkcs12 \
+                -srcstorepass {{ .Values.flink.kafka.jksKeystorePassword }} \
+                -destkeystore /jks/keystore.jks \
+                -deststorepass {{ .Values.flink.kafka.jksKeystorePassword }}
+
+              echo "JKS files created: truststore.jks, keystore.jks"
+          volumeMounts:
+            - name: kafka-certs
+              mountPath: /certs
+              readOnly: true
+            - name: jks-vol
+              mountPath: /jks
+
+      containers:
+        - name: flink-main-container
+          env:
+            # SQL variable substitution: ${bootstrapServers} etc. in the SQL file
+            - name: bootstrapServers
+              value: {{ .Values.flink.kafka.bootstrapServers }}
+            - name: schemaRegistryUrl
+              value: {{ .Values.flink.apicurio.url }}
+            - name: truststoreLocation
+              value: /opt/flink/certs/truststore.jks
+            - name: truststorePassword
+              value: {{ .Values.flink.kafka.jksTruststorePassword }}
+            - name: keystoreLocation
+              value: /opt/flink/certs/keystore.jks
+            - name: keystorePassword
+              value: {{ .Values.flink.kafka.jksKeystorePassword }}
+          volumeMounts:
+            - name: jks-vol
+              mountPath: /opt/flink/certs
+              readOnly: true
+            - name: flink-plugins
+              mountPath: /opt/flink/plugins
+            - name: sql-vol
+              mountPath: /opt/flink/sql
+              readOnly: true
+
+      volumes:
+        # Strimzi KafkaUser "flink" secret: user.crt, user.key, ca.crt
+        - name: kafka-certs
+          secret:
+            secretName: {{ .Values.flink.kafka.tlsSecretName }}
+        - name: jks-vol
+          emptyDir: {}
+        - name: flink-plugins
+          emptyDir: {}
+        # SQL migrations ConfigMap mounted at /opt/flink/sql/
+        - name: sql-vol
+          configMap:
+            name: {{ .Release.Name }}-flink-sql
+
+  jobManager:
+    resource:
+      memory: "1Gi"
+      cpu: 0.5
+
+  taskManager:
+    resource:
+      memory: "1Gi"
+      cpu: 0.5
+
+  job:
+    jarURI: "local:///opt/flink/usrlib/flink-sql-runner.jar"
+    # Run the latest SQL migration file
+    args: ["/opt/flink/sql/V1__user_enrichment.sql"]
+    parallelism: 1
+    # stateless: acceptable for local dev — restarts from earliest-offset on upgrade
+    upgradeMode: stateless
+{{- end }}
