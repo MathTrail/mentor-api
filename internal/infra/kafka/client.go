@@ -30,8 +30,6 @@ func NewClient(cfg ClientConfig, extraOpts ...kgo.Opt) (*kgo.Client, error) {
 		kgo.SASL(auth.AsSha512Mechanism()),
 		kgo.ConsumerGroup(cfg.ConsumerGroup),
 		kgo.InstanceID(cfg.InstanceID),
-		// Never auto-create topics — fail fast on misconfiguration
-		kgo.AllowAutoTopicCreation(false),
 	}
 	opts = append(opts, extraOpts...)
 

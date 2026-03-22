@@ -2,7 +2,6 @@ package onboarding
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/MathTrail/mentor-api/internal/infra/postgres"
