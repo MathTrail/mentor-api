@@ -38,7 +38,8 @@ type Config struct {
 
 	// ApicurioURL is the base URL of the Confluent-compat v7 API, used by TopicValidator
 	// to fetch the latest schema ID at startup (fail-fast if unreachable).
-	ApicurioURL string `mapstructure:"APICURIO_URL"`
+	ApicurioURL             string `mapstructure:"APICURIO_URL"`
+	OnboardingSchemaSubject string `mapstructure:"ONBOARDING_SCHEMA_SUBJECT"`
 
 	// Timeouts
 	LLMTimeoutRaw      string        `mapstructure:"LLM_TIMEOUT"` // e.g. "10s"
@@ -68,6 +69,7 @@ func Load() *Config {
 	v.SetDefault("KAFKA_BOOTSTRAP_SERVERS", "automq:9092")
 	v.SetDefault("KAFKA_CONSUMER_GROUP", "mentor-api")
 	v.SetDefault("APICURIO_URL", "http://mathtrail-apicurio-apicurio-registry:8080/apis/ccompat/v7")
+	v.SetDefault("ONBOARDING_SCHEMA_SUBJECT", "students.v1.StudentOnboardingReady")
 	v.SetDefault("PG_CREDENTIALS_DIR", "")
 
 	cfg := &Config{}

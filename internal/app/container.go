@@ -50,29 +50,23 @@ func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (
 
 	router := httpserver.NewRouter(feedbackHandler, roadmapHandler, db, cfg, logger)
 
-	// Kafka consumer: students.onboarding.ready → recommendations table.
-	// TopicValidator fails fast at startup if Apicurio is unreachable or the subject
-	// does not exist — ensures schema alignment before any message is consumed.
-	validator, err := kafkainfra.NewValidator(cfg.ApicurioURL, "students.v1.StudentOnboardingReady")
+	onboardingConsumer, kafkaClient, err := initOnboardingConsumer(cfg, db, logger)
 	if err != nil {
 		db.Close()
-		return nil, fmt.Errorf("schema validator init: %w", err)
+		return nil, err
 	}
-
-	kafkaClient, err := initKafkaClient(cfg)
-	if err != nil {
-		db.Close()
-		return nil, fmt.Errorf("kafka client: %w", err)
-	}
-	onboardingRepo := onboarding.NewRepository(db)
-	onboardingConsumer := onboarding.NewConsumer(kafkaClient, onboardingRepo, validator, logger)
 
 	return &Container{
 		Config:             cfg,
 		Logger:             logger,
 		Router:             router,
 		OnboardingConsumer: onboardingConsumer,
-		stop:               db.Close,
+		// Closes resources in reverse init order. kafkaClient.Close() is
+		// idempotent — safe even if Consumer.Start() already closed it.
+		stop: func() {
+			kafkaClient.Close()
+			db.Close()
+		},
 	}, nil
 }
 
@@ -106,4 +100,26 @@ func initKafkaClient(cfg *config.Config) (*kgo.Client, error) {
 		SASLUsername:     cfg.KafkaSASLUsername,
 		SASLPassword:     cfg.KafkaSASLPassword,
 	})
+}
+
+// initOnboardingConsumer wires the Kafka consumer that reads
+// students.onboarding.ready events and persists recommendations.
+// It returns the Consumer and the underlying *kgo.Client so the
+// caller can manage the client lifecycle via Container.stop.
+func initOnboardingConsumer(cfg *config.Config, db *postgres.DynamicPool, logger *zap.Logger) (*onboarding.Consumer, *kgo.Client, error) {
+	// TopicValidator fails fast at startup if Apicurio is unreachable or the
+	// subject does not exist — ensures schema alignment before any message is consumed.
+	validator, err := kafkainfra.NewValidator(cfg.ApicurioURL, cfg.OnboardingSchemaSubject)
+	if err != nil {
+		return nil, nil, fmt.Errorf("schema validator init: %w", err)
+	}
+
+	kafkaClient, err := initKafkaClient(cfg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("kafka client: %w", err)
+	}
+
+	repo := onboarding.NewRepository(db)
+	consumer := onboarding.NewConsumer(kafkaClient, repo, validator, logger)
+	return consumer, kafkaClient, nil
 }
