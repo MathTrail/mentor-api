@@ -33,7 +33,12 @@ type Config struct {
 	// Kafka (students.onboarding.ready consumer)
 	KafkaBootstrapServers string `mapstructure:"KAFKA_BOOTSTRAP_SERVERS"`
 	KafkaConsumerGroup    string `mapstructure:"KAFKA_CONSUMER_GROUP"`
-	KafkaCertDir          string `mapstructure:"KAFKA_CERT_DIR"` // dir with user.crt, user.key, ca.crt
+	KafkaSASLUsername     string `mapstructure:"KAFKA_SASL_USERNAME"`
+	KafkaSASLPassword     string `mapstructure:"KAFKA_SASL_PASSWORD"`
+
+	// ApicurioURL is the base URL of the Confluent-compat v7 API, used by TopicValidator
+	// to fetch the latest schema ID at startup (fail-fast if unreachable).
+	ApicurioURL string `mapstructure:"APICURIO_URL"`
 
 	// Timeouts
 	LLMTimeoutRaw      string        `mapstructure:"LLM_TIMEOUT"` // e.g. "10s"
@@ -60,9 +65,9 @@ func Load() *Config {
 	v.SetDefault("PYROSCOPE_ENDPOINT", "")
 	v.SetDefault("LLM_TIMEOUT", "10s")
 	v.SetDefault("SHUTDOWN_TIMEOUT", "5s")
-	v.SetDefault("KAFKA_BOOTSTRAP_SERVERS", "kafka-kafka-tls-bootstrap:9093")
+	v.SetDefault("KAFKA_BOOTSTRAP_SERVERS", "automq:9092")
 	v.SetDefault("KAFKA_CONSUMER_GROUP", "mentor-api")
-	v.SetDefault("KAFKA_CERT_DIR", "/etc/kafka-certs")
+	v.SetDefault("APICURIO_URL", "http://mathtrail-apicurio-apicurio-registry:8080/apis/ccompat/v7")
 	v.SetDefault("PG_CREDENTIALS_DIR", "")
 
 	cfg := &Config{}

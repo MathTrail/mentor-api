@@ -50,14 +50,22 @@ func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (
 
 	router := httpserver.NewRouter(feedbackHandler, roadmapHandler, db, cfg, logger)
 
-	// Kafka consumer: students.onboarding.ready → recommendations table
+	// Kafka consumer: students.onboarding.ready → recommendations table.
+	// TopicValidator fails fast at startup if Apicurio is unreachable or the subject
+	// does not exist — ensures schema alignment before any message is consumed.
+	validator, err := kafkainfra.NewValidator(cfg.ApicurioURL, "students.v1.StudentOnboardingReady")
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("schema validator init: %w", err)
+	}
+
 	kafkaClient, err := initKafkaClient(cfg)
 	if err != nil {
 		db.Close()
 		return nil, fmt.Errorf("kafka client: %w", err)
 	}
 	onboardingRepo := onboarding.NewRepository(db)
-	onboardingConsumer := onboarding.NewConsumer(kafkaClient, onboardingRepo, logger)
+	onboardingConsumer := onboarding.NewConsumer(kafkaClient, onboardingRepo, validator, logger)
 
 	return &Container{
 		Config:             cfg,
@@ -95,6 +103,7 @@ func initKafkaClient(cfg *config.Config) (*kgo.Client, error) {
 		BootstrapServers: brokers,
 		ConsumerGroup:    cfg.KafkaConsumerGroup,
 		InstanceID:       podName,
-		TLSCertDir:       cfg.KafkaCertDir,
+		SASLUsername:     cfg.KafkaSASLUsername,
+		SASLPassword:     cfg.KafkaSASLPassword,
 	})
 }

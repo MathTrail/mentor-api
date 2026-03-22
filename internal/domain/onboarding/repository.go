@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/MathTrail/mentor-api/internal/infra/postgres"
+	"github.com/google/uuid"
 )
 
 // Repository persists onboarding recommendations.

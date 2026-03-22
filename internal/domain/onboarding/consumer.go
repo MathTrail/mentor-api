@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	kafkainfra "github.com/MathTrail/mentor-api/internal/infra/kafka"
+	"github.com/google/uuid"
+	studentsv1 "github.com/mathtrail/contracts/gen/go/students/v1"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 )
 
 const topic = "students.onboarding.ready"
@@ -20,16 +22,18 @@ var tracer = otel.Tracer("mentor-api/onboarding")
 
 // Consumer reads from students.onboarding.ready and persists recommendations.
 type Consumer struct {
-	client *kgo.Client
-	repo   *Repository
-	logger *zap.Logger
+	client    *kgo.Client
+	repo      *Repository
+	validator *kafkainfra.TopicValidator
+	logger    *zap.Logger
 }
 
-func NewConsumer(client *kgo.Client, repo *Repository, logger *zap.Logger) *Consumer {
+func NewConsumer(client *kgo.Client, repo *Repository, validator *kafkainfra.TopicValidator, logger *zap.Logger) *Consumer {
 	return &Consumer{
-		client: client,
-		repo:   repo,
-		logger: logger,
+		client:    client,
+		repo:      repo,
+		validator: validator,
+		logger:    logger,
 	}
 }
 
@@ -77,40 +81,74 @@ func (c *Consumer) handle(ctx context.Context, record *kgo.Record) error {
 	ctx, span := tracer.Start(ctx, "onboarding.recommendation.upsert")
 	defer span.End()
 
-	event, err := kafkainfra.DecodeStudentOnboardingReady(record.Value)
+	rawProto, err := c.validator.ValidateAndUnwrap(record.Value)
 	if err != nil {
-		return fmt.Errorf("decode avro: %w", err)
+		// Poison pill — route to DLQ, do not crash the consumer loop.
+		c.produceDLQ(record)
+		c.logger.Warn("schema validation failed, routed to DLQ",
+			zap.Error(err),
+			zap.Int32("partition", record.Partition),
+			zap.Int64("offset", record.Offset),
+		)
+		return nil
 	}
 
-	studentID, err := uuid.Parse(event.UserID)
-	if err != nil {
-		return fmt.Errorf("parse user_id %q: %w", event.UserID, err)
+	var msg studentsv1.StudentOnboardingReady
+	if err := proto.Unmarshal(rawProto, &msg); err != nil {
+		c.produceDLQ(record)
+		c.logger.Warn("proto unmarshal failed, routed to DLQ",
+			zap.Error(err),
+			zap.Int32("partition", record.Partition),
+			zap.Int64("offset", record.Offset),
+		)
+		return nil
 	}
 
-	occurredAt, err := parseOccurredAt(event.OccurredAt)
+	ce := kafkainfra.ExtractCloudEventHeaders(record.Headers)
+
+	studentID, err := uuid.Parse(msg.UserId)
 	if err != nil {
-		return fmt.Errorf("parse occurred_at %q: %w", event.OccurredAt, err)
+		return fmt.Errorf("parse user_id %q: %w", msg.UserId, err)
+	}
+
+	occurredAt, err := parseOccurredAt(msg.OccurredAt)
+	if err != nil {
+		return fmt.Errorf("parse occurred_at %q: %w", msg.OccurredAt, err)
 	}
 
 	span.SetAttributes(
-		attribute.String("event.id", event.EventID),
-		attribute.String("student.id", event.UserID),
-		attribute.String("event.occurred_at", event.OccurredAt),
+		attribute.String("event.id", msg.EventId),
+		attribute.String("student.id", msg.UserId),
+		attribute.String("event.occurred_at", msg.OccurredAt),
+		attribute.String("ce.id", ce.ID),
+		attribute.String("ce.type", ce.Type),
 	)
 
-	if err := c.repo.Upsert(ctx, studentID, event.EventID, occurredAt); err != nil {
+	if err := c.repo.Upsert(ctx, studentID, msg.EventId, occurredAt); err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		return fmt.Errorf("upsert: %w", err)
 	}
 
 	c.logger.Info("recommendation upserted",
-		zap.String("student_id", event.UserID),
-		zap.String("event_id", event.EventID),
+		zap.String("student_id", msg.UserId),
+		zap.String("event_id", msg.EventId),
+		zap.String("ce_id", ce.ID),
 	)
 	return nil
 }
 
-// parseOccurredAt tries RFC3339 first, then Flink's CAST(event_time AS STRING) format.
+// produceDLQ forwards the original record (value + headers) to the DLQ topic.
+// CloudEvents headers are preserved for end-to-end tracing.
+func (c *Consumer) produceDLQ(record *kgo.Record) {
+	dlqRecord := &kgo.Record{
+		Topic:   record.Topic + ".dlq",
+		Value:   record.Value,
+		Headers: record.Headers,
+	}
+	c.client.Produce(context.Background(), dlqRecord, nil)
+}
+
+// parseOccurredAt tries RFC3339 first, then RisingWave's NOW()::VARCHAR format.
 func parseOccurredAt(s string) (time.Time, error) {
 	layouts := []string{
 		time.RFC3339Nano,
