@@ -8,6 +8,13 @@ import (
 	"net/http"
 )
 
+// confluentMagicByte is the first byte of every Confluent Wire Format message (always 0x00).
+// confluentHeaderSize is the size of the Confluent Wire Format header: 1 magic byte + 4 schema ID bytes.
+const (
+	confluentMagicByte  = 0x00
+	confluentHeaderSize = 5
+)
+
 // TopicValidator validates Confluent Wire Format messages against a pinned schema ID.
 // It is initialised once at startup via NewValidator; per-message checks are cheap.
 type TopicValidator struct {
@@ -34,15 +41,15 @@ func NewValidator(registryURL, subject string) (*TopicValidator, error) {
 // On mismatch the caller should route the record to the DLQ rather than returning
 // an error that would crash the consumer loop.
 func (v *TopicValidator) ValidateAndUnwrap(data []byte) ([]byte, error) {
-	if len(data) < 5 || data[0] != 0x00 {
+	if len(data) < confluentHeaderSize || data[0] != confluentMagicByte {
 		return nil, errors.New("invalid confluent wire format: missing magic byte or too short")
 	}
-	msgID := binary.BigEndian.Uint32(data[1:5])
+	msgID := binary.BigEndian.Uint32(data[1:confluentHeaderSize])
 	if msgID != v.ExpectedID {
 		return nil, fmt.Errorf("schema mismatch: expected ID %d (%s), got %d",
 			v.ExpectedID, v.ExpectedSubject, msgID)
 	}
-	return data[5:], nil
+	return data[confluentHeaderSize:], nil
 }
 
 // fetchLatestSchemaID queries the Confluent-compat v7 API for the latest schema ID.
