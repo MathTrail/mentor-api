@@ -68,7 +68,7 @@ GET    /swagger/*any         — Swagger UI
 - **Secrets rule:** ONLY via Vault Kubernetes auth. No `envFrom.secretRef`, no env var passwords, no ESO ExternalSecrets.
   - DB creds: Vault Database Secrets Engine `creds/mentor-api-role` → `{username, password}` (new Vault lease each call)
   - Static secrets: Vault KV `local/mathtrail-mentor`
-- **CDC:** Debezium monitors the `feedback` table, publishes events to Kafka — app does NOT publish events
+- **CDC:** RisingWave monitors the `feedback` table via PostgreSQL logical replication (WAL), publishes events to AutoMQ
 - Helm chart uses `mathtrail-service-lib` library chart from `https://MathTrail.github.io/charts/charts`
 - The service-lib provides: ServiceAccount, RBAC, ConfigMap, Migration Job, Deployment, Service, HPA
 
