@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/grafana/pyroscope-go v1.2.7
 	github.com/jackc/pgx/v5 v5.8.0
-	github.com/mathtrail/contracts v0.0.0-20260322041908-3bd28e8849c1
+	github.com/mathtrail/contracts v0.0.0-20260323003124-9abac2483a2c
 	github.com/pressly/goose/v3 v3.27.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/spf13/viper v1.21.0

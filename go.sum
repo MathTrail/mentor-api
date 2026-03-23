@@ -113,8 +113,8 @@ github.com/mailru/easyjson v0.0.0-20190626092158-b2ccc519800e/go.mod h1:C1wdFJiN
 github.com/mailru/easyjson v0.7.6/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJJLY9Nlc=
 github.com/mailru/easyjson v0.7.7 h1:UGYAvKxe3sBsEDzO8ZeWOSlIQfWFlxbzLZe7hwFURr0=
 github.com/mailru/easyjson v0.7.7/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJJLY9Nlc=
-github.com/mathtrail/contracts v0.0.0-20260322041908-3bd28e8849c1 h1:WWCsQz3fuWdbsRRajA2NoXyLTQfJ4u94L57adsmBnlg=
-github.com/mathtrail/contracts v0.0.0-20260322041908-3bd28e8849c1/go.mod h1:zSrI/6l0Vi8MlNi8//GcX39aH6OB4S3HnLzaClpYCRw=
+github.com/mathtrail/contracts v0.0.0-20260323003124-9abac2483a2c h1:Eee4ETO1HoBF17bVw9SOMmKU4A9JyxuwDeYsNbpGjBU=
+github.com/mathtrail/contracts v0.0.0-20260323003124-9abac2483a2c/go.mod h1:zSrI/6l0Vi8MlNi8//GcX39aH6OB4S3HnLzaClpYCRw=
 github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
 github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
 github.com/mfridman/interpolate v0.0.2 h1:pnuTK7MQIxxFz1Gr+rjSIx9u7qVjf5VOoM/u6BbAxPY=
