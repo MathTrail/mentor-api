@@ -48,7 +48,7 @@ function generateFeedback() {
   };
 }
 
-export default function () {
+export default function feedbackLoad() {
   // Test health endpoint
   const healthRes = http.get(`${BASE_URL}/health/ready`);
   check(healthRes, {
