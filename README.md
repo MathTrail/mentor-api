@@ -24,9 +24,9 @@ Mentor API is the intelligence hub of the MathTrail platform, responsible for ad
 ## System Architecture
 
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Debezium](https://img.shields.io/badge/Debezium-FF6A00?style=for-the-badge&logo=redhat&logoColor=white)](https://debezium.io/)
-[![Apache Kafka](https://img.shields.io/badge/Kafka-000000?style=for-the-badge&logo=apachekafka&logoColor=white)](https://kafka.apache.org/)
-[![Apache Flink](https://img.shields.io/badge/Flink-E6526F?style=for-the-badge&logo=apacheflink&logoColor=white)](https://flink.apache.org/)
+[![Apicurio](https://img.shields.io/badge/Apicurio-0066CC?style=for-the-badge&logo=redhat&logoColor=white)](https://www.apicur.io/)
+[![AutoMQ](https://img.shields.io/badge/AutoMQ-FF6A00?style=for-the-badge&logo=apachekafka&logoColor=white)](https://www.automq.com/)
+[![RisingWave CDC](https://img.shields.io/badge/RisingWave-CDC-1E90FF?style=for-the-badge&logo=postgresql&logoColor=white)](https://risingwave.com/)
 
 [![Architecture: EDA](https://img.shields.io/badge/Architecture-Event--Driven-8A2BE2?style=for-the-badge&logo=eventstore)](https://aws.amazon.com/event-driven-architecture/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)](./infra/helm/mentor-api)
@@ -40,7 +40,7 @@ Mentor API is the intelligence hub of the MathTrail platform, responsible for ad
 graph LR
     User([Student UI]) -- "Auth" --> OK[Oathkeeper]
     
-    subgraph MentorService [Mentor API Platform]
+    subgraph MentorService [Mentor API]
         direction LR
         App["Mentor API"]
     end
@@ -54,15 +54,18 @@ graph LR
     end
 
     App -- "SQL" --> PGB
-    PG -- "CDC" --> Deb[Debezium]
-    
+    PG -- "CDC" --> RW[RisingWave CDC]
+
     subgraph Bus [Event Bus]
-        Kfk{Kafka}
+        direction TB
+        AMQ{AutoMQ}
+        Apr["Apicurio"]
     end
 
-    Deb -- "feedback.created" --> Kfk
-    Kfk -- "progress / profile" --> App
-    App -- "strategy / roadmap" --> Kfk
+    RW -- "feedback.created" --> AMQ
+    AMQ -- "progress / profile" --> App
+    App -- "strategy / roadmap" --> AMQ
+    App -. "schema" .-> Apr
 
     subgraph Support [Infra Support]
         direction TB
@@ -84,7 +87,7 @@ graph LR
     classDef actorCls fill:#1e1b4b,stroke:#818cf8,color:#fff
 
     class App svc; class OK authCls;
-    class PGB,PG,Mig dataCls; class Deb cdcCls; class Kfk eventCls;
+    class PGB,PG,Mig dataCls; class RW cdcCls; class AMQ,Apr eventCls;
     class Vault,ESO secretCls; class Obs obsCls; class User actorCls;
 ```
 
