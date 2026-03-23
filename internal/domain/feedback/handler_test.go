@@ -15,6 +15,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const statusCodeFmt = "status code: got %d, want %d"
+
 // mockService is a test double for feedback.Service.
 type mockService struct {
 	processFn func(ctx context.Context, req *FeedbackRequest) (*StrategyUpdate, error)
@@ -61,7 +63,7 @@ func TestSubmitFeedbackSuccess(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("status code: got %d, want %d", w.Code, http.StatusOK)
+		t.Errorf(statusCodeFmt, w.Code, http.StatusOK)
 	}
 
 	var update StrategyUpdate
@@ -81,7 +83,7 @@ func TestSubmitFeedbackInvalidJSON(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("status code: got %d, want %d", w.Code, http.StatusBadRequest)
+		t.Errorf(statusCodeFmt, w.Code, http.StatusBadRequest)
 	}
 }
 
@@ -98,7 +100,7 @@ func TestSubmitFeedbackMissingFields(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("status code: got %d, want %d", w.Code, http.StatusBadRequest)
+		t.Errorf(statusCodeFmt, w.Code, http.StatusBadRequest)
 	}
 }
 
@@ -123,6 +125,6 @@ func TestSubmitFeedbackServiceError(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusInternalServerError {
-		t.Errorf("status code: got %d, want %d", w.Code, http.StatusInternalServerError)
+		t.Errorf(statusCodeFmt, w.Code, http.StatusInternalServerError)
 	}
 }
