@@ -19,3 +19,5 @@
 {{ include "mathtrail-service-lib.vaultAuth" . }}
 ---
 {{ include "mathtrail-service-lib.vaultDynamicSecret" . }}
+---
+{{ include "mathtrail-service-lib.schemaRegistrationJob" . }}
