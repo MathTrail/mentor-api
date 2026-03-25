@@ -65,6 +65,7 @@ func (s *service) ProcessFeedback(ctx context.Context, req *FeedbackRequest) (*S
 	// to diagnose the issue without re-running the analysis.
 	feedback := &Feedback{
 		StudentID:           req.StudentID,
+		TaskID:              req.TaskID,
 		Message:             req.Message,
 		PerceivedDifficulty: result.PerceivedDifficulty,
 		StrategySnapshot:    snapshotJSON,

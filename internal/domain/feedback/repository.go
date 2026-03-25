@@ -41,13 +41,14 @@ func (r *repositoryImpl) Save(ctx context.Context, f *Feedback) error {
 	f.ID = id
 
 	const query = `
-		INSERT INTO feedback (id, student_id, message, perceived_difficulty, strategy_snapshot)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO feedback (id, student_id, task_id, message, perceived_difficulty, strategy_snapshot)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, created_at`
 
 	rows, err := r.db.Query(ctx, query,
 		f.ID,
 		f.StudentID.String(),
+		f.TaskID,
 		f.Message,
 		f.PerceivedDifficulty,
 		string(f.StrategySnapshot),
@@ -71,7 +72,7 @@ func (r *repositoryImpl) Save(ctx context.Context, f *Feedback) error {
 // GetLatestByStudent retrieves the most recent feedback for a student.
 func (r *repositoryImpl) GetLatestByStudent(ctx context.Context, studentID uuid.UUID, limit int) ([]Feedback, error) {
 	const query = `
-		SELECT id, student_id, message, perceived_difficulty, strategy_snapshot, created_at
+		SELECT id, student_id, task_id, message, perceived_difficulty, strategy_snapshot, created_at
 		FROM feedback
 		WHERE student_id = $1
 		ORDER BY created_at DESC

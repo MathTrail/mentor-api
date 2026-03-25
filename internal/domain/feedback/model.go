@@ -11,6 +11,7 @@ import (
 type Feedback struct {
 	ID                  uuid.UUID       `json:"id"`
 	StudentID           uuid.UUID       `json:"student_id"`
+	TaskID              string          `json:"task_id"`
 	Message             string          `json:"message"`
 	PerceivedDifficulty string          `json:"perceived_difficulty"`
 	StrategySnapshot    json.RawMessage `json:"strategy_snapshot"`

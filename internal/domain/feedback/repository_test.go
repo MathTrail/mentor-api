@@ -135,6 +135,7 @@ func TestGetLatestByStudentSuccess(t *testing.T) {
 				{
 					"id":                   id1.String(),
 					"student_id":           studentID.String(),
+					"task_id":              "task-1",
 					"message":              "first",
 					"perceived_difficulty": "ok",
 					"strategy_snapshot":    `{}`,
@@ -143,6 +144,7 @@ func TestGetLatestByStudentSuccess(t *testing.T) {
 				{
 					"id":                   id2.String(),
 					"student_id":           studentID.String(),
+					"task_id":              "task-2",
 					"message":              "second",
 					"perceived_difficulty": "hard",
 					"strategy_snapshot":    `{}`,
