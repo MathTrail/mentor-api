@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
+	"time"
 )
 
 // confluentMagicByte is the first byte of every Confluent Wire Format message (always 0x00).
@@ -54,8 +56,9 @@ func (v *TopicValidator) ValidateAndUnwrap(data []byte) ([]byte, error) {
 
 // fetchLatestSchemaID queries the Confluent-compat v7 API for the latest schema ID.
 func fetchLatestSchemaID(registryURL, subject string) (int, error) {
-	url := registryURL + "/subjects/" + subject + "/versions/latest"
-	resp, err := http.Get(url) //nolint:gosec // URL is from internal config, not user input
+	url := strings.TrimSuffix(registryURL, "/") + "/subjects/" + subject + "/versions/latest"
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get(url) //nolint:gosec // URL is from internal config, not user input
 	if err != nil {
 		return 0, fmt.Errorf("http get %s: %w", url, err)
 	}
