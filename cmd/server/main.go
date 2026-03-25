@@ -59,15 +59,15 @@ func main() {
 		zap.String("port", cfg.ServerPort),
 	)
 
-	// 5. Run Kafka workers and HTTP server under errgroup so that:
+	// 5. Run background workers and HTTP server under a shared errgroup so that:
 	//    - container.Close() (deferred above) only runs after both have exited;
-	//    - if either component fails, the shared gCtx is cancelled and the other
-	//      component begins its own graceful shutdown.
+	//    - if any component fails, gCtx is cancelled and the others begin graceful shutdown.
 	g, gCtx := errgroup.WithContext(ctx)
 
-	g.Go(func() error {
-		return container.RunWorkers(gCtx)
-	})
+	for _, w := range container.Workers {
+		w := w
+		g.Go(func() error { return w.Start(gCtx) })
+	}
 
 	srv := app.NewServer(container)
 	g.Go(func() error {

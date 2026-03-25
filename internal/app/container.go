@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/twmb/franz-go/pkg/kgo"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/MathTrail/mentor-api/internal/clients"
 	"github.com/MathTrail/mentor-api/internal/config"
@@ -31,7 +30,7 @@ type Container struct {
 	Config  *config.Config
 	Logger  *zap.Logger
 	Router  *gin.Engine
-	workers []Worker
+	Workers []Worker
 	stop    func()
 }
 
@@ -66,7 +65,7 @@ func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (
 		Config:  cfg,
 		Logger:  logger,
 		Router:  router,
-		workers: []Worker{onboardingConsumer},
+		Workers: []Worker{onboardingConsumer},
 		// Closes resources in reverse init order. kafkaClient.Close() is
 		// idempotent — safe even if Consumer.Start() already closed it.
 		stop: func() {
@@ -74,19 +73,6 @@ func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (
 			db.Close()
 		},
 	}, nil
-}
-
-// RunWorkers starts all background workers under an errgroup and blocks until
-// ctx is cancelled or any worker returns an error. Intended to be run via
-// errgroup alongside the HTTP server so that container.Close() is only called
-// after all workers exit.
-func (c *Container) RunWorkers(ctx context.Context) error {
-	g, ctx := errgroup.WithContext(ctx)
-	for _, w := range c.workers {
-		w := w
-		g.Go(func() error { return w.Start(ctx) })
-	}
-	return g.Wait()
 }
 
 // Close releases resources held by the container.
