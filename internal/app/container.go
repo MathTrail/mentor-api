@@ -45,7 +45,7 @@ func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (
 		return nil, fmt.Errorf("schema validator: %w", err)
 	}
 
-	kafkaClient, err := kafkainfra.NewClientFromConfig(cfg)
+	kafkaClient, err := kafkainfra.NewClientFromConfig(cfg, logger)
 	if err != nil {
 		db.Close()
 		return nil, fmt.Errorf("kafka client: %w", err)
@@ -71,8 +71,7 @@ func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (
 		Logger:  logger,
 		Router:  router,
 		Workers: []runner.Worker{onboardingConsumer},
-		// Closes resources in reverse init order. kafkaClient.Close() is
-		// idempotent — safe even if Consumer.Start() already closed it.
+		// Closes resources in reverse init order.
 		stop: func() {
 			kafkaClient.Close()
 			db.Close()
