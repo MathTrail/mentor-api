@@ -2,6 +2,7 @@ package feedback
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -41,16 +42,25 @@ func NewService(
 // persists the resulting strategy, and returns it to the caller.
 func (s *service) ProcessFeedback(ctx context.Context, req *FeedbackRequest) (*StrategyUpdate, error) {
 	// 1. Analyse via LLM with a dedicated timeout to protect HTTP workers.
-	ctx, cancel := context.WithTimeout(ctx, s.timeout)
-	defer cancel()
+	// Use a child context so the LLM deadline does not bleed into the DB write.
+	llmCtx, llmCancel := context.WithTimeout(ctx, s.timeout)
+	defer llmCancel()
 
-	result, err := s.client.AnalyzeFeedback(ctx, req.Message)
+	result, err := s.client.AnalyzeFeedback(llmCtx, req.Message)
 	if err != nil {
 		s.logger.Error("LLM analysis failed",
 			zap.Error(err),
 			zap.Stringer("student_id", req.StudentID),
 		)
 		return nil, fmt.Errorf("analysis: %w", err)
+	}
+
+	if err := validateResult(result); err != nil {
+		s.logger.Error("LLM returned invalid result",
+			zap.Error(err),
+			zap.Stringer("student_id", req.StudentID),
+		)
+		return nil, fmt.Errorf("invalid LLM result: %w", err)
 	}
 
 	// 2. Serialise the strategy snapshot for storage
@@ -76,6 +86,7 @@ func (s *service) ProcessFeedback(ctx context.Context, req *FeedbackRequest) (*S
 			zap.Error(err),
 			zap.Stringer("student_id", req.StudentID),
 			zap.String("task_id", req.TaskID),
+			zap.Any("llm_result", result),
 		)
 		return nil, err
 	}
@@ -95,4 +106,23 @@ func (s *service) ProcessFeedback(ctx context.Context, req *FeedbackRequest) (*S
 		StrategySnapshot:     result.StrategySnapshot,
 		Timestamp:            feedback.CreatedAt,
 	}, nil
+}
+
+// validateResult guards against malformed or empty LLM responses.
+func validateResult(r *clients.StrategyResult) error {
+	if r.PerceivedDifficulty == "" {
+		return errors.New("perceived_difficulty is empty")
+	}
+	if r.Sentiment == "" {
+		return errors.New("sentiment is empty")
+	}
+	if len(r.TopicWeights) == 0 {
+		return errors.New("topic_weights is empty")
+	}
+	for topic, w := range r.TopicWeights {
+		if w < 0 {
+			return fmt.Errorf("topic_weights[%q] is negative: %v", topic, w)
+		}
+	}
+	return nil
 }
