@@ -72,14 +72,17 @@ func (c *Consumer) Start(ctx context.Context) error {
 
 	// Graceful shutdown: leave the consumer group so Kafka can reassign partitions
 	// immediately instead of waiting for the session timeout.
+	// Close() is intentionally omitted — the kgo.Client is owned by the container
+	// and will be closed after all workers have stopped.
 	c.logger.Info("onboarding consumer shutting down, leaving group")
 	c.client.LeaveGroup()
-	c.client.Close()
 	c.logger.Info("onboarding consumer stopped")
 	return nil
 }
 
 func (c *Consumer) handle(ctx context.Context, record *kgo.Record) error {
+	// Propagate W3C traceparent from Kafka headers to link producer and consumer traces.
+	ctx = otel.GetTextMapPropagator().Extract(ctx, kafkainfra.NewRecordCarrier(record.Headers))
 	ctx, span := tracer.Start(ctx, "onboarding.recommendation.upsert")
 	defer span.End()
 
@@ -110,12 +113,22 @@ func (c *Consumer) handle(ctx context.Context, record *kgo.Record) error {
 
 	studentID, err := uuid.Parse(msg.UserId)
 	if err != nil {
-		return fmt.Errorf("parse user_id %q: %w", msg.UserId, err)
+		c.produceDLQ(record)
+		c.logger.Warn("invalid user_id, routed to DLQ",
+			zap.Error(err),
+			zap.String("user_id", msg.UserId),
+		)
+		return nil
 	}
 
 	occurredAt, err := parseOccurredAt(msg.OccurredAt)
 	if err != nil {
-		return fmt.Errorf("parse occurred_at %q: %w", msg.OccurredAt, err)
+		c.produceDLQ(record)
+		c.logger.Warn("invalid occurred_at, routed to DLQ",
+			zap.Error(err),
+			zap.String("occurred_at", msg.OccurredAt),
+		)
+		return nil
 	}
 
 	span.SetAttributes(
@@ -141,13 +154,24 @@ func (c *Consumer) handle(ctx context.Context, record *kgo.Record) error {
 
 // produceDLQ forwards the original record (value + headers) to the DLQ topic.
 // CloudEvents headers are preserved for end-to-end tracing.
+// A 5-second timeout prevents the produce attempt from blocking indefinitely
+// if the broker is unavailable; the callback logs any delivery failure.
 func (c *Consumer) produceDLQ(record *kgo.Record) {
 	dlqRecord := &kgo.Record{
 		Topic:   record.Topic + ".dlq",
 		Value:   record.Value,
 		Headers: record.Headers,
 	}
-	c.client.Produce(context.Background(), dlqRecord, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	c.client.Produce(ctx, dlqRecord, func(_ *kgo.Record, err error) {
+		cancel()
+		if err != nil {
+			c.logger.Error("failed to produce to DLQ",
+				zap.Error(err),
+				zap.String("dlq_topic", dlqRecord.Topic),
+			)
+		}
+	})
 }
 
 // parseOccurredAt tries RFC3339 first, then RisingWave's NOW()::VARCHAR format.
