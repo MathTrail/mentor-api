@@ -3,10 +3,8 @@ package app
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/twmb/franz-go/pkg/kgo"
 
 	"github.com/MathTrail/mentor-api/internal/clients"
 	"github.com/MathTrail/mentor-api/internal/config"
@@ -15,14 +13,10 @@ import (
 	"github.com/MathTrail/mentor-api/internal/domain/roadmap"
 	kafkainfra "github.com/MathTrail/mentor-api/internal/infra/kafka"
 	"github.com/MathTrail/mentor-api/internal/infra/postgres"
+	"github.com/MathTrail/mentor-api/internal/runner"
 	httpserver "github.com/MathTrail/mentor-api/internal/transport/http"
 	"go.uber.org/zap"
 )
-
-// Worker is a long-running background process that terminates when ctx is cancelled.
-type Worker interface {
-	Start(ctx context.Context) error
-}
 
 // Container holds the dependencies consumed by the Server.
 // Internal wiring is kept as local variables in NewContainer and is not exposed.
@@ -30,7 +24,7 @@ type Container struct {
 	Config  *config.Config
 	Logger  *zap.Logger
 	Router  *gin.Engine
-	Workers []Worker
+	Workers []runner.Worker
 	stop    func()
 }
 
@@ -38,9 +32,23 @@ type Container struct {
 // It returns an error instead of panicking so that the caller can
 // handle failures gracefully.
 func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (*Container, error) {
-	db, err := initDB(ctx, cfg, logger)
+	db, err := postgres.NewDynamicPool(ctx, cfg.PostgresDSN(), cfg.PgCredentialsDir, logger)
 	if err != nil {
 		return nil, fmt.Errorf("init db: %w", err)
+	}
+
+	// TopicValidator fails fast at startup if Apicurio is unreachable or the
+	// subject does not exist — ensures schema alignment before any message is consumed.
+	validator, err := kafkainfra.NewValidator(cfg.ApicurioURL, cfg.OnboardingSchemaSubject)
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("schema validator: %w", err)
+	}
+
+	kafkaClient, err := kafkainfra.NewClientFromConfig(cfg)
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("kafka client: %w", err)
 	}
 
 	llmClient := clients.NewFeedbackClient()
@@ -55,17 +63,14 @@ func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (
 	healthHandler := httpserver.NewHealthHandler(db)
 	router := httpserver.NewRouter(feedbackHandler, roadmapHandler, healthHandler, cfg, logger)
 
-	onboardingConsumer, kafkaClient, err := initOnboardingConsumer(cfg, db, logger)
-	if err != nil {
-		db.Close()
-		return nil, fmt.Errorf("init onboarding consumer: %w", err)
-	}
+	onboardingRepo := onboarding.NewRepository(db)
+	onboardingConsumer := onboarding.NewConsumer(kafkaClient, onboardingRepo, validator, logger)
 
 	return &Container{
 		Config:  cfg,
 		Logger:  logger,
 		Router:  router,
-		Workers: []Worker{onboardingConsumer},
+		Workers: []runner.Worker{onboardingConsumer},
 		// Closes resources in reverse init order. kafkaClient.Close() is
 		// idempotent — safe even if Consumer.Start() already closed it.
 		stop: func() {
@@ -79,48 +84,4 @@ func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (
 // Call once after RunWorkers and the HTTP server have both stopped.
 func (c *Container) Close() {
 	c.stop()
-}
-
-// initDB creates a DynamicPool that rotates credentials
-// in-process when VSO-mounted Secret files change.
-func initDB(ctx context.Context, cfg *config.Config, logger *zap.Logger) (*postgres.DynamicPool, error) {
-	db, err := postgres.NewDynamicPool(ctx, cfg.PostgresDSN(), cfg.PgCredentialsDir, logger)
-	if err != nil {
-		return nil, fmt.Errorf("dynamic pg pool: %w", err)
-	}
-	return db, nil
-}
-
-// initKafkaClient creates a franz-go Kafka client for the onboarding consumer.
-func initKafkaClient(cfg *config.Config) (*kgo.Client, error) {
-	brokers := strings.Split(cfg.KafkaBootstrapServers, ",")
-	return kafkainfra.NewClient(kafkainfra.ClientConfig{
-		BootstrapServers: brokers,
-		ConsumerGroup:    cfg.KafkaConsumerGroup,
-		InstanceID:       cfg.InstanceID,
-		SASLUsername:     cfg.KafkaSASLUsername,
-		SASLPassword:     cfg.KafkaSASLPassword,
-	})
-}
-
-// initOnboardingConsumer wires the Kafka consumer that reads
-// students.onboarding.ready events and persists recommendations.
-// It returns the Consumer and the underlying *kgo.Client so the
-// caller can manage the client lifecycle via Container.stop.
-func initOnboardingConsumer(cfg *config.Config, db *postgres.DynamicPool, logger *zap.Logger) (*onboarding.Consumer, *kgo.Client, error) {
-	// TopicValidator fails fast at startup if Apicurio is unreachable or the
-	// subject does not exist — ensures schema alignment before any message is consumed.
-	validator, err := kafkainfra.NewValidator(cfg.ApicurioURL, cfg.OnboardingSchemaSubject)
-	if err != nil {
-		return nil, nil, fmt.Errorf("schema validator init: %w", err)
-	}
-
-	kafkaClient, err := initKafkaClient(cfg)
-	if err != nil {
-		return nil, nil, fmt.Errorf("kafka client: %w", err)
-	}
-
-	repo := onboarding.NewRepository(db)
-	consumer := onboarding.NewConsumer(kafkaClient, repo, validator, logger)
-	return consumer, kafkaClient, nil
 }

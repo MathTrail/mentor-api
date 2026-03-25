@@ -16,6 +16,7 @@ import (
 	"github.com/MathTrail/mentor-api/internal/config"
 	"github.com/MathTrail/mentor-api/internal/logger"
 	"github.com/MathTrail/mentor-api/internal/observability"
+	"github.com/MathTrail/mentor-api/internal/runner"
 	"github.com/MathTrail/mentor-api/internal/version"
 	"go.uber.org/zap"
 
@@ -64,10 +65,9 @@ func main() {
 	//    - if any component fails, gCtx is cancelled and the others begin graceful shutdown.
 	g, gCtx := errgroup.WithContext(ctx)
 
-	for _, w := range container.Workers {
-		w := w
-		g.Go(func() error { return w.Start(gCtx) })
-	}
+	g.Go(func() error {
+		return runner.RunGroup(gCtx, container.Workers...)
+	})
 
 	srv := app.NewServer(container)
 	g.Go(func() error {
