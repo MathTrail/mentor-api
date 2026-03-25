@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"errors"
+	"log"
 	"os/signal"
 	"syscall"
 
@@ -25,7 +26,10 @@ import (
 
 func main() {
 	// 1. Single point of config and logger creation.
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("failed to load config: %v", err)
+	}
 	logger := logger.NewLogger(cfg.LogLevel, cfg.LogFormat)
 
 	// 2. Root context: cancelled on SIGINT or SIGTERM.

@@ -36,8 +36,8 @@ func NewHandler(svc Service, logger *zap.Logger) *Handler {
 func (h *Handler) SubmitFeedback(ctx *gin.Context) {
 	var req FeedbackRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.logger.Warn("invalid feedback request", zap.Error(err))
-		ctx.JSON(http.StatusBadRequest, apierror.Response{Code: "INVALID_REQUEST", Message: err.Error()})
+		h.logger.Warn("invalid feedback request payload", zap.Error(err))
+		ctx.JSON(http.StatusBadRequest, apierror.Response{Code: "INVALID_REQUEST", Message: "invalid JSON payload or missing required fields"})
 		return
 	}
 
