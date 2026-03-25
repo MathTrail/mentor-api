@@ -26,7 +26,8 @@ func (r *Repository) Upsert(ctx context.Context, studentID uuid.UUID, eventID st
 		VALUES ($1, $2, $3)
 		ON CONFLICT (student_id) DO UPDATE
 			SET event_id    = EXCLUDED.event_id,
-			    occurred_at = EXCLUDED.occurred_at
+			    occurred_at = EXCLUDED.occurred_at,
+			    updated_at  = NOW()
 		WHERE EXCLUDED.occurred_at > recommendations.occurred_at
 	`
 	return r.db.Exec(ctx, q, studentID, eventID, occurredAt)

@@ -13,4 +13,5 @@ type Recommendation struct {
 	EventID    string
 	OccurredAt time.Time
 	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
