@@ -46,6 +46,12 @@ type Config struct {
 	LLMTimeout         time.Duration // parsed from LLMTimeoutRaw in Load()
 	ShutdownTimeoutRaw string        `mapstructure:"SHUTDOWN_TIMEOUT"` // e.g. "5s", "10s"
 	ShutdownTimeout    time.Duration // parsed from ShutdownTimeoutRaw in Load()
+	ReadTimeoutRaw     string        `mapstructure:"HTTP_READ_TIMEOUT"` // e.g. "5s"
+	ReadTimeout        time.Duration // parsed from ReadTimeoutRaw in Load()
+	WriteTimeoutRaw    string        `mapstructure:"HTTP_WRITE_TIMEOUT"` // e.g. "10s"
+	WriteTimeout       time.Duration // parsed from WriteTimeoutRaw in Load()
+	IdleTimeoutRaw     string        `mapstructure:"HTTP_IDLE_TIMEOUT"` // e.g. "120s"
+	IdleTimeout        time.Duration // parsed from IdleTimeoutRaw in Load()
 }
 
 func Load() *Config {
@@ -66,6 +72,9 @@ func Load() *Config {
 	v.SetDefault("PYROSCOPE_ENDPOINT", "")
 	v.SetDefault("LLM_TIMEOUT", "10s")
 	v.SetDefault("SHUTDOWN_TIMEOUT", "5s")
+	v.SetDefault("HTTP_READ_TIMEOUT", "5s")
+	v.SetDefault("HTTP_WRITE_TIMEOUT", "10s")
+	v.SetDefault("HTTP_IDLE_TIMEOUT", "120s")
 	v.SetDefault("KAFKA_BOOTSTRAP_SERVERS", "automq:9092")
 	v.SetDefault("KAFKA_CONSUMER_GROUP", "mentor-api")
 	v.SetDefault("APICURIO_URL", "http://mathtrail-apicurio-apicurio-registry:8080/apis/ccompat/v7")
@@ -90,6 +99,24 @@ func Load() *Config {
 		panic(fmt.Sprintf("invalid SHUTDOWN_TIMEOUT %q: %v", cfg.ShutdownTimeoutRaw, err))
 	}
 	cfg.ShutdownTimeout = shutD
+
+	readD, err := time.ParseDuration(cfg.ReadTimeoutRaw)
+	if err != nil {
+		panic(fmt.Sprintf("invalid HTTP_READ_TIMEOUT %q: %v", cfg.ReadTimeoutRaw, err))
+	}
+	cfg.ReadTimeout = readD
+
+	writeD, err := time.ParseDuration(cfg.WriteTimeoutRaw)
+	if err != nil {
+		panic(fmt.Sprintf("invalid HTTP_WRITE_TIMEOUT %q: %v", cfg.WriteTimeoutRaw, err))
+	}
+	cfg.WriteTimeout = writeD
+
+	idleD, err := time.ParseDuration(cfg.IdleTimeoutRaw)
+	if err != nil {
+		panic(fmt.Sprintf("invalid HTTP_IDLE_TIMEOUT %q: %v", cfg.IdleTimeoutRaw, err))
+	}
+	cfg.IdleTimeout = idleD
 
 	if cfg.OTelSampleRate < 0 || cfg.OTelSampleRate > 1 {
 		panic(fmt.Sprintf("OTEL_SAMPLE_RATE must be between 0.0 and 1.0, got %v", cfg.OTelSampleRate))

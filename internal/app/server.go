@@ -22,8 +22,11 @@ func NewServer(container *Container) *Server {
 		logger:          container.Logger,
 		shutdownTimeout: container.Config.ShutdownTimeout,
 		httpServer: &http.Server{
-			Addr:    fmt.Sprintf(":%s", container.Config.ServerPort),
-			Handler: container.Router,
+			Addr:         fmt.Sprintf(":%s", container.Config.ServerPort),
+			Handler:      container.Router,
+			ReadTimeout:  container.Config.ReadTimeout,
+			WriteTimeout: container.Config.WriteTimeout,
+			IdleTimeout:  container.Config.IdleTimeout,
 		},
 	}
 }
@@ -50,7 +53,10 @@ func (s *Server) Run(ctx context.Context) error {
 	shutCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), s.shutdownTimeout)
 	defer cancel()
 
+	s.logger.Info("shutting down gracefully", zap.Duration("timeout", s.shutdownTimeout))
+
 	if err := s.httpServer.Shutdown(shutCtx); err != nil {
+		_ = s.httpServer.Close() // force-close remaining connections
 		return fmt.Errorf("graceful shutdown failed: %w", err)
 	}
 
