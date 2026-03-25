@@ -70,8 +70,15 @@ func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (
 	}, nil
 }
 
+// RunWorkers starts all background consumers and blocks until ctx is cancelled
+// or a worker returns an error. Intended to be run via errgroup alongside the
+// HTTP server so that container.Close() is only called after all workers exit.
+func (c *Container) RunWorkers(ctx context.Context) error {
+	return c.OnboardingConsumer.Start(ctx)
+}
+
 // Close releases resources held by the container.
-// Call once after the HTTP server has stopped accepting requests.
+// Call once after RunWorkers and the HTTP server have both stopped.
 func (c *Container) Close() {
 	c.stop()
 }

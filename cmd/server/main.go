@@ -6,8 +6,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os/signal"
 	"syscall"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/MathTrail/mentor-api/internal/app"
 	"github.com/MathTrail/mentor-api/internal/config"
@@ -56,13 +59,23 @@ func main() {
 		zap.String("port", cfg.ServerPort),
 	)
 
-	// 5. Start Kafka consumer in background (students.onboarding.ready → recommendations).
-	// Consumer.Start blocks; it exits when ctx is cancelled and performs a graceful LeaveGroup.
-	go container.OnboardingConsumer.Start(ctx)
+	// 5. Run Kafka workers and HTTP server under errgroup so that:
+	//    - container.Close() (deferred above) only runs after both have exited;
+	//    - if either component fails, the shared gCtx is cancelled and the other
+	//      component begins its own graceful shutdown.
+	g, gCtx := errgroup.WithContext(ctx)
 
-	// 6. HTTP server with graceful shutdown driven by ctx.
+	g.Go(func() error {
+		return container.RunWorkers(gCtx)
+	})
+
 	srv := app.NewServer(container)
-	if err := srv.Run(ctx); err != nil {
-		logger.Fatal("server runtime error", zap.Error(err))
+	g.Go(func() error {
+		return srv.Run(gCtx)
+	})
+
+	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
+		logger.Error("application stopped with error", zap.Error(err))
 	}
+	logger.Info("mentor-api stopped gracefully")
 }

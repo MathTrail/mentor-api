@@ -38,8 +38,9 @@ func NewConsumer(client *kgo.Client, repo *Repository, validator *kafkainfra.Top
 }
 
 // Start runs the consume loop until ctx is cancelled.
-// Blocks the caller — run in a goroutine.
-func (c *Consumer) Start(ctx context.Context) {
+// Blocks the caller — intended to be run via errgroup or a managed goroutine.
+// Returns nil on clean shutdown (ctx cancelled or client closed).
+func (c *Consumer) Start(ctx context.Context) error {
 	c.logger.Info("starting onboarding consumer", zap.String("topic", topic))
 	c.client.AddConsumeTopics(topic)
 
@@ -75,6 +76,7 @@ func (c *Consumer) Start(ctx context.Context) {
 	c.client.LeaveGroup()
 	c.client.Close()
 	c.logger.Info("onboarding consumer stopped")
+	return nil
 }
 
 func (c *Consumer) handle(ctx context.Context, record *kgo.Record) error {
