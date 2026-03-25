@@ -1,4 +1,4 @@
-package kafkainfra
+package kafka
 
 import "github.com/twmb/franz-go/pkg/kgo"
 
