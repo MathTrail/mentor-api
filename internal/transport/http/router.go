@@ -1,8 +1,6 @@
 package httpserver
 
 import (
-	"net/http"
-
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -11,7 +9,6 @@ import (
 	"github.com/MathTrail/mentor-api/internal/config"
 	"github.com/MathTrail/mentor-api/internal/domain/feedback"
 	"github.com/MathTrail/mentor-api/internal/domain/roadmap"
-	"github.com/MathTrail/mentor-api/internal/infra/postgres"
 	"github.com/MathTrail/mentor-api/internal/transport/http/middleware"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -21,7 +18,7 @@ import (
 func NewRouter(
 	feedbackHandler *feedback.Handler,
 	roadmapHandler *roadmap.Handler,
-	db postgres.DB,
+	healthHandler *HealthHandler,
 	cfg *config.Config,
 	logger *zap.Logger,
 ) *gin.Engine {
@@ -43,9 +40,9 @@ func NewRouter(
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// Health check endpoints (for Kubernetes probes)
-	router.GET("/health/startup", healthStartup)
-	router.GET("/health/liveness", healthLiveness)
-	router.GET("/health/ready", healthReady(db))
+	router.GET("/health/startup", healthHandler.Startup)
+	router.GET("/health/liveness", healthHandler.Live)
+	router.GET("/health/ready", healthHandler.Ready)
 
 	// Swagger UI (disabled in production via SWAGGER_ENABLED=false)
 	if cfg.SwaggerEnabled {
@@ -60,25 +57,4 @@ func NewRouter(
 	}
 
 	return router
-}
-
-// healthStartup indicates that the application has started
-func healthStartup(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"status": "started"})
-}
-
-// healthLiveness indicates that the application is running
-func healthLiveness(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"status": "ok"})
-}
-
-// healthReady verifies DB connectivity before reporting ready.
-func healthReady(db postgres.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if err := db.Ping(c.Request.Context()); err != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not ready", "reason": "db: " + err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"status": "ready"})
-	}
 }

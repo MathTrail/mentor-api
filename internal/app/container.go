@@ -3,11 +3,11 @@ package app
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/MathTrail/mentor-api/internal/clients"
 	"github.com/MathTrail/mentor-api/internal/config"
@@ -20,14 +20,19 @@ import (
 	"go.uber.org/zap"
 )
 
+// Worker is a long-running background process that terminates when ctx is cancelled.
+type Worker interface {
+	Start(ctx context.Context) error
+}
+
 // Container holds the dependencies consumed by the Server.
-// Internal wiring is kept as local, variables in NewContainer and is not exposed.
+// Internal wiring is kept as local variables in NewContainer and is not exposed.
 type Container struct {
-	Config             *config.Config
-	Logger             *zap.Logger
-	Router             *gin.Engine
-	OnboardingConsumer *onboarding.Consumer
-	stop               func()
+	Config  *config.Config
+	Logger  *zap.Logger
+	Router  *gin.Engine
+	workers []Worker
+	stop    func()
 }
 
 // NewContainer creates and wires all application dependencies.
@@ -36,7 +41,7 @@ type Container struct {
 func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (*Container, error) {
 	db, err := initDB(ctx, cfg, logger)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("init db: %w", err)
 	}
 
 	llmClient := clients.NewFeedbackClient()
@@ -48,19 +53,20 @@ func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (
 	roadmapService := roadmap.NewService(logger)
 	roadmapHandler := roadmap.NewHandler(roadmapService, logger)
 
-	router := httpserver.NewRouter(feedbackHandler, roadmapHandler, db, cfg, logger)
+	healthHandler := httpserver.NewHealthHandler(db)
+	router := httpserver.NewRouter(feedbackHandler, roadmapHandler, healthHandler, cfg, logger)
 
 	onboardingConsumer, kafkaClient, err := initOnboardingConsumer(cfg, db, logger)
 	if err != nil {
 		db.Close()
-		return nil, err
+		return nil, fmt.Errorf("init onboarding consumer: %w", err)
 	}
 
 	return &Container{
-		Config:             cfg,
-		Logger:             logger,
-		Router:             router,
-		OnboardingConsumer: onboardingConsumer,
+		Config:  cfg,
+		Logger:  logger,
+		Router:  router,
+		workers: []Worker{onboardingConsumer},
 		// Closes resources in reverse init order. kafkaClient.Close() is
 		// idempotent — safe even if Consumer.Start() already closed it.
 		stop: func() {
@@ -70,11 +76,17 @@ func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (
 	}, nil
 }
 
-// RunWorkers starts all background consumers and blocks until ctx is cancelled
-// or a worker returns an error. Intended to be run via errgroup alongside the
-// HTTP server so that container.Close() is only called after all workers exit.
+// RunWorkers starts all background workers under an errgroup and blocks until
+// ctx is cancelled or any worker returns an error. Intended to be run via
+// errgroup alongside the HTTP server so that container.Close() is only called
+// after all workers exit.
 func (c *Container) RunWorkers(ctx context.Context) error {
-	return c.OnboardingConsumer.Start(ctx)
+	g, ctx := errgroup.WithContext(ctx)
+	for _, w := range c.workers {
+		w := w
+		g.Go(func() error { return w.Start(ctx) })
+	}
+	return g.Wait()
 }
 
 // Close releases resources held by the container.
@@ -96,14 +108,10 @@ func initDB(ctx context.Context, cfg *config.Config, logger *zap.Logger) (*postg
 // initKafkaClient creates a franz-go Kafka client for the onboarding consumer.
 func initKafkaClient(cfg *config.Config) (*kgo.Client, error) {
 	brokers := strings.Split(cfg.KafkaBootstrapServers, ",")
-	podName := os.Getenv("POD_NAME")
-	if podName == "" {
-		podName = "mentor-api-local"
-	}
 	return kafkainfra.NewClient(kafkainfra.ClientConfig{
 		BootstrapServers: brokers,
 		ConsumerGroup:    cfg.KafkaConsumerGroup,
-		InstanceID:       podName,
+		InstanceID:       cfg.InstanceID,
 		SASLUsername:     cfg.KafkaSASLUsername,
 		SASLPassword:     cfg.KafkaSASLPassword,
 	})

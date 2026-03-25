@@ -16,6 +16,11 @@ import (
 	"go.uber.org/zap"
 )
 
+// newTestHealthHandler wraps a mockDB in a HealthHandler for use in router tests.
+func newTestHealthHandler(db postgres.DB) *HealthHandler {
+	return NewHealthHandler(db)
+}
+
 // testConfig returns a minimal config suitable for router tests.
 func testConfig() *config.Config {
 	return &config.Config{SwaggerEnabled: true}
@@ -56,7 +61,7 @@ func testRouter() (*feedback.Handler, *roadmap.Handler, *mockDB) {
 
 func TestHealthStartup(t *testing.T) {
 	fh, rh, db := testRouter()
-	router := NewRouter(fh, rh, db, testConfig(), zap.NewNop())
+	router := NewRouter(fh, rh, newTestHealthHandler(db), testConfig(), zap.NewNop())
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health/startup", nil)
@@ -69,7 +74,7 @@ func TestHealthStartup(t *testing.T) {
 
 func TestHealthLiveness(t *testing.T) {
 	fh, rh, db := testRouter()
-	router := NewRouter(fh, rh, db, testConfig(), zap.NewNop())
+	router := NewRouter(fh, rh, newTestHealthHandler(db), testConfig(), zap.NewNop())
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health/liveness", nil)
@@ -82,7 +87,7 @@ func TestHealthLiveness(t *testing.T) {
 
 func TestHealthReadyOK(t *testing.T) {
 	fh, rh, db := testRouter()
-	router := NewRouter(fh, rh, db, testConfig(), zap.NewNop())
+	router := NewRouter(fh, rh, newTestHealthHandler(db), testConfig(), zap.NewNop())
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health/ready", nil)
@@ -96,7 +101,7 @@ func TestHealthReadyOK(t *testing.T) {
 func TestHealthReadyDBDown(t *testing.T) {
 	fh, rh, _ := testRouter()
 	db := &mockDB{pingErr: errors.New("connection refused")}
-	router := NewRouter(fh, rh, db, testConfig(), zap.NewNop())
+	router := NewRouter(fh, rh, newTestHealthHandler(db), testConfig(), zap.NewNop())
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health/ready", nil)
@@ -109,7 +114,7 @@ func TestHealthReadyDBDown(t *testing.T) {
 
 func TestRoadmapRecommendationsSuccess(t *testing.T) {
 	fh, rh, db := testRouter()
-	router := NewRouter(fh, rh, db, testConfig(), zap.NewNop())
+	router := NewRouter(fh, rh, newTestHealthHandler(db), testConfig(), zap.NewNop())
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/roadmap/recommendations", nil)
@@ -131,7 +136,7 @@ func TestRoadmapRecommendationsSuccess(t *testing.T) {
 
 func TestRoadmapRecommendationsMissingHeader(t *testing.T) {
 	fh, rh, db := testRouter()
-	router := NewRouter(fh, rh, db, testConfig(), zap.NewNop())
+	router := NewRouter(fh, rh, newTestHealthHandler(db), testConfig(), zap.NewNop())
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/roadmap/recommendations", nil)

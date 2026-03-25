@@ -35,6 +35,9 @@ type Config struct {
 	KafkaConsumerGroup    string `mapstructure:"KAFKA_CONSUMER_GROUP"`
 	KafkaSASLUsername     string `mapstructure:"KAFKA_SASL_USERNAME"`
 	KafkaSASLPassword     string `mapstructure:"KAFKA_SASL_PASSWORD"`
+	// InstanceID is the static Kafka consumer group member ID.
+	// Injected as POD_NAME by Kubernetes; prevents rebalance storms during rolling deploys.
+	InstanceID string `mapstructure:"POD_NAME"`
 
 	// ApicurioURL is the base URL of the Confluent-compat v7 API, used by TopicValidator
 	// to fetch the latest schema ID at startup (fail-fast if unreachable).
@@ -77,6 +80,7 @@ func Load() *Config {
 	v.SetDefault("HTTP_IDLE_TIMEOUT", "120s")
 	v.SetDefault("KAFKA_BOOTSTRAP_SERVERS", "automq:9092")
 	v.SetDefault("KAFKA_CONSUMER_GROUP", "mentor-api")
+	v.SetDefault("POD_NAME", "mentor-api-local")
 	v.SetDefault("APICURIO_URL", "http://mathtrail-apicurio-apicurio-registry:8080/apis/ccompat/v7")
 	v.SetDefault("ONBOARDING_SCHEMA_SUBJECT", "students.v1.StudentOnboardingReady")
 	v.SetDefault("PG_CREDENTIALS_DIR", "")
