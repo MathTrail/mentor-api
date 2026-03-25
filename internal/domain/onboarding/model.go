@@ -14,14 +14,3 @@ type Recommendation struct {
 	OccurredAt time.Time
 	CreatedAt  time.Time
 }
-
-// StudentOnboardingReadyEvent is the domain event received from students.onboarding.ready.
-type StudentOnboardingReadyEvent struct {
-	EventID    string
-	UserID     string
-	Email      string
-	FirstName  string
-	LastName   string
-	Role       string
-	OccurredAt string
-}
