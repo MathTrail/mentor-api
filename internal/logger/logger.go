@@ -24,6 +24,7 @@ func NewLogger(level, format string) *zap.Logger {
 		cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	}
 
+	cfg.InitialFields = map[string]any{"service": "mentor-api"}
 	cfg.Level = zap.NewAtomicLevelAt(zapLevel)
 
 	logger, err := cfg.Build()
