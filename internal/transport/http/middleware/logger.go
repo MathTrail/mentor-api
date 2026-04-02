@@ -55,8 +55,12 @@ func ZapLogger(logger *zap.Logger) gin.HandlerFunc {
 			fields = append(fields, zap.String("request_id", id.(string)))
 		}
 
-		if len(c.Errors) > 0 {
-			fields = append(fields, zap.String("errors", c.Errors.ByType(gin.ErrorTypePrivate).String()))
+		if errs := c.Errors.ByType(gin.ErrorTypePrivate); len(errs) > 0 {
+			msgs := make([]string, len(errs))
+			for i, e := range errs {
+				msgs[i] = e.Error()
+			}
+			fields = append(fields, zap.Strings("errors", msgs))
 		}
 
 		switch {
