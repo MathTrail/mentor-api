@@ -20,6 +20,7 @@ const (
 	defaultOTelSampleRate          = 0.1
 	defaultLLMTimeout              = "10s"
 	defaultShutdownTimeout         = "5s"
+	defaultReadHeaderTimeout       = "5s"
 	defaultReadTimeout             = "5s"
 	defaultWriteTimeout            = "10s"
 	defaultIdleTimeout             = "120s"
@@ -68,11 +69,12 @@ type Config struct {
 	OnboardingSchemaSubject string `mapstructure:"ONBOARDING_SCHEMA_SUBJECT"`
 
 	// Timeouts
-	LLMTimeout      time.Duration `mapstructure:"LLM_TIMEOUT"`
-	ShutdownTimeout time.Duration `mapstructure:"SHUTDOWN_TIMEOUT"`
-	ReadTimeout     time.Duration `mapstructure:"HTTP_READ_TIMEOUT"`
-	WriteTimeout    time.Duration `mapstructure:"HTTP_WRITE_TIMEOUT"`
-	IdleTimeout     time.Duration `mapstructure:"HTTP_IDLE_TIMEOUT"`
+	LLMTimeout        time.Duration `mapstructure:"LLM_TIMEOUT"`
+	ShutdownTimeout   time.Duration `mapstructure:"SHUTDOWN_TIMEOUT"`
+	ReadHeaderTimeout time.Duration `mapstructure:"HTTP_READ_HEADER_TIMEOUT"`
+	ReadTimeout       time.Duration `mapstructure:"HTTP_READ_TIMEOUT"`
+	WriteTimeout      time.Duration `mapstructure:"HTTP_WRITE_TIMEOUT"`
+	IdleTimeout       time.Duration `mapstructure:"HTTP_IDLE_TIMEOUT"`
 }
 
 func Load() (*Config, error) {
@@ -93,6 +95,7 @@ func Load() (*Config, error) {
 	v.SetDefault("PYROSCOPE_ENDPOINT", "")
 	v.SetDefault("LLM_TIMEOUT", defaultLLMTimeout)
 	v.SetDefault("SHUTDOWN_TIMEOUT", defaultShutdownTimeout)
+	v.SetDefault("HTTP_READ_HEADER_TIMEOUT", defaultReadHeaderTimeout)
 	v.SetDefault("HTTP_READ_TIMEOUT", defaultReadTimeout)
 	v.SetDefault("HTTP_WRITE_TIMEOUT", defaultWriteTimeout)
 	v.SetDefault("HTTP_IDLE_TIMEOUT", defaultIdleTimeout)
