@@ -50,6 +50,8 @@ type Config struct {
 
 	// Observability
 	ServiceName       string  `mapstructure:"APP_NAME"`
+	PodName           string  `mapstructure:"POD_NAME"`
+	Namespace         string  `mapstructure:"NAMESPACE"`
 	OTelEndpoint      string  `mapstructure:"OTEL_ENDPOINT"`
 	OTelSampleRate    float64 `mapstructure:"OTEL_SAMPLE_RATE"` // 0.0–1.0; fraction of root spans sampled
 	PyroscopeEndpoint string  `mapstructure:"PYROSCOPE_ENDPOINT"`
