@@ -55,7 +55,11 @@ func main() {
 	if err != nil {
 		logger.Fatal("failed to initialize application", zap.Error(err))
 	}
-	defer container.Close()
+	defer func() {
+		closeCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout) // NOSONAR: intentional fresh context — parent ctx is already cancelled at this point
+		defer cancel()
+		container.Close(closeCtx)
+	}()
 
 	logger.Info("starting mentor-api server",
 		zap.String("version", version.Version),
@@ -79,7 +83,8 @@ func main() {
 	})
 
 	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
-		logger.Error("application stopped with error", zap.Error(err))
+		logger.Error("mentor-api stopped with error", zap.Error(err))
+	} else {
+		logger.Info("mentor-api stopped gracefully")
 	}
-	logger.Info("mentor-api stopped gracefully")
 }
