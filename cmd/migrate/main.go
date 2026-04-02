@@ -96,7 +96,7 @@ func validateDBName(name string) error {
 }
 
 func main() {
-	logger := logger.NewLogger("info", "json")
+	logger := logger.NewLogger("mentor-migrate", "info", "json")
 
 	cfg, err := loadDBConfig()
 	if err != nil {
