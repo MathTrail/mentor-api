@@ -8,6 +8,9 @@ filename: "mock_{{.InterfaceName | snakecase}}.go"
 mockname: "Mock{{.InterfaceName}}"
 
 packages:
+  github.com/MathTrail/mentor-api/internal/domain/onboarding:
+    interfaces:
+      DLQPublisher:
   github.com/MathTrail/mentor-api/internal/domain/feedback:
     interfaces:
       Service:

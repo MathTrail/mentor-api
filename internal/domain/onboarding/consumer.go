@@ -20,9 +20,15 @@ const topic = "students.onboarding.ready"
 
 var tracer = otel.Tracer("mentor-api/onboarding")
 
+// DLQPublisher routes unprocessable records to a dead-letter queue.
+type DLQPublisher interface {
+	PublishDLQ(record *kgo.Record)
+}
+
 // Consumer reads from students.onboarding.ready and persists recommendations.
 type Consumer struct {
 	client    *kgo.Client
+	dlq       DLQPublisher
 	repo      *Repository
 	validator *kafkainfra.TopicValidator
 	logger    *zap.Logger
@@ -31,6 +37,7 @@ type Consumer struct {
 func NewConsumer(client *kgo.Client, repo *Repository, validator *kafkainfra.TopicValidator, logger *zap.Logger) *Consumer {
 	return &Consumer{
 		client:    client,
+		dlq:       &kafkaDLQPublisher{client: client, logger: logger},
 		repo:      repo,
 		validator: validator,
 		logger:    logger,
@@ -89,7 +96,7 @@ func (c *Consumer) handle(ctx context.Context, record *kgo.Record) error {
 	rawProto, err := c.validator.ValidateAndUnwrap(record.Value)
 	if err != nil {
 		// Poison pill — route to DLQ, do not crash the consumer loop.
-		c.produceDLQ(record)
+		c.dlq.PublishDLQ(record)
 		c.logger.Warn("schema validation failed, routed to DLQ",
 			zap.Error(err),
 			zap.Int32("partition", record.Partition),
@@ -100,7 +107,7 @@ func (c *Consumer) handle(ctx context.Context, record *kgo.Record) error {
 
 	var msg studentsv1.StudentOnboardingReady
 	if err := proto.Unmarshal(rawProto, &msg); err != nil {
-		c.produceDLQ(record)
+		c.dlq.PublishDLQ(record)
 		c.logger.Warn("proto unmarshal failed, routed to DLQ",
 			zap.Error(err),
 			zap.Int32("partition", record.Partition),
@@ -113,7 +120,7 @@ func (c *Consumer) handle(ctx context.Context, record *kgo.Record) error {
 
 	studentID, err := uuid.Parse(msg.UserId)
 	if err != nil {
-		c.produceDLQ(record)
+		c.dlq.PublishDLQ(record)
 		c.logger.Warn("invalid user_id, routed to DLQ",
 			zap.Error(err),
 			zap.String("user_id", msg.UserId),
@@ -123,7 +130,7 @@ func (c *Consumer) handle(ctx context.Context, record *kgo.Record) error {
 
 	occurredAt, err := parseOccurredAt(msg.OccurredAt)
 	if err != nil {
-		c.produceDLQ(record)
+		c.dlq.PublishDLQ(record)
 		c.logger.Warn("invalid occurred_at, routed to DLQ",
 			zap.Error(err),
 			zap.String("occurred_at", msg.OccurredAt),
@@ -152,21 +159,26 @@ func (c *Consumer) handle(ctx context.Context, record *kgo.Record) error {
 	return nil
 }
 
-// produceDLQ forwards the original record (value + headers) to the DLQ topic.
+// kafkaDLQPublisher forwards unprocessable records to the DLQ topic via Kafka.
 // CloudEvents headers are preserved for end-to-end tracing.
 // A 5-second timeout prevents the produce attempt from blocking indefinitely
 // if the broker is unavailable; the callback logs any delivery failure.
-func (c *Consumer) produceDLQ(record *kgo.Record) {
+type kafkaDLQPublisher struct {
+	client *kgo.Client
+	logger *zap.Logger
+}
+
+func (p *kafkaDLQPublisher) PublishDLQ(record *kgo.Record) {
 	dlqRecord := &kgo.Record{
 		Topic:   record.Topic + ".dlq",
 		Value:   record.Value,
 		Headers: record.Headers,
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	c.client.Produce(ctx, dlqRecord, func(_ *kgo.Record, err error) {
+	p.client.Produce(ctx, dlqRecord, func(_ *kgo.Record, err error) {
 		cancel()
 		if err != nil {
-			c.logger.Error("failed to produce to DLQ",
+			p.logger.Error("failed to produce to DLQ",
 				zap.Error(err),
 				zap.String("dlq_topic", dlqRecord.Topic),
 			)
