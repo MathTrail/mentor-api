@@ -10,7 +10,7 @@ import (
 )
 
 func TestNewLoggerJSONFormat(t *testing.T) {
-	logger := logger.NewLogger("info", "json")
+	logger := logger.NewLogger("test-service", "info", "json")
 	if logger == nil {
 		t.Fatal("expected non-nil logger")
 	}
@@ -42,7 +42,7 @@ func TestNewLoggerJSONFormat(t *testing.T) {
 }
 
 func TestNewLoggerConsoleFormat(t *testing.T) {
-	logger := logger.NewLogger("debug", "console")
+	logger := logger.NewLogger("test-service", "debug", "console")
 	if logger == nil {
 		t.Fatal("expected non-nil logger")
 	}
@@ -56,7 +56,7 @@ func TestNewLoggerConsoleFormat(t *testing.T) {
 
 func TestNewLoggerInvalidLevel(t *testing.T) {
 	// Unknown level should fall back to info without panicking.
-	logger := logger.NewLogger("banana", "json")
+	logger := logger.NewLogger("test-service", "banana", "json")
 	if logger == nil {
 		t.Fatal("expected non-nil logger for invalid level")
 	}
@@ -69,7 +69,7 @@ func TestNewLoggerInvalidLevel(t *testing.T) {
 
 func TestNewLoggerUnknownFormat(t *testing.T) {
 	// Unknown format should default to JSON (production config).
-	logger := logger.NewLogger("info", "xml")
+	logger := logger.NewLogger("test-service", "info", "xml")
 	if logger == nil {
 		t.Fatal("expected non-nil logger for unknown format")
 	}
@@ -82,7 +82,7 @@ func TestNewLoggerJSONOutput(t *testing.T) {
 	// We can't easily capture zap output without custom cores,
 	// but we can verify the config produces valid JSON by checking
 	// that the production encoder emits the expected time key.
-	logger := logger.NewLogger("info", "json")
+	logger := logger.NewLogger("test-service", "info", "json")
 
 	// Use zap's Check to confirm the level is enabled.
 	if logger.Check(zap.InfoLevel, "check") == nil {
