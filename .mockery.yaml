@@ -1,0 +1,29 @@
+with-expecter: true
+disable-version-string: true
+resolve-type-alias: false
+issue-845-fix: true
+dir: "{{.InterfaceDir}}/mocks"
+outpkg: mocks
+filename: "mock_{{.InterfaceName | snakecase}}.go"
+mockname: "Mock{{.InterfaceName}}"
+
+packages:
+  github.com/MathTrail/mentor-api/internal/domain/feedback:
+    interfaces:
+      Service:
+      Repository:
+  github.com/MathTrail/mentor-api/internal/domain/roadmap:
+    interfaces:
+      Service:
+  github.com/MathTrail/mentor-api/internal/clients:
+    interfaces:
+      FeedbackClient:
+      ProfileClient:
+  github.com/MathTrail/mentor-api/internal/runner:
+    interfaces:
+      Worker:
+  github.com/MathTrail/mentor-api/internal/infra/postgres:
+    interfaces:
+      DB:
+        config:
+          filename: "mock_db.go"

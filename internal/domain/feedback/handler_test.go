@@ -1,4 +1,4 @@
-package feedback
+package feedback_test
 
 import (
 	"bytes"
@@ -8,38 +8,23 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
+	"github.com/MathTrail/mentor-api/internal/domain/feedback"
+	feedbackmocks "github.com/MathTrail/mentor-api/internal/domain/feedback/mocks"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 )
-
-const statusCodeFmt = "status code: got %d, want %d"
-
-// mockService is a test double for feedback.Service.
-type mockService struct {
-	processFn func(ctx context.Context, req *FeedbackRequest) (*StrategyUpdate, error)
-}
-
-func (m *mockService) ProcessFeedback(ctx context.Context, req *FeedbackRequest) (*StrategyUpdate, error) {
-	if m.processFn != nil {
-		return m.processFn(ctx, req)
-	}
-	return &StrategyUpdate{
-		StudentID: req.StudentID,
-		TaskID:    req.TaskID,
-		Timestamp: time.Now(),
-	}, nil
-}
 
 const (
 	feedbackPath      = "/api/v1/feedback"
 	contentTypeJSON   = "application/json"
 	contentTypeHeader = "Content-Type"
+	statusCodeFmt     = "status code: got %d, want %d"
 )
 
-func testRouter(h *Handler) *gin.Engine {
+func testFeedbackRouter(h *feedback.Handler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.POST(feedbackPath, h.SubmitFeedback)
@@ -47,11 +32,19 @@ func testRouter(h *Handler) *gin.Engine {
 }
 
 func TestSubmitFeedbackSuccess(t *testing.T) {
-	svc := &mockService{}
-	hdl := NewHandler(svc, zap.NewNop())
-	router := testRouter(hdl)
+	svc := feedbackmocks.NewMockService(t)
+	svc.EXPECT().ProcessFeedback(mock.Anything, mock.Anything).
+		RunAndReturn(func(_ context.Context, req *feedback.FeedbackRequest) (*feedback.StrategyUpdate, error) {
+			return &feedback.StrategyUpdate{
+				StudentID: req.StudentID,
+				TaskID:    req.TaskID,
+			}, nil
+		})
 
-	body, _ := json.Marshal(FeedbackRequest{
+	hdl := feedback.NewHandler(svc, zap.NewNop())
+	router := testFeedbackRouter(hdl)
+
+	body, _ := json.Marshal(feedback.FeedbackRequest{
 		StudentID: uuid.New(),
 		TaskID:    "task-1",
 		Message:   "This was easy",
@@ -66,16 +59,16 @@ func TestSubmitFeedbackSuccess(t *testing.T) {
 		t.Errorf(statusCodeFmt, w.Code, http.StatusOK)
 	}
 
-	var update StrategyUpdate
+	var update feedback.StrategyUpdate
 	if err := json.Unmarshal(w.Body.Bytes(), &update); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
 	}
 }
 
 func TestSubmitFeedbackInvalidJSON(t *testing.T) {
-	svc := &mockService{}
-	hdl := NewHandler(svc, zap.NewNop())
-	router := testRouter(hdl)
+	svc := feedbackmocks.NewMockService(t)
+	hdl := feedback.NewHandler(svc, zap.NewNop())
+	router := testFeedbackRouter(hdl)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, feedbackPath, bytes.NewReader([]byte(`{invalid`)))
@@ -88,9 +81,9 @@ func TestSubmitFeedbackInvalidJSON(t *testing.T) {
 }
 
 func TestSubmitFeedbackMissingFields(t *testing.T) {
-	svc := &mockService{}
-	hdl := NewHandler(svc, zap.NewNop())
-	router := testRouter(hdl)
+	svc := feedbackmocks.NewMockService(t)
+	hdl := feedback.NewHandler(svc, zap.NewNop())
+	router := testFeedbackRouter(hdl)
 
 	body, _ := json.Marshal(map[string]string{"message": "hello"})
 
@@ -105,15 +98,14 @@ func TestSubmitFeedbackMissingFields(t *testing.T) {
 }
 
 func TestSubmitFeedbackServiceError(t *testing.T) {
-	svc := &mockService{
-		processFn: func(_ context.Context, _ *FeedbackRequest) (*StrategyUpdate, error) {
-			return nil, errors.New("llm timeout")
-		},
-	}
-	hdl := NewHandler(svc, zap.NewNop())
-	router := testRouter(hdl)
+	svc := feedbackmocks.NewMockService(t)
+	svc.EXPECT().ProcessFeedback(mock.Anything, mock.Anything).
+		Return(nil, errors.New("llm timeout"))
 
-	body, _ := json.Marshal(FeedbackRequest{
+	hdl := feedback.NewHandler(svc, zap.NewNop())
+	router := testFeedbackRouter(hdl)
+
+	body, _ := json.Marshal(feedback.FeedbackRequest{
 		StudentID: uuid.New(),
 		TaskID:    "task-1",
 		Message:   "test",

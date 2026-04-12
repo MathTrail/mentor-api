@@ -1,4 +1,4 @@
-package feedback
+package feedback_test
 
 import (
 	"context"
@@ -7,60 +7,40 @@ import (
 	"time"
 
 	"github.com/MathTrail/mentor-api/internal/clients"
+	clientmocks "github.com/MathTrail/mentor-api/internal/clients/mocks"
+	"github.com/MathTrail/mentor-api/internal/domain/feedback"
+	feedbackmocks "github.com/MathTrail/mentor-api/internal/domain/feedback/mocks"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 )
 
-// mockRepository is a test double for feedback.Repository.
-type mockRepository struct {
-	saveFn             func(ctx context.Context, f *Feedback) error
-	getLatestByStudent func(ctx context.Context, studentID uuid.UUID, limit int) ([]Feedback, error)
-}
-
-func (m *mockRepository) Save(ctx context.Context, f *Feedback) error {
-	if m.saveFn != nil {
-		return m.saveFn(ctx, f)
-	}
-	f.ID = uuid.New()
-	f.CreatedAt = time.Now().UTC()
-	return nil
-}
-
-func (m *mockRepository) GetLatestByStudent(ctx context.Context, studentID uuid.UUID, limit int) ([]Feedback, error) {
-	if m.getLatestByStudent != nil {
-		return m.getLatestByStudent(ctx, studentID, limit)
-	}
-	return nil, nil
-}
-
-// mockFeedbackClient is a test double for clients.FeedbackClient that blocks until
-// the context expires — used to verify the per-call LLM timeout.
-type mockFeedbackClient struct {
-	delay time.Duration
-}
-
-func (m *mockFeedbackClient) AnalyzeFeedback(ctx context.Context, _ string) (*clients.StrategyResult, error) {
-	select {
-	case <-time.After(m.delay):
-		return &clients.StrategyResult{
-			PerceivedDifficulty: "ok",
-			Sentiment:           "neutral",
-			StrategySnapshot:    map[string]interface{}{"feedback_based": true},
-			TopicWeights:        map[string]float64{"general": 1.0},
-		}, nil
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
-}
+const (
+	unexpectedErrFmt = "unexpected error: %v"
+	expectedErrFmt   = "expected error, got nil"
+)
 
 func TestProcessFeedbackSuccess(t *testing.T) {
-	repo := &mockRepository{}
-	llm := clients.NewFeedbackClient()
-	logger := zap.NewNop()
+	repo := feedbackmocks.NewMockRepository(t)
+	repo.EXPECT().Save(mock.Anything, mock.Anything).
+		RunAndReturn(func(_ context.Context, f *feedback.Feedback) error {
+			f.ID = uuid.New()
+			f.CreatedAt = time.Now().UTC()
+			return nil
+		})
 
-	svc := NewService(repo, llm, 10*time.Second, logger)
+	llm := clientmocks.NewMockFeedbackClient(t)
+	llm.EXPECT().AnalyzeFeedback(mock.Anything, mock.Anything).
+		Return(&clients.StrategyResult{
+			PerceivedDifficulty: "ok",
+			Sentiment:           "neutral",
+			TopicWeights:        map[string]float64{"general": 1.0},
+			StrategySnapshot:    map[string]any{"feedback_based": true},
+		}, nil)
 
-	req := &FeedbackRequest{
+	svc := feedback.NewService(repo, llm, 10*time.Second, zap.NewNop())
+
+	req := &feedback.FeedbackRequest{
 		StudentID: uuid.New(),
 		TaskID:    "task-1",
 		Message:   "This was a bit hard",
@@ -68,7 +48,7 @@ func TestProcessFeedbackSuccess(t *testing.T) {
 
 	update, err := svc.ProcessFeedback(context.Background(), req)
 	if err != nil {
-		t.Fatalf(unexpectedErrorFmt, err)
+		t.Fatalf(unexpectedErrFmt, err)
 	}
 	if update.StudentID != req.StudentID {
 		t.Errorf("student_id mismatch: got %v, want %v", update.StudentID, req.StudentID)
@@ -86,21 +66,27 @@ func TestProcessFeedbackSuccess(t *testing.T) {
 
 func TestProcessFeedbackRepoError(t *testing.T) {
 	repoErr := errors.New("connection refused")
-	repo := &mockRepository{
-		saveFn: func(_ context.Context, _ *Feedback) error { return repoErr },
-	}
-	llm := clients.NewFeedbackClient()
-	logger := zap.NewNop()
 
-	svc := NewService(repo, llm, 10*time.Second, logger)
+	llm := clientmocks.NewMockFeedbackClient(t)
+	llm.EXPECT().AnalyzeFeedback(mock.Anything, mock.Anything).
+		Return(&clients.StrategyResult{
+			PerceivedDifficulty: "ok",
+			Sentiment:           "neutral",
+			TopicWeights:        map[string]float64{"general": 1.0},
+		}, nil)
 
-	_, err := svc.ProcessFeedback(context.Background(), &FeedbackRequest{
+	repo := feedbackmocks.NewMockRepository(t)
+	repo.EXPECT().Save(mock.Anything, mock.Anything).Return(repoErr)
+
+	svc := feedback.NewService(repo, llm, 10*time.Second, zap.NewNop())
+
+	_, err := svc.ProcessFeedback(context.Background(), &feedback.FeedbackRequest{
 		StudentID: uuid.New(),
 		TaskID:    "task-2",
 		Message:   "test",
 	})
 	if err == nil {
-		t.Fatal(expectedErrNilFmt)
+		t.Fatal(expectedErrFmt)
 	}
 	if !errors.Is(err, repoErr) {
 		t.Errorf("error mismatch: got %v, want %v", err, repoErr)
@@ -108,14 +94,27 @@ func TestProcessFeedbackRepoError(t *testing.T) {
 }
 
 func TestProcessFeedbackLLMTimeout(t *testing.T) {
-	repo := &mockRepository{}
-	// Mock LLM that blocks for 2 seconds — well beyond the 50ms timeout.
-	llm := &mockFeedbackClient{delay: 2 * time.Second}
-	logger := zap.NewNop()
+	repo := feedbackmocks.NewMockRepository(t)
 
-	svc := NewService(repo, llm, 50*time.Millisecond, logger)
+	llm := clientmocks.NewMockFeedbackClient(t)
+	// Blocks for 2 seconds — well beyond the 50 ms service timeout.
+	llm.EXPECT().AnalyzeFeedback(mock.Anything, mock.Anything).
+		RunAndReturn(func(ctx context.Context, _ string) (*clients.StrategyResult, error) {
+			select {
+			case <-time.After(2 * time.Second):
+				return &clients.StrategyResult{
+					PerceivedDifficulty: "ok",
+					Sentiment:           "neutral",
+					TopicWeights:        map[string]float64{"general": 1.0},
+				}, nil
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		})
 
-	_, err := svc.ProcessFeedback(context.Background(), &FeedbackRequest{
+	svc := feedback.NewService(repo, llm, 50*time.Millisecond, zap.NewNop())
+
+	_, err := svc.ProcessFeedback(context.Background(), &feedback.FeedbackRequest{
 		StudentID: uuid.New(),
 		TaskID:    "task-3",
 		Message:   "slow model",

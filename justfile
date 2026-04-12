@@ -62,6 +62,15 @@ test:
 swagger:
     swag init -g cmd/server/main.go
 
+# Generate mocks for all interfaces (requires mockery v2.30+)
+mocks:
+    mockery
+
+# Check that generated mocks are up-to-date (for CI)
+ci-mocks-check:
+    mockery
+    git diff --exit-code || (echo "Mocks are outdated. Run 'just mocks' and commit the changes." && exit 1)
+
 # Generate Swagger docs and prepare local Swagger UI preview
 swagger-ui: swagger
     @echo "Open docs/swagger-ui/index.html in your browser"
