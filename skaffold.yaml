@@ -30,6 +30,14 @@ deploy:
   statusCheckDeadlineSeconds: 150
   helm:
     releases:
+      - name: mentor-api-schema-registration
+        repo: "{{.CHARTS_REPO}}"
+        remoteChart: schema-registration
+        namespace: "{{.NAMESPACE}}"
+        wait: true
+        valuesFiles:
+          - infra/helm/mentor-api-schema-registration/values.yaml
+
       - name: mentor-api
         namespace: "{{.NAMESPACE}}"
         chartPath: infra/helm/mentor-api

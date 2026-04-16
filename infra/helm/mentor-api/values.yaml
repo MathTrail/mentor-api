@@ -29,32 +29,6 @@ migration:
   waitTimeout: "120s"
   ttlSecondsAfterFinished: 1800
 
-# Apicurio schema registration — runs as a pre-install/pre-upgrade hook before the Deployment rolls.
-# Registers Protobuf schemas consumed by mentor-api so RisingWave CDC can resolve them.
-# Proto content is embedded here as single source of truth per service.
-# Source of truth for schema definitions: D:\Projects\MathTrail\contracts\proto\
-schemaRegistration:
-  enabled: true
-  apicurioUrl: "http://apicurio.streaming.svc.cluster.local:8080"
-  hookWeight: "8"
-  schemas:
-    - subject: "students.v1.StudentOnboardingReady"
-      # Source: contracts/proto/students/v1/events.proto
-      # Self-contained (no imports) — if imports are added, Job must use references API
-      proto: |
-        syntax = "proto3";
-        package students.v1;
-        option go_package = "github.com/mathtrail/contracts/gen/go/students/v1;studentsv1";
-        message StudentOnboardingReady {
-          string event_id    = 1;
-          string user_id     = 2;
-          string email       = 3;
-          string first_name  = 4;
-          string last_name   = 5;
-          string role        = 6;
-          string occurred_at = 7;
-        }
-
 externalSecrets:
   enabled: false
   vaultPath: ""
