@@ -1,0 +1,64 @@
+{{- if .Values.kafkaSetup.enabled -}}
+{{- $topics := list -}}
+{{- range .Values.kafkaSetup.topics -}}
+{{- $topics = append $topics (printf "%s:%d:%d" .name (int .partitions) (int .replicationFactor)) -}}
+{{- end -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "mathtrail-service-lib.fullname" . }}-kafka-setup
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mathtrail-service-lib.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kafka-setup
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 1800
+  template:
+    metadata:
+      labels:
+        {{- include "mathtrail-service-lib.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: kafka-setup
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsUser: 10001
+        runAsNonRoot: true
+      containers:
+        - name: kafka-setup
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+          command: ["/kafka-setup"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: {{ .Values.kafkaSetup.bootstrapServers | quote }}
+            - name: KAFKA_TOPICS
+              value: {{ join "," $topics | quote }}
+            {{- if .Values.kafkaSetup.saslSecretName }}
+            - name: KAFKA_SASL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.kafkaSetup.saslSecretName }}
+                  key: username
+            - name: KAFKA_SASL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.kafkaSetup.saslSecretName }}
+                  key: password
+            {{- end }}
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "32Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+{{- end }}

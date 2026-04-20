@@ -6,12 +6,14 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app ./cmd/server
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /migrate ./cmd/migrate
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /kafka-setup ./cmd/kafka-setup
 
 FROM alpine:3.21
 RUN apk add --no-cache ca-certificates tzdata \
     && adduser -D -u 10001 appuser
 COPY --from=builder /app /app
 COPY --from=builder /migrate /migrate
+COPY --from=builder /kafka-setup /kafka-setup
 USER 10001
 EXPOSE 8080
 ENTRYPOINT ["/app"]

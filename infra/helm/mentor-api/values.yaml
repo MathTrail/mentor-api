@@ -42,7 +42,7 @@ vaultConfig:
   db:
     connectionName: "mentor-postgres"
     database: "mentor"
-    pgHost: "postgres-postgresql"
+    pgHost: "mentor-postgres-postgresql"
   k8sAuth:
     serviceAccount: "mentor-api"
 
@@ -91,3 +91,17 @@ podAnnotations:
   prometheus.io/scrape: "true"
   prometheus.io/path: "/metrics"
   prometheus.io/port: "8080"
+
+# Kafka topic provisioning — runs as a pre-install/pre-upgrade Helm hook (weight 10).
+# Idempotent: TOPIC_ALREADY_EXISTS is treated as success.
+kafkaSetup:
+  enabled: true
+  # bootstrapServers must be overridden per environment.
+  bootstrapServers: ""
+  # saslSecretName: optional K8s Secret with keys 'username' and 'password'.
+  # Leave empty for PLAINTEXT brokers (e.g. local dev AutoMQ on port 9092).
+  saslSecretName: ""
+  topics:
+    - name: students.onboarding.ready.dlq
+      partitions: 1
+      replicationFactor: 1

@@ -8,13 +8,9 @@ env:
     value: "8080"
   # Kafka consumer (students.onboarding.ready → recommendations)
   - name: KAFKA_BOOTSTRAP_SERVERS
-    value: "automq.streaming.svc.cluster.local:9092"
+    value: "streaming-automq-kafka.streaming.svc.cluster.local:9092"
   - name: KAFKA_CONSUMER_GROUP
     value: "mentor-api"
-  - name: POD_NAME
-    valueFrom:
-      fieldRef:
-        fieldPath: metadata.name
   - name: LOG_LEVEL
     value: "info"
   - name: LOG_FORMAT
@@ -29,6 +25,8 @@ env:
   # Path to the VSO-mounted Secret directory containing "username" and "password" files.
   - name: PG_CREDENTIALS_DIR
     value: "/etc/mentor-api-db-secret"
+  - name: APICURIO_URL
+    value: "http://streaming-apicurio-apicurio-registry.streaming.svc.cluster.local:8080/apis/ccompat/v7"
 
 volumeMounts:
   - name: db-secret
@@ -74,3 +72,6 @@ vaultDbConfig:
 
 db:
   postgresHost: mentor-postgres-postgresql
+
+kafkaSetup:
+  bootstrapServers: "streaming-automq-kafka.streaming.svc.cluster.local:9092"

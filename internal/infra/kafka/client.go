@@ -48,19 +48,27 @@ func NewClientFromConfig(cfg *config.Config, logger *zap.Logger) (*kgo.Client, e
 	)
 }
 
-// NewClient creates a franz-go Kafka client with SASL/SCRAM-SHA-512 and static group membership.
+// NewClient creates a franz-go Kafka client with optional SASL/SCRAM-SHA-512 and static group membership.
+// SASL is only enabled when both SASLUsername and SASLPassword are non-empty.
 func NewClient(cfg ClientConfig, extraOpts ...kgo.Opt) (*kgo.Client, error) {
-	auth := scram.Auth{
-		User: cfg.SASLUsername,
-		Pass: cfg.SASLPassword,
-	}
-
 	opts := []kgo.Opt{
 		kgo.SeedBrokers(cfg.BootstrapServers...),
-		kgo.SASL(auth.AsSha512Mechanism()),
 		kgo.ConsumerGroup(cfg.ConsumerGroup),
 		kgo.InstanceID(cfg.InstanceID),
 	}
+
+	// SASL is opt-in: only enabled when both credentials are provided.
+	// Brokers configured with PLAINTEXT listeners (e.g. local dev AutoMQ on port 9092)
+	// reject any SASL handshake with ILLEGAL_SASL_STATE. Keeping SASL unconditional
+	// would break plaintext-only environments even when credentials are empty strings.
+	if cfg.SASLUsername != "" && cfg.SASLPassword != "" {
+		auth := scram.Auth{
+			User: cfg.SASLUsername,
+			Pass: cfg.SASLPassword,
+		}
+		opts = append(opts, kgo.SASL(auth.AsSha512Mechanism()))
+	}
+
 	opts = append(opts, extraOpts...)
 
 	client, err := kgo.NewClient(opts...)

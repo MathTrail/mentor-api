@@ -5,7 +5,7 @@
 # Source of truth for schema definitions: contracts/proto/students/v1/events.proto
 # =======================================================================
 
-apicurioUrl: "http://apicurio.streaming.svc.cluster.local:8080"
+apicurioUrl: "http://streaming-apicurio-apicurio-registry.streaming.svc.cluster.local:8080"
 hookWeight: "8"
 
 schemas:

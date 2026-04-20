@@ -27,7 +27,7 @@ deploy:
   kubectl:
     defaultNamespace: "{{.NAMESPACE}}"
   statusCheck: true
-  statusCheckDeadlineSeconds: 150
+  statusCheckDeadlineSeconds: 300
   helm:
     releases:
       - name: mentor-api-schema-registration
