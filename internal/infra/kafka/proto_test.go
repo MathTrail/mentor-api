@@ -8,12 +8,14 @@ import (
 	"testing"
 )
 
-// makeWireFormat builds a 5-byte Confluent Wire Format header followed by payload.
+// makeWireFormat builds a Confluent Protobuf Wire Format message:
+// 5-byte header (magic + schema ID) + 1-byte message index (0x00 = first message) + payload.
 func makeWireFormat(schemaID uint32, payload []byte) []byte {
-	buf := make([]byte, confluentHeaderSize+len(payload))
+	buf := make([]byte, confluentHeaderSize+1+len(payload))
 	buf[0] = confluentMagicByte
 	binary.BigEndian.PutUint32(buf[1:confluentHeaderSize], schemaID)
-	copy(buf[confluentHeaderSize:], payload)
+	buf[confluentHeaderSize] = 0x00 // message index: count=0 (first/only message)
+	copy(buf[confluentHeaderSize+1:], payload)
 	return buf
 }
 

@@ -66,13 +66,14 @@ func TestParseOccurredAt_Invalid(t *testing.T) {
 
 // --- handle() helpers ---
 
-// wireRecord builds a kgo.Record whose Value is a Confluent Wire Format message
-// wrapping the given protobuf bytes, with the provided schemaID.
+// wireRecord builds a kgo.Record whose Value is a Confluent Protobuf Wire Format message:
+// 5-byte header (magic + schema ID) + 1-byte message index (0x00) + protobuf payload.
 func wireRecord(schemaID uint32, protoBytes []byte) *kgo.Record {
-	buf := make([]byte, 5+len(protoBytes))
+	buf := make([]byte, 6+len(protoBytes))
 	buf[0] = 0x00
 	binary.BigEndian.PutUint32(buf[1:5], schemaID)
-	copy(buf[5:], protoBytes)
+	buf[5] = 0x00 // message index: count=0 (first/only message)
+	copy(buf[6:], protoBytes)
 	return &kgo.Record{Topic: "students.onboarding.ready", Value: buf}
 }
 
