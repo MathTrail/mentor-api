@@ -40,6 +40,9 @@ setup:
 
 # Deploy service dependencies
 dependencies ns=NAMESPACE:
+    helm repo add mathtrail-charts ${CHARTS_REPO} 2>/dev/null || true
+    helm repo update
+    helm dependency build infra/local/helm/mentor-postgres
     skaffold run -m mentor-deps --namespace="{{ ns }}" --status-check=true
 
 # Format all Go files with gofmt -s
