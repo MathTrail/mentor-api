@@ -28,7 +28,7 @@ const (
 	defaultKafkaConsumerGroup      = "mentor-api"
 	defaultPodName                 = "mentor-api-local"
 	defaultApicurioURL             = "http://mathtrail-apicurio-apicurio-registry:8080/apis/ccompat/v7"
-	defaultOnboardingSchemaSubject = "students.v1.StudentOnboardingReady"
+	defaultOnboardingSchemaSubject = "students.onboarding.ready-value"
 )
 
 type Config struct {
