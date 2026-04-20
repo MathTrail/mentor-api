@@ -17,7 +17,8 @@ TEST_NAMESPACE := env_var("NAMESPACE")
 # Build and push a container image.
 # Called by Skaffold via: just build-push-image
 # Uses $IMAGE env var set by Skaffold, or accepts a tag argument.
-# Uses buildah for local dev and CI
+# CI (buildctl available): uses BuildKit
+# Local dev:               uses buildah
 
 build-push-image tag=env("IMAGE", ""):
     #!/bin/bash
@@ -27,8 +28,20 @@ build-push-image tag=env("IMAGE", ""):
         echo "Error: no image tag provided (set \$IMAGE or pass as argument)" >&2
         exit 1
     fi
-    buildah --storage-driver=vfs --storage-opt=ignore_chown_errors=true bud --isolation=chroot --log-level=error --tag "$TAG" .
-    buildah --storage-driver=vfs push --log-level=error --tls-verify=false "$TAG"
+    if [ "${CI:-}" = "true" ] || buildctl debug workers &>/dev/null; then
+        echo "🔨 Building with BuildKit..."
+        buildctl build \
+            --frontend=dockerfile.v0 \
+            --local context=. \
+            --local dockerfile=. \
+            --output type=image,name="$TAG",push=true,registry.insecure=true \
+            --export-cache type=inline \
+            --import-cache type=registry,ref="$TAG",registry.insecure=true
+    else
+        echo "🔨 Building with Buildah..."
+        buildah bud --log-level=error --tag "$TAG" .
+        buildah push --log-level=error --tls-verify=false "$TAG"
+    fi
 
 # -- Development ---------------------------------------------------------------
 
