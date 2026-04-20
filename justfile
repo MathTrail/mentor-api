@@ -153,6 +153,12 @@ deploy observability="false": setup
 delete:
     skaffold delete -m mentor-api
 
+# Remove everything: service, dependencies, and namespace
+nuke:
+    skaffold delete -m mentor-api 2>/dev/null || true
+    skaffold delete -m mentor-deps 2>/dev/null || true
+    kubectl delete namespace {{ NAMESPACE }} --wait=false 2>/dev/null || true
+
 # View pod logs
 logs:
     kubectl logs -l app.kubernetes.io/name={{ SERVICE }} -n {{ NAMESPACE }} -f
