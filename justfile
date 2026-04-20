@@ -19,6 +19,7 @@ TEST_NAMESPACE := env_var("NAMESPACE")
 # Uses $IMAGE env var set by Skaffold, or accepts a tag argument.
 # CI (buildctl available): uses BuildKit
 # Local dev:               uses buildah
+
 build-push-image tag=env("IMAGE", ""):
     #!/bin/bash
     set -euo pipefail
@@ -52,6 +53,9 @@ setup:
 
 # Deploy service dependencies
 dependencies ns=NAMESPACE:
+    helm repo add mathtrail-charts ${CHARTS_REPO} 2>/dev/null || true
+    helm repo update
+    helm dependency update infra/local/helm/mentor-postgres
     skaffold run -m mentor-deps --namespace="{{ ns }}" --status-check=true
 
 # Format all Go files with gofmt -s
@@ -73,6 +77,15 @@ test:
 # Generate Swagger documentation
 swagger:
     swag init -g cmd/server/main.go
+
+# Generate mocks for all interfaces (requires mockery v2.30+)
+mocks:
+    mockery
+
+# Check that generated mocks are up-to-date (for CI)
+ci-mocks-check:
+    mockery
+    git diff --exit-code || (echo "Mocks are outdated. Run 'just mocks' and commit the changes." && exit 1)
 
 # Generate Swagger docs and prepare local Swagger UI preview
 swagger-ui: swagger
@@ -155,6 +168,12 @@ deploy observability="false": setup
 # Remove from cluster
 delete:
     skaffold delete -m mentor-api
+
+# Remove everything: service, dependencies, and namespace
+nuke:
+    skaffold delete -m mentor-api 2>/dev/null || true
+    skaffold delete -m mentor-deps 2>/dev/null || true
+    kubectl delete namespace {{ NAMESPACE }} --wait=false 2>/dev/null || true
 
 # View pod logs
 logs:

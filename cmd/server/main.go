@@ -6,13 +6,18 @@ package main
 
 import (
 	"context"
+	"errors"
+	"log"
 	"os/signal"
 	"syscall"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/MathTrail/mentor-api/internal/app"
 	"github.com/MathTrail/mentor-api/internal/config"
 	"github.com/MathTrail/mentor-api/internal/logger"
 	"github.com/MathTrail/mentor-api/internal/observability"
+	"github.com/MathTrail/mentor-api/internal/runner"
 	"github.com/MathTrail/mentor-api/internal/version"
 	"go.uber.org/zap"
 
@@ -21,8 +26,11 @@ import (
 
 func main() {
 	// 1. Single point of config and logger creation.
-	cfg := config.Load()
-	logger := logger.NewLogger(cfg.LogLevel, cfg.LogFormat)
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("failed to load config: %v", err)
+	}
+	logger := logger.NewLogger(cfg.ServiceName, cfg.LogLevel, cfg.LogFormat)
 
 	// 2. Root context: cancelled on SIGINT or SIGTERM.
 	// Created first so it can be passed into every subsystem.
@@ -47,7 +55,11 @@ func main() {
 	if err != nil {
 		logger.Fatal("failed to initialize application", zap.Error(err))
 	}
-	defer container.Close()
+	defer func() {
+		closeCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout) // NOSONAR: intentional fresh context — parent ctx is already cancelled at this point
+		defer cancel()
+		container.Close(closeCtx)
+	}()
 
 	logger.Info("starting mentor-api server",
 		zap.String("version", version.Version),
@@ -56,9 +68,23 @@ func main() {
 		zap.String("port", cfg.ServerPort),
 	)
 
-	// 5. HTTP server with graceful shutdown driven by ctx.
+	// 5. Run background workers and HTTP server under a shared errgroup so that:
+	//    - container.Close() (deferred above) only runs after both have exited;
+	//    - if any component fails, gCtx is cancelled and the others begin graceful shutdown.
+	g, gCtx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		return runner.RunGroup(gCtx, container.Workers...)
+	})
+
 	srv := app.NewServer(container)
-	if err := srv.Run(ctx); err != nil {
-		logger.Fatal("server runtime error", zap.Error(err))
+	g.Go(func() error {
+		return srv.Run(gCtx)
+	})
+
+	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
+		logger.Error("mentor-api stopped with error", zap.Error(err))
+	} else {
+		logger.Info("mentor-api stopped gracefully")
 	}
 }

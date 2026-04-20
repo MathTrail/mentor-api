@@ -1,7 +1,6 @@
 package httpserver
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -10,9 +9,11 @@ import (
 
 	"github.com/MathTrail/mentor-api/internal/config"
 	"github.com/MathTrail/mentor-api/internal/domain/feedback"
+	feedbackmocks "github.com/MathTrail/mentor-api/internal/domain/feedback/mocks"
 	"github.com/MathTrail/mentor-api/internal/domain/roadmap"
-	"github.com/MathTrail/mentor-api/internal/infra/postgres"
+	pgmocks "github.com/MathTrail/mentor-api/internal/infra/postgres/mocks"
 	"github.com/MathTrail/mentor-api/internal/transport/http/middleware"
+	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 )
 
@@ -21,33 +22,13 @@ func testConfig() *config.Config {
 	return &config.Config{SwaggerEnabled: true}
 }
 
-// --- test doubles ---
-
-// mockDB implements postgres.DB for health check testing.
-type mockDB struct {
-	pingErr error
-}
-
-func (m *mockDB) Query(_ context.Context, _ string, _ ...any) ([]map[string]any, error) {
-	return nil, nil
-}
-func (m *mockDB) Exec(_ context.Context, _ string, _ ...any) error { return nil }
-func (m *mockDB) Ping(_ context.Context) error                     { return m.pingErr }
-
-// Compile-time interface check.
-var _ postgres.DB = (*mockDB)(nil)
-
-// mockFeedbackService implements feedback.Service for handler construction.
-type mockFeedbackService struct{}
-
-func (m *mockFeedbackService) ProcessFeedback(_ context.Context, req *feedback.FeedbackRequest) (*feedback.StrategyUpdate, error) {
-	return &feedback.StrategyUpdate{StudentID: req.StudentID}, nil
-}
-
-// testRouter builds a router with stub handlers for use in tests.
-func testRouter() (*feedback.Handler, *roadmap.Handler, *mockDB) {
-	db := &mockDB{}
-	feedbackHandler := feedback.NewHandler(&mockFeedbackService{}, zap.NewNop())
+// testDeps creates stub handlers and a MockDB for use in router tests.
+// Callers must set up db.EXPECT().Ping(...) before hitting /health/ready.
+func testDeps(t *testing.T) (*feedback.Handler, *roadmap.Handler, *pgmocks.MockDB) {
+	t.Helper()
+	db := pgmocks.NewMockDB(t)
+	svc := feedbackmocks.NewMockService(t)
+	feedbackHandler := feedback.NewHandler(svc, zap.NewNop())
 	roadmapHandler := roadmap.NewHandler(roadmap.NewService(zap.NewNop()), zap.NewNop())
 	return feedbackHandler, roadmapHandler, db
 }
@@ -55,8 +36,8 @@ func testRouter() (*feedback.Handler, *roadmap.Handler, *mockDB) {
 // --- tests ---
 
 func TestHealthStartup(t *testing.T) {
-	fh, rh, db := testRouter()
-	router := NewRouter(fh, rh, db, testConfig(), zap.NewNop())
+	fh, rh, db := testDeps(t)
+	router := NewRouter(fh, rh, NewHealthHandler(db), testConfig(), zap.NewNop())
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health/startup", nil)
@@ -68,8 +49,8 @@ func TestHealthStartup(t *testing.T) {
 }
 
 func TestHealthLiveness(t *testing.T) {
-	fh, rh, db := testRouter()
-	router := NewRouter(fh, rh, db, testConfig(), zap.NewNop())
+	fh, rh, db := testDeps(t)
+	router := NewRouter(fh, rh, NewHealthHandler(db), testConfig(), zap.NewNop())
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health/liveness", nil)
@@ -81,8 +62,9 @@ func TestHealthLiveness(t *testing.T) {
 }
 
 func TestHealthReadyOK(t *testing.T) {
-	fh, rh, db := testRouter()
-	router := NewRouter(fh, rh, db, testConfig(), zap.NewNop())
+	fh, rh, db := testDeps(t)
+	db.EXPECT().Ping(mock.Anything).Return(nil)
+	router := NewRouter(fh, rh, NewHealthHandler(db), testConfig(), zap.NewNop())
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health/ready", nil)
@@ -94,9 +76,10 @@ func TestHealthReadyOK(t *testing.T) {
 }
 
 func TestHealthReadyDBDown(t *testing.T) {
-	fh, rh, _ := testRouter()
-	db := &mockDB{pingErr: errors.New("connection refused")}
-	router := NewRouter(fh, rh, db, testConfig(), zap.NewNop())
+	fh, rh, _ := testDeps(t)
+	db := pgmocks.NewMockDB(t)
+	db.EXPECT().Ping(mock.Anything).Return(errors.New("connection refused"))
+	router := NewRouter(fh, rh, NewHealthHandler(db), testConfig(), zap.NewNop())
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health/ready", nil)
@@ -108,8 +91,8 @@ func TestHealthReadyDBDown(t *testing.T) {
 }
 
 func TestRoadmapRecommendationsSuccess(t *testing.T) {
-	fh, rh, db := testRouter()
-	router := NewRouter(fh, rh, db, testConfig(), zap.NewNop())
+	fh, rh, db := testDeps(t)
+	router := NewRouter(fh, rh, NewHealthHandler(db), testConfig(), zap.NewNop())
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/roadmap/recommendations", nil)
@@ -130,8 +113,8 @@ func TestRoadmapRecommendationsSuccess(t *testing.T) {
 }
 
 func TestRoadmapRecommendationsMissingHeader(t *testing.T) {
-	fh, rh, db := testRouter()
-	router := NewRouter(fh, rh, db, testConfig(), zap.NewNop())
+	fh, rh, db := testDeps(t)
+	router := NewRouter(fh, rh, NewHealthHandler(db), testConfig(), zap.NewNop())
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/roadmap/recommendations", nil)

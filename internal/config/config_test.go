@@ -5,19 +5,12 @@ import (
 	"time"
 )
 
-func assertPanics(t *testing.T, fn func()) {
-	t.Helper()
-	defer func() {
-		if recover() == nil {
-			t.Errorf("expected panic, got none")
-		}
-	}()
-	fn()
-}
-
 func TestLoadDefaults(t *testing.T) {
 	t.Setenv("PG_CREDENTIALS_DIR", t.TempDir())
-	cfg := Load()
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if cfg.ServerPort != "8080" {
 		t.Errorf("ServerPort: got %q, want %q", cfg.ServerPort, "8080")
@@ -49,7 +42,10 @@ func TestLoadEnvOverrides(t *testing.T) {
 	t.Setenv("LLM_TIMEOUT", "30s")
 	t.Setenv("SHUTDOWN_TIMEOUT", "15s")
 
-	cfg := Load()
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if cfg.ServerPort != "9090" {
 		t.Errorf("ServerPort: got %q, want %q", cfg.ServerPort, "9090")
@@ -65,36 +61,58 @@ func TestLoadEnvOverrides(t *testing.T) {
 	}
 }
 
-func TestLoadInvalidLLMTimeoutPanics(t *testing.T) {
+func TestLoadInvalidLLMTimeout(t *testing.T) {
 	t.Setenv("LLM_TIMEOUT", "not-a-duration")
-	assertPanics(t, func() { Load() })
+	t.Setenv("PG_CREDENTIALS_DIR", t.TempDir())
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error for invalid LLM_TIMEOUT, got nil")
+	}
 }
 
-func TestLoadInvalidShutdownTimeoutPanics(t *testing.T) {
+func TestLoadInvalidShutdownTimeout(t *testing.T) {
 	t.Setenv("SHUTDOWN_TIMEOUT", "bad")
-	assertPanics(t, func() { Load() })
+	t.Setenv("PG_CREDENTIALS_DIR", t.TempDir())
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error for invalid SHUTDOWN_TIMEOUT, got nil")
+	}
 }
 
-func TestLoadOTelSampleRateTooHighPanics(t *testing.T) {
+func TestLoadOTelSampleRateTooHigh(t *testing.T) {
 	t.Setenv("OTEL_SAMPLE_RATE", "1.5")
-	assertPanics(t, func() { Load() })
+	t.Setenv("PG_CREDENTIALS_DIR", t.TempDir())
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error for OTEL_SAMPLE_RATE > 1, got nil")
+	}
 }
 
-func TestLoadOTelSampleRateNegativePanics(t *testing.T) {
+func TestLoadOTelSampleRateNegative(t *testing.T) {
 	t.Setenv("OTEL_SAMPLE_RATE", "-0.1")
-	assertPanics(t, func() { Load() })
+	t.Setenv("PG_CREDENTIALS_DIR", t.TempDir())
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error for negative OTEL_SAMPLE_RATE, got nil")
+	}
 }
 
 func TestLoadOTelSampleRateValidBoundaries(t *testing.T) {
 	t.Setenv("PG_CREDENTIALS_DIR", t.TempDir())
 	t.Setenv("OTEL_SAMPLE_RATE", "0.0")
-	cfg := Load()
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if cfg.OTelSampleRate != 0.0 {
 		t.Errorf("OTelSampleRate: got %v, want 0.0", cfg.OTelSampleRate)
 	}
 
 	t.Setenv("OTEL_SAMPLE_RATE", "1.0")
-	cfg = Load()
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if cfg.OTelSampleRate != 1.0 {
 		t.Errorf("OTelSampleRate: got %v, want 1.0", cfg.OTelSampleRate)
 	}

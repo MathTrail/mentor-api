@@ -3,7 +3,9 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"net/url"
 	"os"
+	"regexp"
 
 	_ "github.com/jackc/pgx/v5/stdlib" // registers the "pgx" driver for database/sql used by Goose
 	"github.com/pressly/goose/v3"
@@ -25,25 +27,45 @@ type dbConfig struct {
 	SSLMode  string
 }
 
-func loadDBConfig() dbConfig {
-	return dbConfig{
-		Host:     requiredEnv("DB_HOST"),
-		Port:     requiredEnv("DB_PORT"),
-		User:     requiredEnv("DB_USER"),
-		Password: requiredEnv("DB_PASSWORD"),
-		Name:     requiredEnv("DB_NAME"),
-		SSLMode:  envOrDefault("DB_SSL_MODE", "disable"),
+func loadDBConfig() (dbConfig, error) {
+	host, err := requiredEnv("DB_HOST")
+	if err != nil {
+		return dbConfig{}, err
 	}
+	port, err := requiredEnv("DB_PORT")
+	if err != nil {
+		return dbConfig{}, err
+	}
+	user, err := requiredEnv("DB_USER")
+	if err != nil {
+		return dbConfig{}, err
+	}
+	password, err := requiredEnv("DB_PASSWORD")
+	if err != nil {
+		return dbConfig{}, err
+	}
+	name, err := requiredEnv("DB_NAME")
+	if err != nil {
+		return dbConfig{}, err
+	}
+	return dbConfig{
+		Host:     host,
+		Port:     port,
+		User:     user,
+		Password: password,
+		Name:     name,
+		SSLMode:  envOrDefault("DB_SSL_MODE", "disable"),
+	}, nil
 }
 
-// requiredEnv reads an environment variable or panics if it is empty.
+// requiredEnv reads an environment variable or returns an error if it is empty.
 // A missing variable means the K8s Job is misconfigured — fail fast.
-func requiredEnv(key string) string {
+func requiredEnv(key string) (string, error) {
 	v := os.Getenv(key)
 	if v == "" {
-		panic(fmt.Sprintf("required environment variable %s is not set", key))
+		return "", fmt.Errorf("required environment variable %s is not set", key)
 	}
-	return v
+	return v, nil
 }
 
 func envOrDefault(key, fallback string) string {
@@ -53,18 +75,33 @@ func envOrDefault(key, fallback string) string {
 	return fallback
 }
 
-// dsn builds a libpq connection string for the given database name.
+// dsn builds a PostgreSQL URI for the given database name.
+// User and password are URL-encoded to handle special characters safely.
 func (c dbConfig) dsn(dbname string) string {
 	return fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		c.Host, c.Port, c.User, c.Password, dbname, c.SSLMode,
+		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		url.QueryEscape(c.User),
+		url.QueryEscape(c.Password),
+		c.Host, c.Port, dbname, c.SSLMode,
 	)
 }
 
-func main() {
-	logger := logger.NewLogger("info", "json")
+var dbNameRe = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
-	cfg := loadDBConfig()
+func validateDBName(name string) error {
+	if !dbNameRe.MatchString(name) {
+		return fmt.Errorf("invalid database name %q: must match ^[a-zA-Z0-9_-]+$", name)
+	}
+	return nil
+}
+
+func main() {
+	logger := logger.NewLogger("mentor-migrate", "info", "json")
+
+	cfg, err := loadDBConfig()
+	if err != nil {
+		logger.Fatal("missing required config", zap.Error(err))
+	}
 
 	// Ensure the target database exists (Goose requires it).
 	ensureDatabase(cfg, logger)
@@ -75,7 +112,6 @@ func main() {
 	}
 
 	logger.Info("all migrations completed successfully")
-	fmt.Println("✓ Database migrations completed successfully")
 }
 
 // runMigrations applies all pending Goose migrations from the embedded FS.
@@ -107,6 +143,10 @@ func runMigrations(dsn string, logger *zap.Logger) error {
 // ensureDatabase connects to the default "postgres" database and creates the
 // target database if it does not already exist.
 func ensureDatabase(cfg dbConfig, logger *zap.Logger) {
+	if err := validateDBName(cfg.Name); err != nil {
+		logger.Fatal("invalid database name", zap.Error(err))
+	}
+
 	adminDSN := cfg.dsn("postgres")
 
 	db, err := sql.Open("pgx", adminDSN)

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  # Named mentor-postgres-pgbouncer — used as PG_HOST by mentor-api.
+  name: mentor-postgres-pgbouncer
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: mentor-pgbouncer
+    app.kubernetes.io/part-of: mathtrail
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  selector:
+    app.kubernetes.io/name: mentor-pgbouncer
+  ports:
+    - name: pgbouncer
+      port: 6432
+      targetPort: 6432

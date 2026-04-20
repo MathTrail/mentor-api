@@ -31,10 +31,14 @@ type DynamicPool struct {
 	logger   *zap.Logger
 }
 
+// credWaitTimeout is the maximum time NewDynamicPool will wait for VSO to
+// create the credential Secret before returning an error.
+const credWaitTimeout = 2 * time.Minute
+
 // NewDynamicPool creates a DynamicPool, reads initial credentials from credsDir,
 // opens a connection pool, and starts a background watcher goroutine.
-// Returns an error if credential files are absent or the initial pool cannot
-// connect — the pod will restart (CrashLoopBackOff) until VSO creates the Secret.
+// Retries every 3 seconds up to credWaitTimeout to allow VSO time to create
+// the mounted Secret before the pod is considered failed.
 func NewDynamicPool(ctx context.Context, baseDSN string, credsDir string, logger *zap.Logger) (*DynamicPool, error) {
 	p := &DynamicPool{
 		baseDSN:  baseDSN,
@@ -42,12 +46,25 @@ func NewDynamicPool(ctx context.Context, baseDSN string, credsDir string, logger
 		logger:   logger,
 	}
 
-	pool, err := p.buildPool(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("initial pool: %w", err)
-	}
-	p.ptr.Store(pool)
+	waitCtx, cancel := context.WithTimeout(ctx, credWaitTimeout)
+	defer cancel()
 
+	var pool *pgxpool.Pool
+	for {
+		var err error
+		pool, err = p.buildPool(waitCtx)
+		if err == nil {
+			break
+		}
+		logger.Warn("waiting for DB credentials", zap.Error(err), zap.Duration("retry_in", 3*time.Second))
+		select {
+		case <-time.After(3 * time.Second):
+		case <-waitCtx.Done():
+			return nil, fmt.Errorf("initial pool: credentials not available after %s: %w", credWaitTimeout, err)
+		}
+	}
+
+	p.ptr.Store(pool)
 	go p.watchCredentials(ctx)
 	return p, nil
 }

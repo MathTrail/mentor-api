@@ -26,9 +26,8 @@ func NewRepository(db postgres.DB) Repository {
 	return &repositoryImpl{db: db}
 }
 
-// saveResult captures the RETURNING columns from an INSERT.
+// saveResult captures the RETURNING column from an INSERT.
 type saveResult struct {
-	ID        uuid.UUID `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -41,16 +40,17 @@ func (r *repositoryImpl) Save(ctx context.Context, f *Feedback) error {
 	f.ID = id
 
 	const query = `
-		INSERT INTO feedback (id, student_id, message, perceived_difficulty, strategy_snapshot)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, created_at`
+		INSERT INTO feedback (id, student_id, task_id, message, perceived_difficulty, strategy_snapshot)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING created_at`
 
 	rows, err := r.db.Query(ctx, query,
 		f.ID,
-		f.StudentID.String(),
+		f.StudentID,
+		f.TaskID,
 		f.Message,
 		f.PerceivedDifficulty,
-		string(f.StrategySnapshot),
+		f.StrategySnapshot,
 	)
 	if err != nil {
 		return fmt.Errorf("feedback: save: %w", err)
@@ -63,7 +63,6 @@ func (r *repositoryImpl) Save(ctx context.Context, f *Feedback) error {
 	if err != nil {
 		return fmt.Errorf("feedback: scan save result: %w", err)
 	}
-	f.ID = res.ID
 	f.CreatedAt = res.CreatedAt
 	return nil
 }
@@ -71,13 +70,13 @@ func (r *repositoryImpl) Save(ctx context.Context, f *Feedback) error {
 // GetLatestByStudent retrieves the most recent feedback for a student.
 func (r *repositoryImpl) GetLatestByStudent(ctx context.Context, studentID uuid.UUID, limit int) ([]Feedback, error) {
 	const query = `
-		SELECT id, student_id, message, perceived_difficulty, strategy_snapshot, created_at
+		SELECT id, student_id, task_id, message, perceived_difficulty, strategy_snapshot, created_at
 		FROM feedback
 		WHERE student_id = $1
 		ORDER BY created_at DESC
 		LIMIT $2`
 
-	rows, err := r.db.Query(ctx, query, studentID.String(), limit)
+	rows, err := r.db.Query(ctx, query, studentID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("feedback: get latest: %w", err)
 	}

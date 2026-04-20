@@ -19,11 +19,25 @@ build:
           dockerfile:
             path: Dockerfile
 
+manifests:
+  rawYaml:
+    - manifests/network-policies.yaml
+
 deploy:
+  kubectl:
+    defaultNamespace: "{{.NAMESPACE}}"
   statusCheck: true
-  statusCheckDeadlineSeconds: 150
+  statusCheckDeadlineSeconds: 300
   helm:
     releases:
+      - name: mentor-api-schema-registration
+        repo: "{{.CHARTS_REPO}}"
+        remoteChart: schema-registration
+        namespace: "{{.NAMESPACE}}"
+        wait: true
+        valuesFiles:
+          - infra/helm/mentor-api-schema-registration/values.yaml
+
       - name: mentor-api
         namespace: "{{.NAMESPACE}}"
         chartPath: infra/helm/mentor-api
@@ -48,22 +62,21 @@ profiles:
   - name: observability
     patches:
       - op: add
-        path: /deploy/helm/releases/0/valuesFiles/-
+        path: /deploy/helm/releases/1/valuesFiles/-
         value: infra/helm/values-observability.yaml
   - name: ci
     patches:
       - op: add
-        path: /deploy/helm/releases/0/valuesFiles/-
+        path: /deploy/helm/releases/1/valuesFiles/-
         value: infra/helm/values-ci.yaml
       - op: replace
-        path: /deploy/helm/releases/0/setValueTemplates/dbDynamicSecret.vaultRole
-        value: "{{.VAULT_ROLE}}"
-      - op: add
-        path: /deploy/helm/releases/0/setValueTemplates/vso.vaultRole
-        value: "mentor-api-{{.NAMESPACE}}"
-      - op: add
-        path: /deploy/helm/releases/0/setValueTemplates/vso.dbRole
-        value: "mentor-api-role-{{.NAMESPACE}}"
+        path: /deploy/helm/releases/1/setValueTemplates
+        value:
+          image.repository: "{{.IMAGE_REPO_mentor_api}}"
+          image.tag: "{{.IMAGE_TAG_mentor_api}}"
+          dbDynamicSecret.vaultRole: "{{.VAULT_ROLE}}"
+          vso.vaultRole: "mentor-api-{{.NAMESPACE}}"
+          vso.dbRole: "mentor-api-role-{{.NAMESPACE}}"
 
 ---
 apiVersion: skaffold/v4beta13
@@ -71,22 +84,26 @@ kind: Config
 metadata:
   name: mentor-deps
 
-manifests:
-  rawYaml:
-    - infra/k8s/deps-anchor.yaml
+build:
+  artifacts: []
 
 deploy:
-  kubectl:
-    defaultNamespace: "{{.NAMESPACE}}"
+  statusCheck: true
+  helm:
+    releases:
+      - name: mentor-postgres
+        namespace: "{{.NAMESPACE}}"
+        chartPath: infra/local/helm/mentor-postgres
+        createNamespace: true
+        wait: true
+        skipBuildDependencies: true
 
-requires:
-  - git:
-      repo: https://github.com/MathTrail/infra-local
-      path: skaffold.yaml
-      ref: main # todo: specify concrete version
-    configs:
-      - postgres
-      - pgbouncer
+      - name: mentor-pgbouncer
+        namespace: "{{.NAMESPACE}}"
+        chartPath: infra/local/helm/mentor-pgbouncer
+        createNamespace: true
+        wait: true
+        skipBuildDependencies: true
 
 ---
 apiVersion: skaffold/v4beta13

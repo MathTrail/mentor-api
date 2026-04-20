@@ -33,7 +33,7 @@ func TestSanitizeQueryNoSensitiveKeys(t *testing.T) {
 }
 
 func TestSanitizeQueryCaseInsensitive(t *testing.T) {
-	raw := "TOKEN=REDACTED&Password=REDACTED"
+	raw := "TOKEN=test-value&Password=test-value"
 	got := sanitizeQuery(raw)
 	for _, key := range []string{"TOKEN", "Password"} {
 		if !contains(got, key+"=%2A%2A%2A") && !contains(got, key+"=***") {

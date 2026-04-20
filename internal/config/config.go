@@ -4,7 +4,31 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
+)
+
+const (
+	defaultServerPort              = "8080"
+	defaultPgHost                  = "postgres-pgbouncer"
+	defaultPgPort                  = "6432"
+	defaultPgDatabase              = "mentor"
+	defaultPgSSLMode               = "disable"
+	defaultLogLevel                = "info"
+	defaultLogFormat               = "json"
+	defaultAppName                 = "mentor-api"
+	defaultOTelSampleRate          = 0.1
+	defaultLLMTimeout              = "10s"
+	defaultShutdownTimeout         = "5s"
+	defaultReadHeaderTimeout       = "5s"
+	defaultReadTimeout             = "5s"
+	defaultWriteTimeout            = "10s"
+	defaultIdleTimeout             = "120s"
+	defaultKafkaBootstrapServers   = "automq:9092"
+	defaultKafkaConsumerGroup      = "mentor-api"
+	defaultPodName                 = "mentor-api-local"
+	defaultApicurioURL             = "http://mathtrail-apicurio-apicurio-registry:8080/apis/ccompat/v7"
+	defaultOnboardingSchemaSubject = "students.onboarding.ready-value"
 )
 
 type Config struct {
@@ -26,65 +50,89 @@ type Config struct {
 
 	// Observability
 	ServiceName       string  `mapstructure:"APP_NAME"`
+	PodName           string  `mapstructure:"POD_NAME"`
+	Namespace         string  `mapstructure:"NAMESPACE"`
 	OTelEndpoint      string  `mapstructure:"OTEL_ENDPOINT"`
 	OTelSampleRate    float64 `mapstructure:"OTEL_SAMPLE_RATE"` // 0.0–1.0; fraction of root spans sampled
 	PyroscopeEndpoint string  `mapstructure:"PYROSCOPE_ENDPOINT"`
 
+	// Kafka (students.onboarding.ready consumer)
+	KafkaBootstrapServers string `mapstructure:"KAFKA_BOOTSTRAP_SERVERS"`
+	KafkaConsumerGroup    string `mapstructure:"KAFKA_CONSUMER_GROUP"`
+	KafkaSASLUsername     string `mapstructure:"KAFKA_SASL_USERNAME"`
+	KafkaSASLPassword     string `mapstructure:"KAFKA_SASL_PASSWORD"`
+	// InstanceID is the static Kafka consumer group member ID.
+	// Injected as POD_NAME by Kubernetes; prevents rebalance storms during rolling deploys.
+	InstanceID string `mapstructure:"POD_NAME"`
+
+	// ApicurioURL is the base URL of the Confluent-compat v7 API, used by TopicValidator
+	// to fetch the latest schema ID at startup (fail-fast if unreachable).
+	ApicurioURL             string `mapstructure:"APICURIO_URL"`
+	OnboardingSchemaSubject string `mapstructure:"ONBOARDING_SCHEMA_SUBJECT"`
+
 	// Timeouts
-	LLMTimeoutRaw      string        `mapstructure:"LLM_TIMEOUT"` // e.g. "10s"
-	LLMTimeout         time.Duration // parsed from LLMTimeoutRaw in Load()
-	ShutdownTimeoutRaw string        `mapstructure:"SHUTDOWN_TIMEOUT"` // e.g. "5s", "10s"
-	ShutdownTimeout    time.Duration // parsed from ShutdownTimeoutRaw in Load()
+	LLMTimeout        time.Duration `mapstructure:"LLM_TIMEOUT"`
+	ShutdownTimeout   time.Duration `mapstructure:"SHUTDOWN_TIMEOUT"`
+	ReadHeaderTimeout time.Duration `mapstructure:"HTTP_READ_HEADER_TIMEOUT"`
+	ReadTimeout       time.Duration `mapstructure:"HTTP_READ_TIMEOUT"`
+	WriteTimeout      time.Duration `mapstructure:"HTTP_WRITE_TIMEOUT"`
+	IdleTimeout       time.Duration `mapstructure:"HTTP_IDLE_TIMEOUT"`
 }
 
-func Load() *Config {
+func Load() (*Config, error) {
 	v := viper.New()
 	v.AutomaticEnv()
 
-	v.SetDefault("SERVER_PORT", "8080")
+	v.SetDefault("SERVER_PORT", defaultServerPort)
 	v.SetDefault("SWAGGER_ENABLED", true)
-	v.SetDefault("PG_HOST", "postgres-pgbouncer")
-	v.SetDefault("PG_PORT", "6432")
-	v.SetDefault("PG_DATABASE", "mentor")
-	v.SetDefault("PG_SSL_MODE", "disable")
-	v.SetDefault("LOG_LEVEL", "info")
-	v.SetDefault("LOG_FORMAT", "json")
-	v.SetDefault("APP_NAME", "mentor-api")
+	v.SetDefault("PG_HOST", defaultPgHost)
+	v.SetDefault("PG_PORT", defaultPgPort)
+	v.SetDefault("PG_DATABASE", defaultPgDatabase)
+	v.SetDefault("PG_SSL_MODE", defaultPgSSLMode)
+	v.SetDefault("LOG_LEVEL", defaultLogLevel)
+	v.SetDefault("LOG_FORMAT", defaultLogFormat)
+	v.SetDefault("APP_NAME", defaultAppName)
 	v.SetDefault("OTEL_ENDPOINT", "")
-	v.SetDefault("OTEL_SAMPLE_RATE", 0.1)
+	v.SetDefault("OTEL_SAMPLE_RATE", defaultOTelSampleRate)
 	v.SetDefault("PYROSCOPE_ENDPOINT", "")
-	v.SetDefault("LLM_TIMEOUT", "10s")
-	v.SetDefault("SHUTDOWN_TIMEOUT", "5s")
+	v.SetDefault("LLM_TIMEOUT", defaultLLMTimeout)
+	v.SetDefault("SHUTDOWN_TIMEOUT", defaultShutdownTimeout)
+	v.SetDefault("HTTP_READ_HEADER_TIMEOUT", defaultReadHeaderTimeout)
+	v.SetDefault("HTTP_READ_TIMEOUT", defaultReadTimeout)
+	v.SetDefault("HTTP_WRITE_TIMEOUT", defaultWriteTimeout)
+	v.SetDefault("HTTP_IDLE_TIMEOUT", defaultIdleTimeout)
+	v.SetDefault("KAFKA_BOOTSTRAP_SERVERS", defaultKafkaBootstrapServers)
+	v.SetDefault("KAFKA_CONSUMER_GROUP", defaultKafkaConsumerGroup)
+	v.SetDefault("POD_NAME", defaultPodName)
+	v.SetDefault("APICURIO_URL", defaultApicurioURL)
+	v.SetDefault("ONBOARDING_SCHEMA_SUBJECT", defaultOnboardingSchemaSubject)
 	v.SetDefault("PG_CREDENTIALS_DIR", "")
 
 	cfg := &Config{}
-	if err := v.Unmarshal(cfg); err != nil {
-		panic(fmt.Sprintf("failed to unmarshal config: %v", err))
+	decodeHook := viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
+		mapstructure.StringToTimeDurationHookFunc(),
+		mapstructure.StringToSliceHookFunc(","),
+	))
+	if err := v.Unmarshal(cfg, decodeHook); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	// Parse durations from strings.
-	// Kept separate because Viper cannot unmarshal time.Duration from env vars.
-	llmD, err := time.ParseDuration(cfg.LLMTimeoutRaw)
-	if err != nil {
-		panic(fmt.Sprintf("invalid LLM_TIMEOUT %q: %v", cfg.LLMTimeoutRaw, err))
-	}
-	cfg.LLMTimeout = llmD
-
-	shutD, err := time.ParseDuration(cfg.ShutdownTimeoutRaw)
-	if err != nil {
-		panic(fmt.Sprintf("invalid SHUTDOWN_TIMEOUT %q: %v", cfg.ShutdownTimeoutRaw, err))
-	}
-	cfg.ShutdownTimeout = shutD
-
-	if cfg.OTelSampleRate < 0 || cfg.OTelSampleRate > 1 {
-		panic(fmt.Sprintf("OTEL_SAMPLE_RATE must be between 0.0 and 1.0, got %v", cfg.OTelSampleRate))
+	if err := cfg.Validate(); err != nil {
+		return nil, err
 	}
 
-	if cfg.PgCredentialsDir == "" {
-		panic("PG_CREDENTIALS_DIR is required: set it to the directory containing the VSO-mounted username and password files")
-	}
+	return cfg, nil
+}
 
-	return cfg
+// Validate checks that config values are within acceptable bounds.
+func (c *Config) Validate() error {
+	if c.OTelSampleRate < 0 || c.OTelSampleRate > 1 {
+		return fmt.Errorf("OTEL_SAMPLE_RATE must be between 0.0 and 1.0, got %v", c.OTelSampleRate)
+	}
+	if c.PgCredentialsDir == "" {
+		return fmt.Errorf("PG_CREDENTIALS_DIR is required: set it to the directory containing the VSO-mounted username and password files")
+	}
+	return nil
 }
 
 // PostgresDSN returns the non-sensitive part of the PostgreSQL connection string.

@@ -1,4 +1,4 @@
-package roadmap
+package roadmap_test
 
 import (
 	"context"
@@ -8,27 +8,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/MathTrail/mentor-api/internal/domain/roadmap"
+	roadmapmocks "github.com/MathTrail/mentor-api/internal/domain/roadmap/mocks"
 	"github.com/MathTrail/mentor-api/internal/transport/http/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 )
-
-// mockService is a test double for roadmap.Service.
-type mockService struct {
-	fn func(ctx context.Context, studentID uuid.UUID) (*Recommendation, error)
-}
-
-func (m *mockService) GetRecommendations(ctx context.Context, studentID uuid.UUID) (*Recommendation, error) {
-	if m.fn != nil {
-		return m.fn(ctx, studentID)
-	}
-	return &Recommendation{
-		StudentID:  studentID,
-		FocusAreas: []string{"algebra"},
-		Message:    "stub",
-	}, nil
-}
 
 const (
 	recommendationsPath = "/api/v1/roadmap/recommendations"
@@ -36,7 +23,7 @@ const (
 	codeFmt             = "code: got %q, want %q"
 )
 
-func testRouter(h *Handler) *gin.Engine {
+func testRoadmapRouter(h *roadmap.Handler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.GET(recommendationsPath, h.GetRecommendations)
@@ -44,9 +31,18 @@ func testRouter(h *Handler) *gin.Engine {
 }
 
 func TestGetRecommendationsSuccess(t *testing.T) {
-	svc := &mockService{}
-	hdl := NewHandler(svc, zap.NewNop())
-	router := testRouter(hdl)
+	svc := roadmapmocks.NewMockService(t)
+	svc.EXPECT().GetRecommendations(mock.Anything, mock.Anything).
+		RunAndReturn(func(_ context.Context, studentID uuid.UUID) (*roadmap.Recommendation, error) {
+			return &roadmap.Recommendation{
+				StudentID:  studentID,
+				FocusAreas: []string{"algebra"},
+				Message:    "stub",
+			}, nil
+		})
+
+	hdl := roadmap.NewHandler(svc, zap.NewNop())
+	router := testRoadmapRouter(hdl)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, recommendationsPath, nil)
@@ -57,7 +53,7 @@ func TestGetRecommendationsSuccess(t *testing.T) {
 		t.Errorf(statusFmt, w.Code, http.StatusOK)
 	}
 
-	var rec Recommendation
+	var rec roadmap.Recommendation
 	if err := json.Unmarshal(w.Body.Bytes(), &rec); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
 	}
@@ -67,9 +63,9 @@ func TestGetRecommendationsSuccess(t *testing.T) {
 }
 
 func TestGetRecommendationsMissingHeader(t *testing.T) {
-	svc := &mockService{}
-	hdl := NewHandler(svc, zap.NewNop())
-	router := testRouter(hdl)
+	svc := roadmapmocks.NewMockService(t)
+	hdl := roadmap.NewHandler(svc, zap.NewNop())
+	router := testRoadmapRouter(hdl)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, recommendationsPath, nil)
@@ -87,9 +83,9 @@ func TestGetRecommendationsMissingHeader(t *testing.T) {
 }
 
 func TestGetRecommendationsInvalidUUID(t *testing.T) {
-	svc := &mockService{}
-	hdl := NewHandler(svc, zap.NewNop())
-	router := testRouter(hdl)
+	svc := roadmapmocks.NewMockService(t)
+	hdl := roadmap.NewHandler(svc, zap.NewNop())
+	router := testRoadmapRouter(hdl)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, recommendationsPath, nil)
@@ -108,13 +104,12 @@ func TestGetRecommendationsInvalidUUID(t *testing.T) {
 }
 
 func TestGetRecommendationsServiceError(t *testing.T) {
-	svc := &mockService{
-		fn: func(_ context.Context, _ uuid.UUID) (*Recommendation, error) {
-			return nil, errors.New("service boom")
-		},
-	}
-	hdl := NewHandler(svc, zap.NewNop())
-	router := testRouter(hdl)
+	svc := roadmapmocks.NewMockService(t)
+	svc.EXPECT().GetRecommendations(mock.Anything, mock.Anything).
+		Return(nil, errors.New("service boom"))
+
+	hdl := roadmap.NewHandler(svc, zap.NewNop())
+	router := testRoadmapRouter(hdl)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, recommendationsPath, nil)
