@@ -70,14 +70,13 @@ profiles:
         path: /deploy/helm/releases/0/valuesFiles/-
         value: infra/helm/values-ci.yaml
       - op: replace
-        path: /deploy/helm/releases/0/setValueTemplates/dbDynamicSecret.vaultRole
-        value: "{{.VAULT_ROLE}}"
-      - op: add
-        path: /deploy/helm/releases/0/setValueTemplates/vso.vaultRole
-        value: "mentor-api-{{.NAMESPACE}}"
-      - op: add
-        path: /deploy/helm/releases/0/setValueTemplates/vso.dbRole
-        value: "mentor-api-role-{{.NAMESPACE}}"
+        path: /deploy/helm/releases/0/setValueTemplates
+        value:
+          image.repository: "{{.IMAGE_REPO_mentor_api}}"
+          image.tag: "{{.IMAGE_TAG_mentor_api}}"
+          dbDynamicSecret.vaultRole: "{{.VAULT_ROLE}}"
+          vso.vaultRole: "mentor-api-{{.NAMESPACE}}"
+          vso.dbRole: "mentor-api-role-{{.NAMESPACE}}"
 
 ---
 apiVersion: skaffold/v4beta13
