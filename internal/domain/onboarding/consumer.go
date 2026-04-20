@@ -175,6 +175,7 @@ func (p *kafkaDLQPublisher) PublishDLQ(record *kgo.Record) {
 		Headers: record.Headers,
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	p.client.Produce(ctx, dlqRecord, func(_ *kgo.Record, err error) {
 		cancel()
 		if err != nil {
