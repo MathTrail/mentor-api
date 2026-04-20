@@ -1,4 +1,4 @@
-FROM golang:1.26.0-alpine AS builder
+FROM docker.io/library/golang:1.26.0-alpine AS builder
 RUN apk add --no-cache git
 WORKDIR /build
 COPY go.mod go.sum ./
@@ -8,7 +8,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app ./cmd/server
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /migrate ./cmd/migrate
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /kafka-setup ./cmd/kafka-setup
 
-FROM alpine:3.21
+FROM docker.io/library/alpine:3.21
 RUN apk add --no-cache ca-certificates tzdata \
     && adduser -D -u 10001 appuser
 COPY --from=builder /app /app
