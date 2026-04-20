@@ -27,7 +27,7 @@ build-push-image tag=env("IMAGE", ""):
         echo "Error: no image tag provided (set \$IMAGE or pass as argument)" >&2
         exit 1
     fi
-    buildah --storage-driver=vfs bud --log-level=error --tag "$TAG" .
+    buildah --storage-driver=vfs bud --isolation=chroot --log-level=error --tag "$TAG" .
     buildah --storage-driver=vfs push --log-level=error --tls-verify=false "$TAG"
 
 # -- Development ---------------------------------------------------------------
