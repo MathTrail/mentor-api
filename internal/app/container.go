@@ -37,12 +37,17 @@ func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (
 		return nil, fmt.Errorf("init db: %w", err)
 	}
 
-	// TopicValidator fails fast at startup if Apicurio is unreachable or the
+	// TopicValidators fail fast at startup if Apicurio is unreachable or the
 	// subject does not exist — ensures schema alignment before any message is consumed.
-	validator, err := kafkainfra.NewValidator(cfg.ApicurioURL, cfg.OnboardingSchemaSubject)
+	v1Validator, err := kafkainfra.NewValidator(cfg.ApicurioURL, cfg.OnboardingSchemaSubject)
 	if err != nil {
 		db.Close()
-		return nil, fmt.Errorf("schema validator: %w", err)
+		return nil, fmt.Errorf("schema validator v1: %w", err)
+	}
+	v2Validator, err := kafkainfra.NewValidator(cfg.ApicurioURL, cfg.OnboardingV2SchemaSubject)
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("schema validator v2: %w", err)
 	}
 
 	kafkaClient, err := kafkainfra.NewClientFromConfig(cfg, logger)
@@ -64,7 +69,7 @@ func NewContainer(ctx context.Context, cfg *config.Config, logger *zap.Logger) (
 	router := httpserver.NewRouter(feedbackHandler, roadmapHandler, healthHandler, cfg, logger)
 
 	onboardingRepo := onboarding.NewRepository(db)
-	onboardingConsumer := onboarding.NewConsumer(kafkaClient, onboardingRepo, validator, logger)
+	onboardingConsumer := onboarding.NewConsumer(kafkaClient, onboardingRepo, v1Validator, v2Validator, logger)
 
 	return &Container{
 		Config:  cfg,
