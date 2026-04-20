@@ -13,12 +13,10 @@ import (
 // confluentMagicByte is the first byte of every Confluent Wire Format message (always 0x00).
 // confluentHeaderSize is the size of the Confluent Wire Format header: 1 magic byte + 4 schema ID bytes.
 // schemaFetchMaxAttempts is the number of attempts to fetch the schema ID from Apicurio at startup.
-// 12 attempts with linear backoff gives up to 66s total wait — enough for kube-proxy iptables
-// rules to sync across nodes when the pod is scheduled on a different node than Apicurio.
 const (
 	confluentMagicByte     = 0x00
 	confluentHeaderSize    = 5
-	schemaFetchMaxAttempts = 12
+	schemaFetchMaxAttempts = 5
 )
 
 // TopicValidator validates Confluent Wire Format messages against a pinned schema ID.
