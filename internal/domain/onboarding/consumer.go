@@ -40,6 +40,10 @@ type Consumer struct {
 	logger     *zap.Logger
 }
 
+func (c *Consumer) expectedSchemaIDs() []uint32 {
+	return []uint32{c.v1SchemaID, c.v2SchemaID}
+}
+
 func NewConsumer(
 	client *kgo.Client,
 	repo *Repository,
@@ -123,16 +127,50 @@ func (c *Consumer) handle(ctx context.Context, record *kgo.Record) error {
 	case c.v2SchemaID:
 		return c.handleV2(ctx, span, record, rawProto)
 	default:
-		c.dlq.PublishDLQ(record)
-		c.logger.Warn("unknown schema ID, routed to DLQ",
+		return c.handleUnknownSchema(ctx, span, record, schemaID, rawProto)
+	}
+}
+
+// handleUnknownSchema provides forward-compatibility when a new registry ID is
+// introduced for a payload that is still compatible with v1/v2 contracts.
+// If payload decoding fails for both contracts, the record is routed to DLQ.
+func (c *Consumer) handleUnknownSchema(
+	ctx context.Context,
+	span trace.Span,
+	record *kgo.Record,
+	schemaID uint32,
+	rawProto []byte,
+) error {
+	var msgV2 studentsv2.StudentOnboardingReady
+	if err := proto.Unmarshal(rawProto, &msgV2); err == nil && msgV2.EventId != "" && msgV2.UserId != "" && msgV2.OccurredAt != "" {
+		c.logger.Info("unknown schema ID accepted as v2-compatible payload",
 			zap.Uint32("schema_id", schemaID),
-			zap.Uint32("v1_schema_id", c.v1SchemaID),
-			zap.Uint32("v2_schema_id", c.v2SchemaID),
+			zap.Uint32s("expected_schema_ids", c.expectedSchemaIDs()),
 			zap.Int32("partition", record.Partition),
 			zap.Int64("offset", record.Offset),
 		)
-		return nil
+		return c.process(ctx, span, record, msgV2.EventId, msgV2.UserId, msgV2.OccurredAt)
 	}
+
+	var msgV1 studentsv1.StudentOnboardingReady
+	if err := proto.Unmarshal(rawProto, &msgV1); err == nil && msgV1.EventId != "" && msgV1.UserId != "" && msgV1.OccurredAt != "" {
+		c.logger.Info("unknown schema ID accepted as v1-compatible payload",
+			zap.Uint32("schema_id", schemaID),
+			zap.Uint32s("expected_schema_ids", c.expectedSchemaIDs()),
+			zap.Int32("partition", record.Partition),
+			zap.Int64("offset", record.Offset),
+		)
+		return c.process(ctx, span, record, msgV1.EventId, msgV1.UserId, msgV1.OccurredAt)
+	}
+
+	c.dlq.PublishDLQ(record)
+	c.logger.Warn("unknown schema ID, routed to DLQ",
+		zap.Uint32("schema_id", schemaID),
+		zap.Uint32s("expected_schema_ids", c.expectedSchemaIDs()),
+		zap.Int32("partition", record.Partition),
+		zap.Int64("offset", record.Offset),
+	)
+	return nil
 }
 
 func (c *Consumer) handleV1(ctx context.Context, span trace.Span, record *kgo.Record, rawProto []byte) error {
@@ -210,7 +248,7 @@ func (c *Consumer) process(ctx context.Context, span trace.Span, record *kgo.Rec
 // kafkaDLQPublisher forwards unprocessable records to the DLQ topic via Kafka.
 // CloudEvents headers are preserved for end-to-end tracing.
 // A 5-second timeout prevents the produce attempt from blocking indefinitely
-// if the broker is unavailable; the callback logs any delivery failure.
+// if the broker is unavailable; delivery failures are logged.
 type kafkaDLQPublisher struct {
 	client *kgo.Client
 	logger *zap.Logger
@@ -224,15 +262,12 @@ func (p *kafkaDLQPublisher) PublishDLQ(record *kgo.Record) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	p.client.Produce(ctx, dlqRecord, func(_ *kgo.Record, err error) {
-		cancel()
-		if err != nil {
-			p.logger.Error("failed to produce to DLQ",
-				zap.Error(err),
-				zap.String("dlq_topic", dlqRecord.Topic),
-			)
-		}
-	})
+	if err := p.client.ProduceSync(ctx, dlqRecord).FirstErr(); err != nil {
+		p.logger.Error("failed to produce to DLQ",
+			zap.Error(err),
+			zap.String("dlq_topic", dlqRecord.Topic),
+		)
+	}
 }
 
 // parseOccurredAt tries RFC3339 first, then RisingWave's NOW()::VARCHAR format.

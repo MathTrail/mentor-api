@@ -144,6 +144,28 @@ func TestHandle_UnknownSchemaID(t *testing.T) {
 	}
 }
 
+func TestHandle_UnknownSchemaID_V2CompatiblePayload(t *testing.T) {
+	dlq := onboardingmocks.NewMockDLQPublisher(t)
+	db := pgmocks.NewMockDB(t)
+	db.EXPECT().Exec(
+		mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything, mock.Anything,
+	).Return(nil)
+
+	c := newTestConsumer(t, dlq, db)
+	msg := &studentsv2.StudentOnboardingReady{
+		EventId:    "evt-compatible",
+		UserId:     uuid.New().String(),
+		OccurredAt: time.Now().UTC().Format(time.RFC3339),
+		SchemaId:   "default",
+	}
+	// Unknown schema ID should still be processed if payload is compatible.
+	record := wireRecord(99, marshalV2(t, msg))
+	if err := c.handle(context.Background(), record); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
 func TestHandle_InvalidProtoV1(t *testing.T) {
 	dlq := onboardingmocks.NewMockDLQPublisher(t)
 	dlq.EXPECT().PublishDLQ(mock.Anything).Return()
