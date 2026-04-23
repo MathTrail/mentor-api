@@ -28,6 +28,24 @@ spec:
           port: 4040  # Pyroscope push
         - protocol: TCP
           port: 9411  # Zipkin
+    # PostgreSQL via PgBouncer (same namespace)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: mathtrail
+      ports:
+        - protocol: TCP
+          port: 6432
+    # Kafka (AutoMQ) and Apicurio Schema Registry (streaming namespace)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: streaming
+      ports:
+        - protocol: TCP
+          port: 9092  # Kafka bootstrap / broker
+        - protocol: TCP
+          port: 8080  # Apicurio Schema Registry
     # DNS resolution
     - ports:
         - protocol: UDP
