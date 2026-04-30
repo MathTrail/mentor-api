@@ -34,7 +34,12 @@ type Consumer struct {
 	logger    *zap.Logger
 }
 
-func NewConsumer(client *kgo.Client, repo *Repository, validator *kafkainfra.TopicValidator, logger *zap.Logger) *Consumer {
+func NewConsumer(
+	client *kgo.Client,
+	repo *Repository,
+	validator *kafkainfra.TopicValidator,
+	logger *zap.Logger,
+) *Consumer {
 	return &Consumer{
 		client:    client,
 		dlq:       &kafkaDLQPublisher{client: client, logger: logger},
@@ -162,7 +167,7 @@ func (c *Consumer) handle(ctx context.Context, record *kgo.Record) error {
 // kafkaDLQPublisher forwards unprocessable records to the DLQ topic via Kafka.
 // CloudEvents headers are preserved for end-to-end tracing.
 // A 5-second timeout prevents the produce attempt from blocking indefinitely
-// if the broker is unavailable; the callback logs any delivery failure.
+// if the broker is unavailable; delivery failures are logged.
 type kafkaDLQPublisher struct {
 	client *kgo.Client
 	logger *zap.Logger
@@ -176,15 +181,12 @@ func (p *kafkaDLQPublisher) PublishDLQ(record *kgo.Record) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	p.client.Produce(ctx, dlqRecord, func(_ *kgo.Record, err error) {
-		cancel()
-		if err != nil {
-			p.logger.Error("failed to produce to DLQ",
-				zap.Error(err),
-				zap.String("dlq_topic", dlqRecord.Topic),
-			)
-		}
-	})
+	if err := p.client.ProduceSync(ctx, dlqRecord).FirstErr(); err != nil {
+		p.logger.Error("failed to produce to DLQ",
+			zap.Error(err),
+			zap.String("dlq_topic", dlqRecord.Topic),
+		)
+	}
 }
 
 // parseOccurredAt tries RFC3339 first, then RisingWave's NOW()::VARCHAR format.

@@ -126,3 +126,60 @@ func TestProcessFeedbackLLMTimeout(t *testing.T) {
 		t.Errorf("expected context.DeadlineExceeded, got: %v", err)
 	}
 }
+
+// goodResult returns a valid StrategyResult to use as a base in validation tests.
+func goodResult() *clients.StrategyResult {
+	return &clients.StrategyResult{
+		PerceivedDifficulty: "hard",
+		Sentiment:           "frustrated",
+		TopicWeights:        map[string]float64{"algebra": 1.0},
+	}
+}
+
+func TestProcessFeedback_EmptyPerceivedDifficulty(t *testing.T) {
+	r := goodResult()
+	r.PerceivedDifficulty = ""
+	llm := clientmocks.NewMockFeedbackClient(t)
+	llm.EXPECT().AnalyzeFeedback(mock.Anything, mock.Anything).Return(r, nil)
+	svc := feedback.NewService(feedbackmocks.NewMockRepository(t), llm, time.Second, zap.NewNop())
+	_, err := svc.ProcessFeedback(context.Background(), &feedback.FeedbackRequest{StudentID: uuid.New(), TaskID: "t1", Message: "m"})
+	if err == nil {
+		t.Fatal(expectedErrFmt)
+	}
+}
+
+func TestProcessFeedback_EmptySentiment(t *testing.T) {
+	r := goodResult()
+	r.Sentiment = ""
+	llm := clientmocks.NewMockFeedbackClient(t)
+	llm.EXPECT().AnalyzeFeedback(mock.Anything, mock.Anything).Return(r, nil)
+	svc := feedback.NewService(feedbackmocks.NewMockRepository(t), llm, time.Second, zap.NewNop())
+	_, err := svc.ProcessFeedback(context.Background(), &feedback.FeedbackRequest{StudentID: uuid.New(), TaskID: "t1", Message: "m"})
+	if err == nil {
+		t.Fatal(expectedErrFmt)
+	}
+}
+
+func TestProcessFeedback_EmptyTopicWeights(t *testing.T) {
+	r := goodResult()
+	r.TopicWeights = nil
+	llm := clientmocks.NewMockFeedbackClient(t)
+	llm.EXPECT().AnalyzeFeedback(mock.Anything, mock.Anything).Return(r, nil)
+	svc := feedback.NewService(feedbackmocks.NewMockRepository(t), llm, time.Second, zap.NewNop())
+	_, err := svc.ProcessFeedback(context.Background(), &feedback.FeedbackRequest{StudentID: uuid.New(), TaskID: "t1", Message: "m"})
+	if err == nil {
+		t.Fatal(expectedErrFmt)
+	}
+}
+
+func TestProcessFeedback_NegativeTopicWeight(t *testing.T) {
+	r := goodResult()
+	r.TopicWeights = map[string]float64{"algebra": -0.5}
+	llm := clientmocks.NewMockFeedbackClient(t)
+	llm.EXPECT().AnalyzeFeedback(mock.Anything, mock.Anything).Return(r, nil)
+	svc := feedback.NewService(feedbackmocks.NewMockRepository(t), llm, time.Second, zap.NewNop())
+	_, err := svc.ProcessFeedback(context.Background(), &feedback.FeedbackRequest{StudentID: uuid.New(), TaskID: "t1", Message: "m"})
+	if err == nil {
+		t.Fatal(expectedErrFmt)
+	}
+}

@@ -68,6 +68,29 @@ func TestRequestIDTraceIDFallback(t *testing.T) {
 	}
 }
 
+func TestRequestIDOversizedHeader(t *testing.T) {
+	r := gin.New()
+	r.Use(RequestID())
+	r.GET("/test", func(c *gin.Context) {
+		c.String(http.StatusOK, c.GetString(RequestIDKey))
+	})
+
+	// Build a header value that is > 64 characters — should be discarded.
+	oversized := "a" + string(make([]byte, 64)) // 65 chars
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.Header.Set(RequestIDHeader, oversized)
+	r.ServeHTTP(w, req)
+
+	got := w.Body.String()
+	if got == oversized {
+		t.Error("oversized X-Request-ID should have been discarded, but was echoed back")
+	}
+	if len(got) == 0 {
+		t.Error("expected a generated request ID, got empty string")
+	}
+}
+
 func TestRequestIDUUIDFallback(t *testing.T) {
 	r := gin.New()
 	// No otelgin — span context has no TraceID.

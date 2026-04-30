@@ -105,7 +105,7 @@ func newTestConsumer(t *testing.T, dlq *onboardingmocks.MockDLQPublisher, db *pg
 func TestHandle_InvalidWireFormat(t *testing.T) {
 	dlq := onboardingmocks.NewMockDLQPublisher(t)
 	dlq.EXPECT().PublishDLQ(mock.Anything).Return()
-	db := pgmocks.NewMockDB(t) // Exec must NOT be called
+	db := pgmocks.NewMockDB(t)
 
 	c := newTestConsumer(t, dlq, db)
 	record := &kgo.Record{Value: []byte("garbage")}
@@ -200,7 +200,7 @@ func TestHandle_UpsertError(t *testing.T) {
 }
 
 func TestHandle_Success(t *testing.T) {
-	dlq := onboardingmocks.NewMockDLQPublisher(t) // no DLQ call expected
+	dlq := onboardingmocks.NewMockDLQPublisher(t)
 	db := pgmocks.NewMockDB(t)
 	db.EXPECT().Exec(
 		mock.Anything, mock.Anything,
@@ -216,5 +216,15 @@ func TestHandle_Success(t *testing.T) {
 	record := wireRecord(42, marshalProto(t, msg))
 	if err := c.handle(context.Background(), record); err != nil {
 		t.Errorf("unexpected error: %v", err)
+	}
+}
+func TestNewConsumer(t *testing.T) {
+	validator := &kafkainfra.TopicValidator{ExpectedID: 99, ExpectedSubject: "test-subject"}
+	c := NewConsumer(nil, nil, validator, zap.NewNop())
+	if c == nil {
+		t.Fatal("expected non-nil consumer")
+	}
+	if c.validator != validator {
+		t.Errorf("validator not set: got %v, want %v", c.validator, validator)
 	}
 }
