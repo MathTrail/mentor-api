@@ -218,3 +218,13 @@ func TestHandle_Success(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
+func TestNewConsumer(t *testing.T) {
+	validator := &kafkainfra.TopicValidator{ExpectedID: 99, ExpectedSubject: "test-subject"}
+	c := NewConsumer(nil, nil, validator, zap.NewNop())
+	if c == nil {
+		t.Fatal("expected non-nil consumer")
+	}
+	if c.validator != validator {
+		t.Errorf("validator not set: got %v, want %v", c.validator, validator)
+	}
+}

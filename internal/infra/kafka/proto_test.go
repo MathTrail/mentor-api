@@ -120,3 +120,52 @@ func TestNewValidator_ZeroID(t *testing.T) {
 		t.Error("expected error for schema id 0, got nil")
 	}
 }
+
+// ── skipMessageIndexes unit tests ──────────────────────────────────────────
+
+func TestSkipMessageIndexes_Empty(t *testing.T) {
+	_, err := skipMessageIndexes([]byte{})
+	if err == nil {
+		t.Error("expected error for empty data, got nil")
+	}
+}
+
+func TestSkipMessageIndexes_SingleMessage(t *testing.T) {
+	// count=0 encodes as a single 0x00 byte; this represents the first (only) message.
+	n, err := skipMessageIndexes([]byte{0x00})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("n = %d, want 1", n)
+	}
+}
+
+func TestSkipMessageIndexes_MultipleMessageIndexes(t *testing.T) {
+	// count=2 (0x02), followed by two varint message indexes (0x00, 0x02).
+	data := []byte{0x02, 0x00, 0x02}
+	n, err := skipMessageIndexes(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if n != 3 {
+		t.Errorf("n = %d, want 3", n)
+	}
+}
+
+func TestSkipMessageIndexes_OverflowCount(t *testing.T) {
+	// Ten 0xFF bytes produce a varint overflow (value > 64 bits).
+	data := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
+	_, err := skipMessageIndexes(data)
+	if err == nil {
+		t.Error("expected error for overflowed varint, got nil")
+	}
+}
+
+func TestSkipMessageIndexes_TruncatedIndex(t *testing.T) {
+	// count=1 but no message-index byte follows.
+	_, err := skipMessageIndexes([]byte{0x01})
+	if err == nil {
+		t.Error("expected error for truncated message index, got nil")
+	}
+}

@@ -117,3 +117,35 @@ func TestLoadOTelSampleRateValidBoundaries(t *testing.T) {
 		t.Errorf("OTelSampleRate: got %v, want 1.0", cfg.OTelSampleRate)
 	}
 }
+func TestPostgresDSN(t *testing.T) {
+	cfg := &Config{
+		PgHost:     "localhost",
+		PgPort:     "5432",
+		PgDatabase: "testdb",
+		PgSSLMode:  "disable",
+	}
+	want := "host=localhost port=5432 dbname=testdb sslmode=disable"
+	if got := cfg.PostgresDSN(); got != want {
+		t.Errorf("PostgresDSN() = %q, want %q", got, want)
+	}
+}
+
+func TestValidate_OTelSampleRateTooHigh(t *testing.T) {
+	cfg := &Config{
+		OTelSampleRate:   1.5,
+		PgCredentialsDir: t.TempDir(),
+	}
+	if err := cfg.Validate(); err == nil {
+		t.Error("expected error for OTelSampleRate > 1, got nil")
+	}
+}
+
+func TestValidate_EmptyPgCredentialsDir(t *testing.T) {
+	cfg := &Config{
+		OTelSampleRate:   0.5,
+		PgCredentialsDir: "",
+	}
+	if err := cfg.Validate(); err == nil {
+		t.Error("expected error for empty PgCredentialsDir, got nil")
+	}
+}

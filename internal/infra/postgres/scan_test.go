@@ -88,3 +88,25 @@ func TestDecodeRowsEmpty(t *testing.T) {
 		t.Errorf("len = %d, want 0", len(got))
 	}
 }
+func TestDecodeRow_UnmarshalError(t *testing.T) {
+	// "not-an-int" cannot be unmarshalled into an int field.
+	row := map[string]any{"value": "not-an-int"}
+	type target struct {
+		Value int `json:"value"`
+	}
+	_, err := postgres.DecodeRow[target](row)
+	if err == nil {
+		t.Error("expected unmarshal error, got nil")
+	}
+}
+
+func TestDecodeRows_UnmarshalError(t *testing.T) {
+	rows := []map[string]any{{"value": "not-an-int"}}
+	type target struct {
+		Value int `json:"value"`
+	}
+	_, err := postgres.DecodeRows[target](rows)
+	if err == nil {
+		t.Error("expected unmarshal error, got nil")
+	}
+}
