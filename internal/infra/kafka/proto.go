@@ -90,22 +90,6 @@ func skipMessageIndexes(data []byte) (int, error) {
 	return offset, nil
 }
 
-// Unwrap validates the Confluent Wire Format magic byte and returns the schema ID
-// and raw Protobuf bytes without enforcing a specific expected schema ID.
-// Use this when the topic carries multiple schema versions (e.g. v1 and v2).
-func Unwrap(data []byte) (schemaID uint32, protoBytes []byte, err error) {
-	if len(data) < confluentHeaderSize || data[0] != confluentMagicByte {
-		return 0, nil, errors.New("invalid confluent wire format: missing magic byte or too short")
-	}
-	id := binary.BigEndian.Uint32(data[1:confluentHeaderSize])
-	rest := data[confluentHeaderSize:]
-	n, err := skipMessageIndexes(rest)
-	if err != nil {
-		return 0, nil, err
-	}
-	return id, rest[n:], nil
-}
-
 // fetchLatestSchemaID queries the Confluent-compat v7 API for the latest schema ID.
 func fetchLatestSchemaID(registryURL, subject string) (int, error) {
 	url := strings.TrimSuffix(registryURL, "/") + "/subjects/" + subject + "/versions/latest"

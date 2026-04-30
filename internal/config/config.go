@@ -28,8 +28,7 @@ const (
 	defaultKafkaConsumerGroup      = "mentor-api"
 	defaultPodName                 = "mentor-api-local"
 	defaultApicurioURL             = "http://mathtrail-apicurio-apicurio-registry:8080/apis/ccompat/v7"
-	defaultOnboardingSchemaSubject   = "students.onboarding.ready-value"
-	defaultOnboardingV2SchemaSubject = "students.v2.StudentOnboardingReady"
+	defaultOnboardingSchemaSubject = "students.onboarding.ready-value"
 )
 
 type Config struct {
@@ -68,9 +67,8 @@ type Config struct {
 
 	// ApicurioURL is the base URL of the Confluent-compat v7 API, used by TopicValidator
 	// to fetch the latest schema ID at startup (fail-fast if unreachable).
-	ApicurioURL               string `mapstructure:"APICURIO_URL"`
-	OnboardingSchemaSubject   string `mapstructure:"ONBOARDING_SCHEMA_SUBJECT"`
-	OnboardingV2SchemaSubject string `mapstructure:"ONBOARDING_V2_SCHEMA_SUBJECT"`
+	ApicurioURL             string `mapstructure:"APICURIO_URL"`
+	OnboardingSchemaSubject string `mapstructure:"ONBOARDING_SCHEMA_SUBJECT"`
 
 	// Timeouts
 	LLMTimeout        time.Duration `mapstructure:"LLM_TIMEOUT"`
@@ -108,7 +106,6 @@ func Load() (*Config, error) {
 	v.SetDefault("POD_NAME", defaultPodName)
 	v.SetDefault("APICURIO_URL", defaultApicurioURL)
 	v.SetDefault("ONBOARDING_SCHEMA_SUBJECT", defaultOnboardingSchemaSubject)
-	v.SetDefault("ONBOARDING_V2_SCHEMA_SUBJECT", defaultOnboardingV2SchemaSubject)
 	v.SetDefault("PG_CREDENTIALS_DIR", "")
 
 	cfg := &Config{}

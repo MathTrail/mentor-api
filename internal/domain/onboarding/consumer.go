@@ -8,12 +8,10 @@ import (
 	kafkainfra "github.com/MathTrail/mentor-api/internal/infra/kafka"
 	"github.com/google/uuid"
 	studentsv1 "github.com/mathtrail/contracts/gen/go/students/v1"
-	studentsv2 "github.com/mathtrail/contracts/gen/go/students/v2"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
@@ -28,36 +26,26 @@ type DLQPublisher interface {
 }
 
 // Consumer reads from students.onboarding.ready and persists recommendations.
-// Handles both v1 (students.v1.StudentOnboardingReady) and
-// v2 (students.v2.StudentOnboardingReady) schemas on the same topic,
-// distinguished by the Confluent Wire Format schema ID prefix.
 type Consumer struct {
-	client     *kgo.Client
-	dlq        DLQPublisher
-	repo       *Repository
-	v1SchemaID uint32
-	v2SchemaID uint32
-	logger     *zap.Logger
-}
-
-func (c *Consumer) expectedSchemaIDs() []uint32 {
-	return []uint32{c.v1SchemaID, c.v2SchemaID}
+	client    *kgo.Client
+	dlq       DLQPublisher
+	repo      *Repository
+	validator *kafkainfra.TopicValidator
+	logger    *zap.Logger
 }
 
 func NewConsumer(
 	client *kgo.Client,
 	repo *Repository,
-	v1Validator *kafkainfra.TopicValidator,
-	v2Validator *kafkainfra.TopicValidator,
+	validator *kafkainfra.TopicValidator,
 	logger *zap.Logger,
 ) *Consumer {
 	return &Consumer{
-		client:     client,
-		dlq:        &kafkaDLQPublisher{client: client, logger: logger},
-		repo:       repo,
-		v1SchemaID: v1Validator.ExpectedID,
-		v2SchemaID: v2Validator.ExpectedID,
-		logger:     logger,
+		client:    client,
+		dlq:       &kafkaDLQPublisher{client: client, logger: logger},
+		repo:      repo,
+		validator: validator,
+		logger:    logger,
 	}
 }
 
@@ -110,10 +98,11 @@ func (c *Consumer) handle(ctx context.Context, record *kgo.Record) error {
 	ctx, span := tracer.Start(ctx, "onboarding.recommendation.upsert")
 	defer span.End()
 
-	schemaID, rawProto, err := kafkainfra.Unwrap(record.Value)
+	rawProto, err := c.validator.ValidateAndUnwrap(record.Value)
 	if err != nil {
+		// Poison pill — route to DLQ, do not crash the consumer loop.
 		c.dlq.PublishDLQ(record)
-		c.logger.Warn("wire format invalid, routed to DLQ",
+		c.logger.Warn("schema validation failed, routed to DLQ",
 			zap.Error(err),
 			zap.Int32("partition", record.Partition),
 			zap.Int64("offset", record.Offset),
@@ -121,125 +110,55 @@ func (c *Consumer) handle(ctx context.Context, record *kgo.Record) error {
 		return nil
 	}
 
-	switch schemaID {
-	case c.v1SchemaID:
-		return c.handleV1(ctx, span, record, rawProto)
-	case c.v2SchemaID:
-		return c.handleV2(ctx, span, record, rawProto)
-	default:
-		return c.handleUnknownSchema(ctx, span, record, schemaID, rawProto)
-	}
-}
-
-// handleUnknownSchema provides forward-compatibility when a new registry ID is
-// introduced for a payload that is still compatible with v1/v2 contracts.
-// If payload decoding fails for both contracts, the record is routed to DLQ.
-func (c *Consumer) handleUnknownSchema(
-	ctx context.Context,
-	span trace.Span,
-	record *kgo.Record,
-	schemaID uint32,
-	rawProto []byte,
-) error {
-	var msgV2 studentsv2.StudentOnboardingReady
-	if err := proto.Unmarshal(rawProto, &msgV2); err == nil && msgV2.EventId != "" && msgV2.UserId != "" && msgV2.OccurredAt != "" {
-		c.logger.Info("unknown schema ID accepted as v2-compatible payload",
-			zap.Uint32("schema_id", schemaID),
-			zap.Uint32s("expected_schema_ids", c.expectedSchemaIDs()),
-			zap.Int32("partition", record.Partition),
-			zap.Int64("offset", record.Offset),
-		)
-		return c.process(ctx, span, record, msgV2.EventId, msgV2.UserId, msgV2.OccurredAt)
-	}
-
-	var msgV1 studentsv1.StudentOnboardingReady
-	if err := proto.Unmarshal(rawProto, &msgV1); err == nil && msgV1.EventId != "" && msgV1.UserId != "" && msgV1.OccurredAt != "" {
-		c.logger.Info("unknown schema ID accepted as v1-compatible payload",
-			zap.Uint32("schema_id", schemaID),
-			zap.Uint32s("expected_schema_ids", c.expectedSchemaIDs()),
-			zap.Int32("partition", record.Partition),
-			zap.Int64("offset", record.Offset),
-		)
-		return c.process(ctx, span, record, msgV1.EventId, msgV1.UserId, msgV1.OccurredAt)
-	}
-
-	c.dlq.PublishDLQ(record)
-	c.logger.Warn("unknown schema ID, routed to DLQ",
-		zap.Uint32("schema_id", schemaID),
-		zap.Uint32s("expected_schema_ids", c.expectedSchemaIDs()),
-		zap.Int32("partition", record.Partition),
-		zap.Int64("offset", record.Offset),
-	)
-	return nil
-}
-
-func (c *Consumer) handleV1(ctx context.Context, span trace.Span, record *kgo.Record, rawProto []byte) error {
 	var msg studentsv1.StudentOnboardingReady
 	if err := proto.Unmarshal(rawProto, &msg); err != nil {
 		c.dlq.PublishDLQ(record)
-		c.logger.Warn("proto v1 unmarshal failed, routed to DLQ",
+		c.logger.Warn("proto unmarshal failed, routed to DLQ",
 			zap.Error(err),
 			zap.Int32("partition", record.Partition),
 			zap.Int64("offset", record.Offset),
 		)
 		return nil
 	}
-	return c.process(ctx, span, record, msg.EventId, msg.UserId, msg.OccurredAt)
-}
 
-func (c *Consumer) handleV2(ctx context.Context, span trace.Span, record *kgo.Record, rawProto []byte) error {
-	var msg studentsv2.StudentOnboardingReady
-	if err := proto.Unmarshal(rawProto, &msg); err != nil {
-		c.dlq.PublishDLQ(record)
-		c.logger.Warn("proto v2 unmarshal failed, routed to DLQ",
-			zap.Error(err),
-			zap.Int32("partition", record.Partition),
-			zap.Int64("offset", record.Offset),
-		)
-		return nil
-	}
-	return c.process(ctx, span, record, msg.EventId, msg.UserId, msg.OccurredAt)
-}
-
-func (c *Consumer) process(ctx context.Context, span trace.Span, record *kgo.Record, eventID, userID, occurredAtRaw string) error {
 	ce := kafkainfra.ExtractCloudEventHeaders(record.Headers)
 
-	studentID, err := uuid.Parse(userID)
+	studentID, err := uuid.Parse(msg.UserId)
 	if err != nil {
 		c.dlq.PublishDLQ(record)
 		c.logger.Warn("invalid user_id, routed to DLQ",
 			zap.Error(err),
-			zap.String("user_id", userID),
+			zap.String("user_id", msg.UserId),
 		)
 		return nil
 	}
 
-	occurredAt, err := parseOccurredAt(occurredAtRaw)
+	occurredAt, err := parseOccurredAt(msg.OccurredAt)
 	if err != nil {
 		c.dlq.PublishDLQ(record)
 		c.logger.Warn("invalid occurred_at, routed to DLQ",
 			zap.Error(err),
-			zap.String("occurred_at", occurredAtRaw),
+			zap.String("occurred_at", msg.OccurredAt),
 		)
 		return nil
 	}
 
 	span.SetAttributes(
-		attribute.String("event.id", eventID),
-		attribute.String("student.id", userID),
-		attribute.String("event.occurred_at", occurredAtRaw),
+		attribute.String("event.id", msg.EventId),
+		attribute.String("student.id", msg.UserId),
+		attribute.String("event.occurred_at", msg.OccurredAt),
 		attribute.String("ce.id", ce.ID),
 		attribute.String("ce.type", ce.Type),
 	)
 
-	if err := c.repo.Upsert(ctx, studentID, eventID, occurredAt); err != nil {
+	if err := c.repo.Upsert(ctx, studentID, msg.EventId, occurredAt); err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		return fmt.Errorf("upsert: %w", err)
 	}
 
 	c.logger.Info("recommendation upserted",
-		zap.String("student_id", userID),
-		zap.String("event_id", eventID),
+		zap.String("student_id", msg.UserId),
+		zap.String("event_id", msg.EventId),
 		zap.String("ce_id", ce.ID),
 	)
 	return nil
